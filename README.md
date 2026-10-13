@@ -30,6 +30,17 @@ Os alunos da Unifor. Atualmente, cerca de apenas 1.400 alunos (≈5% dos 25 mil 
 - **Banco de dados:** PostgreSQL
 - **Prototipação:** Figma
 
+## Documentação
+
+| Documento | Conteúdo |
+|---|---|
+| [Protótipo no Figma](https://www.figma.com/design/20vFP1b3Ra6UZbJjVssgxD/Unishop-%E2%80%94-Prot%C3%B3tipo?node-id=0-1&t=aaGA4eqvMXvN19lh-0) | Wireframes de alta fidelidade das telas do usuário e do administrador |
+| [docs/frontend.md](docs/frontend.md) | Estrutura, rotas, componentes, estado e padrões de qualidade do frontend |
+| [docs/regras-de-negócio.md](docs/regras-de-negócio.md) | Regras de negócio (RN-XXX-nn), estados, permissões e cenários de teste |
+| `docs/backend/` | Documentação do backend *(a publicar)* |
+| `docs/api/` | Especificação da API *(a publicar)* |
+| `docs/banco-de-dados/` | DER, MER e modelagem do banco *(a publicar)* |
+
 ## Principais funcionalidades
 
 O sistema conta com três perfis de atores: **visitante**, **usuário (aluno)** e **administrador**.
@@ -90,18 +101,3 @@ Algumas decisões técnicas ainda são sugestões em avaliação pelo grupo (bui
 
 O acompanhamento das tarefas é feito em um quadro Kanban no Trello, separado em colunas de planejamento, tarefas pendentes, MVP e apresentação final, servindo também como cronograma das entregas.
 
-## Documentação
-
-```text
-docs/
-├─ contexto-do-projeto.md              # contexto completo do projeto para leitura por IA e novos membros
-├─ visao-geral/
-│  └─ regras-de-negocio.md             # regras RN-XXX-nn, estados, permissões, testes
-├─ frontend/
-│  └─ frontend.md                      # estrutura, rotas, componentes, estado, qualidade
-├─ backend/                            # a cargo do Felipe Bessa
-├─ api/                                # a cargo do Pedro Cândido (openapi.yaml)
-└─ banco-de-dados/                     # a cargo da Ana Clara Macêdo
-```
-
-Recomenda-se ler `docs/contexto-do-projeto.md` antes dos documentos técnicos: ele resume o que já foi decidido pelo grupo e aponta a fonte de cada informação (PDF do trabalho > decisões do grupo > documentos técnicos > protótipos do Figma).
