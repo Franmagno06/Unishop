@@ -3,7 +3,7 @@ name: unishop-frontend
 description: Convenções e estrutura do frontend do Unishop (React + TypeScript + Vite + Tailwind). Use ao criar, editar ou revisar qualquer tela, componente, rota, hook ou serviço em frontend/, ou ao discutir estrutura de pastas, rotas, estado ou padrões de qualidade do frontend do projeto.
 metadata:
   author: unishop-team
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # Frontend do Unishop
@@ -88,4 +88,4 @@ Regras de segurança a nunca violar no frontend: nunca usar `dangerouslySetInner
 
 Sempre citar os códigos de origem: `RF`/`RNF` (requisitos do PDF) e `RN-XXX-nn` (regras de negócio em `docs/regras-de-negócio/regras-de-negócio.md`). Se uma informação não estiver documentada em `docs/frontend/frontend.md`, `docs/regras-de-negócio/`, no PDF do trabalho ou nas decisões do grupo registradas no `CLAUDE.md`, diga que não está definida — não invente rota, campo ou comportamento.
 
-Ao escrever ou revisar componentes React, combine esta skill com `vercel-react-best-practices` (performance) e `web-design-guidelines` (acessibilidade e UI), ambas instaladas no projeto.
+Ao escrever ou revisar componentes React, combine esta skill com `vercel-react-best-practices` (performance) e `web-design-guidelines` (acessibilidade e UI), ambas instaladas no projeto. Mais contexto sobre as skills do projeto e como usá-las: [`docs/skills/skills.md`](../../../docs/skills/skills.md).
