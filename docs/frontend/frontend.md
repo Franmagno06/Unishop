@@ -5,8 +5,8 @@ version: 0.3
 date: 2026-10-13
 status: rascunho para revisão da equipe
 owners: Pedro Cândido (frontend e API), Francisco Magno (integração front-back)
-context: docs/contexto-do-projeto.md
-related: docs/visao-geral/regras-de-negocio.md
+context: README.md
+related: docs/regras-de-negocio.md
 language: pt-BR (código e pastas em inglês; interface em português)
 ---
 
@@ -14,7 +14,7 @@ language: pt-BR (código e pastas em inglês; interface em português)
 
 - Versão 0.3 · 13/10/2026
 - Responsáveis: Pedro Cândido (frontend e API) · Francisco Magno (integração front-back)
-- Regras de negócio: ver "Documentação Técnica — Regras de Negócio" (docs/visao-geral/regras-de-negocio.md)
+- Regras de negócio: ver "Documentação Técnica — Regras de Negócio" (docs/regras-de-negocio.md)
 
 ## 1. Objetivo
 

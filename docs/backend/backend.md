@@ -6,9 +6,9 @@ revision: 2ª versão (substitui a v0.1 de 13/10/2026)
 date: 2026-10-14
 status: rascunho para revisão da equipe
 owners: Felipe Bessa (backend), Pedro Cândido (engenheiro de API), Ana Clara (banco de dados), Francisco Magno (integração front-back)
-context: docs/contexto-do-projeto.md
+context: README.md
 based_on: Regras de Negócio v0.3 (docs/visao-geral/regras-de-negocio.md)
-related: docs/banco-de-dados/, docs/api/, docs/frontend/
+related: docs/database/, docs/api/, docs/frontend/
 language: pt-BR (código e pastas em inglês; interface em português)
 ---
 
@@ -19,7 +19,7 @@ language: pt-BR (código e pastas em inglês; interface em português)
 - Versão 0.2 · 14/10/2026
 - Base: Regras de Negócio v0.3, requisitos RF001–RF024 e RNF001–RNF016
 - Responsáveis: Felipe Bessa (backend) · Pedro Cândido (engenheiro de API) · Ana Clara (banco de dados) · Francisco Magno (integração front-back)
-- Documentos relacionados: Regras de Negócio (docs/visao-geral/regras-de-negocio.md) · Banco de Dados (docs/banco-de-dados/) · API (docs/api/) · Frontend (docs/frontend/)
+- Documentos relacionados: Regras de Negócio (docs/regras-de-negocio.md/) · Banco de Dados (docs/banco-de-dados/) · API (docs/api/) · Frontend (docs/frontend/)
 
 ## Sumário
 
