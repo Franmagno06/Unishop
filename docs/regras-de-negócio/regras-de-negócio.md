@@ -3,7 +3,7 @@ title: Documentação Técnica — Regras de Negócio
 project: Unishop
 version: 0.3
 date: 2026-10-13
-status: rascunho para revisão da equipe
+status: fechado pelo grupo em 15/10/2026
 owners: Francisco Magno (consolidação)
 context: README.md
 related: docs/frontend/frontend.md

@@ -3,10 +3,10 @@ title: Documentação Técnica — Frontend
 project: Unishop
 version: 0.3
 date: 2026-10-13
-status: rascunho para revisão da equipe
+status: fechado pelo grupo em 15/10/2026
 owners: Pedro Cândido (frontend e API), Francisco Magno (integração front-back)
 context: README.md
-related: docs/regras-de-negocio.md
+related: docs/regras-de-negócio/regras-de-negócio.md, docs/backend/backend.md, docs/api/api.md, docs/deploy/deploy.md
 language: pt-BR (código e pastas em inglês; interface em português)
 ---
 
@@ -14,7 +14,7 @@ language: pt-BR (código e pastas em inglês; interface em português)
 
 - Versão 0.3 · 13/10/2026
 - Responsáveis: Pedro Cândido (frontend e API) · Francisco Magno (integração front-back)
-- Regras de negócio: ver "Documentação Técnica — Regras de Negócio" (docs/regras-de-negocio.md)
+- Regras de negócio: ver "Documentação Técnica — Regras de Negócio" (docs/regras-de-negócio/regras-de-negócio.md)
 
 ## 1. Objetivo
 
@@ -126,9 +126,10 @@ Variáveis de ambiente ficam em `.env` (copie de `.env.example`). No Vite, só a
 VITE_API_URL=http://localhost:3000/api/v1
 VITE_MP_PUBLIC_KEY=            # chave pública (de teste) do Mercado Pago, usada pelo SDK de pagamento
 VITE_GOOGLE_CLIENT_ID=         # Client ID do login com Google (desejável)
+VITE_TURNSTILE_SITE_KEY=       # site key do anti-bot (Turnstile); só depois do MVP
 ```
 
-Em **produção** (Vercel) o site e a API ficam em domínios diferentes, então o `VITE_API_URL` é o endereço completo da API, por exemplo `https://<api>.vercel.app/api/v1`. O Vite lê as variáveis `VITE_*` **na hora do build**: para trocá-las é preciso refazer o deploy do site. As três são públicas; nunca coloque segredo nelas. O guia completo está em [`docs/deploy/deploy.md`](../deploy/deploy.md).
+Em **produção** (Vercel) o site e a API ficam em domínios diferentes, então o `VITE_API_URL` é o endereço completo da API, por exemplo `https://<api>.vercel.app/api/v1`. O Vite lê as variáveis `VITE_*` **na hora do build**: para trocá-las é preciso refazer o deploy do site. As quatro são públicas; nunca coloque segredo nelas (nada com "SECRET", "TOKEN" ou chave privada pode começar com `VITE_`; um teste varre o `dist/` depois do build, `docs/api/api.md`, seção 5.8). O guia completo está em [`docs/deploy/deploy.md`](../deploy/deploy.md).
 
 ## 5. Estrutura de pastas
 

@@ -1,0 +1,29 @@
+{
+  "skill_name": "unishop-api",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "vou implementar o POST /payments/webhook do mercado pago. me diz em que ordem eu valido as coisas e como calculo a assinatura, e o que devo responder quando der errado",
+      "expected_output": "Ordem: limite próprio, cabeçalhos x-signature/x-request-id (400), HMAC SHA-256 do manifesto id/request-id/ts em tempo constante (401), janela de 5 min, consulta do pagamento no gateway, idempotência, liquidação. Erro sem detalhe e motivo só no log.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "no env.ts eu quero travar pra que em producao o PAYMENT_MODE tenha que ser 'production', ta certo? e o anti-bot pode ser noop la?",
+      "expected_output": "Corrige: a trava usa APP_ENV (não NODE_ENV) e proíbe credencial real fora de produção; produção com sandbox é permitida pela RN-PAG-10; noop do anti-bot fica liberado até o Turnstile entrar; mock, console e local são proibidos em produção.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "quero adicionar o Sentry no backend. o que preciso configurar e tem algum cuidado com os dados dos alunos?",
+      "expected_output": "Sentry é etapa depois do MVP (ADR-007); DSN é credencial de infraestrutura no inventário; não enviar e-mail, WhatsApp, Authorization nem corpo de /auth e /payments; só 5xx e exceções; plano gratuito tem 1 usuário (pendência 4); adicionar ao inventário e ao .env.example.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "o resend ta devolvendo erro de dominio quando mando o email de confirmacao pro aluno em producao, o app ta em unishop.vercel.app",
+      "expected_output": "Resend exige domínio verificado por DNS (SPF/DKIM); vercel.app não permite; precisa de domínio próprio (pendência 2 do api.md e 3 do deploy); limite de 100 e-mails por dia; MailProvider por interface; sugere resend/email-best-practices para os detalhes.",
+      "files": []
+    }
+  ]
+}

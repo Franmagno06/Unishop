@@ -7,6 +7,7 @@ Contexto para o Claude Code trabalhar no projeto **Unishop**, e-commerce web par
 - [`docs/regras-de-negócio/regras-de-negócio.md`](docs/regras-de-negócio/regras-de-negócio.md) — regras RN-XXX-nn, estados, permissões e cenários de teste.
 - [`docs/frontend/frontend.md`](docs/frontend/frontend.md) — estrutura, rotas, componentes, estado e padrões de qualidade do frontend.
 - [`docs/backend/backend.md`](docs/backend/backend.md) — arquitetura em camadas, autenticação, módulos e rotas, pagamentos, estados, jobs, erros, segurança e mapa das regras RN no backend.
+- [`docs/api/api.md`](docs/api/api.md) — APIs externas (Google, Mercado Pago, Resend, Cloudinary, Turnstile e outras), arquitetura de segurança "backend-cofre", providers, travas de produção, variáveis, resiliência, custos e ADRs. O contrato da API própria (`openapi.yaml`) ainda não existe.
 - [`docs/deploy/deploy.md`](docs/deploy/deploy.md) — deploy em produção (Vercel + Neon): ambientes, segredos, CORS, jobs agendados, backup, atualização e reversão.
 - [`docs/skills/skills.md`](docs/skills/skills.md) — skills do Claude Code instaladas no projeto e como usá-las.
 - `Trabalho Desenvolvimento Web 2026.pdf` — requisitos funcionais (RF001–RF024) e não-funcionais (RNF001–RNF016) originais do trabalho.
@@ -19,6 +20,11 @@ As skills ficam em `.claude/skills/` (detalhes e análise de cobertura em [`docs
 |---|---|
 | Telas, rotas, guards, componentes, hooks, services, formulários, estados de tela do frontend | `unishop-frontend` |
 | Rotas, controllers, services, repositories, middlewares, providers, jobs, autenticação, pagamentos, estoque, pedidos, admin, erros da API | `unishop-backend` |
+| Integrar ou revisar serviços externos (Google, Mercado Pago, Resend, Cloudinary, Turnstile), segredos, variáveis, `env.ts`, travas de produção, webhook assinado, ADRs | `unishop-api` |
+| Deploy na Vercel + Neon: variáveis por ambiente, `APP_ENV`, `vercel.json`, jobs por endpoint, `waitUntil`, cron, domínio, backup, rollback, limites do Hobby | `unishop-deploy` |
+| Operar o Vercel CLI com token (`vercel env`, `vercel logs`, deploy pelo CLI), sempre sob as regras da `unishop-deploy` | `vercel-cli-with-tokens` |
+| Conexão pooled × direta, branches por ambiente e restauração no Neon | `neon-postgres`, `neon-postgres-branches` |
+| Detalhes da API do Resend, entregabilidade, SPF/DKIM/DMARC, e-mail transacional | `resend`, `email-best-practices` |
 | Performance de React: waterfalls, bundle, re-renders, lazy loading (SPA Vite: ignorar regras `server-*` e de Next.js) | `vercel-react-best-practices` |
 | Projetar `shared/components/ui`, compound components, contexto, excesso de props booleanas | `vercel-composition-patterns` |
 | Revisar UI, acessibilidade (WCAG 2.1 AA), formulários, foco e contraste | `web-design-guidelines` |
@@ -31,7 +37,9 @@ Fluxo sugerido por momento do trabalho (quando o código existir):
 | Momento | O que fazer |
 |---|---|
 | Antes de codar | Ler a regra em `docs/` e acionar `unishop-frontend` e/ou `unishop-backend` |
-| Banco | `supabase-postgres-best-practices` ao definir schema, migração e concorrência de estoque |
+| Banco | `supabase-postgres-best-practices` ao definir schema, migração e concorrência de estoque; `neon-postgres` e `neon-postgres-branches` para conexões e branches no Neon |
+| Integração com serviço externo | `unishop-api` (e `resend` / `email-best-practices` no e-mail); `/security-review` em mudança de pagamento, webhook ou segredo |
+| Publicar ou configurar produção | `unishop-deploy`; só executar deploy, troca de variável ou restauração de banco se o usuário pedir, confirmando o alvo (preview ou produção) |
 | Ao escrever tela ou componente | `unishop-frontend` + `vercel-composition-patterns` (componentes de `shared/components/ui`) |
 | Depois de escrever a tela | `web-design-guidelines` (acessibilidade e UX), `vercel-react-best-practices` (performance) |
 | Verificar rodando | `webapp-testing` (screenshots, console, fluxo) |
@@ -49,7 +57,9 @@ Regras de uso:
 - Mudou um documento técnico, uma rota ou uma decisão? Revise a skill `unishop-*` correspondente.
 - Skill nova ou removida: atualize esta tabela, `docs/skills/skills.md` e o `skills-lock.json` (só para skills externas).
 - Uma pasta só para skills: `.claude/skills/<nome>/SKILL.md`. Não manter `.agents/` nem symlinks.
-- Ainda sem skill própria: API (`docs/api/`) e banco (`docs/banco-de-dados/`), pois os documentos não foram publicados, e deploy (`docs/deploy/`).
+- Ainda sem skill própria: banco (`docs/banco-de-dados/`, documento ainda não publicado) e o contrato `openapi.yaml`, que ainda não existe. A API externa e a segurança (`docs/api/`) têm a `unishop-api`; o deploy (`docs/deploy/`) tem a `unishop-deploy`.
+- Skill externa nova: instale só de fonte oficial, **leia o `SKILL.md` e os scripts antes de manter** (skills rodam com as permissões do usuário) e registre no `skills-lock.json`. O instalador (`npx skills add`) cria `.agents/` e links simbólicos: copie o conteúdo real para `.claude/skills/<nome>/` e apague `.agents/` e os links. A `deploy-to-vercel` foi instalada, revisada e removida (o plano B dela envia o projeto a um endpoint sem login).
+- As skills `unishop-*` ficam em `.claude/skills/` com casos de teste em `evals/evals.json` (`unishop-api` e `unishop-deploy`); ainda não foram executados por falta de Python na máquina.
 
 ## Ordem de prioridade entre fontes
 
@@ -95,9 +105,9 @@ Sistema web onde alunos verificados (e-mail `@edu.unifor.br`) anunciam e compram
 | Versionamento | Git, código organizado em camadas |
 | Gestão | Trello (Kanban) |
 
-Decisões fechadas da stack: Vite, Tailwind CSS, Prisma, React Router, TanStack Query, React Hook Form, Zod e Vitest/Testing Library/Playwright, e estrutura do backend em camadas (routes/controller/service/repository). O projeto ainda não foi iniciado: a documentação está sendo completada, então não criar código nem estrutura de pastas até o grupo liberar.
+Decisões fechadas da stack: Vite, Tailwind CSS, Prisma, React Router, TanStack Query, React Hook Form, Zod e Vitest/Testing Library/Playwright, estrutura do backend em camadas (routes/controller/service/repository), Mercado Pago, Vercel + Neon, Resend (Mailtrap em desenvolvimento) e Cloudinary. Os documentos `frontend`, `backend`, `api`, `deploy` e `regras-de-negócio` foram **fechados pelo grupo em 15/10/2026**. O projeto ainda não foi iniciado: não criar código nem estrutura de pastas até o grupo liberar.
 
-Sugestões ainda em avaliação (não confirmadas): e-mail via Resend/Mailtrap; imagens via Cloudinary/Cloudflare R2; login social restrito ao Google no MVP.
+Sugestões ainda em avaliação (não confirmadas): nenhuma na stack. Itens "depois do MVP" (Turnstile, Sentry) estão decididos como adiados em `docs/api/api.md`.
 
 ## Estrutura esperada do frontend
 
@@ -130,7 +140,7 @@ backend/src/
 - Sessão via JWT, enviado no cabeçalho `Authorization: Bearer`, com expiração.
 - Cada usuário só altera os próprios dados/anúncios/pedidos; rotas de admin exigem perfil próprio.
 - Ações irreversíveis (excluir perfil, excluir anúncio/produto, marcar como vendido) exigem confirmação explícita do usuário.
-- Anúncio tem pelo menos uma imagem (JPG/PNG até 5 MB) obrigatória.
+- Anúncio tem pelo menos uma imagem (JPG/PNG até 5 MB) obrigatória. Na hospedagem atual (Vercel), cada requisição aceita 4,5 MB, então a API recebe **uma imagem por requisição, até 4 MB**; o grupo vai perguntar ao professor se isso é aceitável (o PDF vale mais que a decisão do grupo). Até a resposta, a regra continua sendo a do PDF.
 - Pedido feito via WhatsApp não desconta estoque; só desconta quando o vendedor confirma a conclusão.
 - Estoque nunca é reservado (Pix pendente não reserva); desconto atômico na confirmação do pagamento. Se o estoque acabar antes, o pedido é cancelado e o valor estornado.
 - Administrador não compra, não paga e não anuncia; a conta admin só nasce por seed.
@@ -157,7 +167,11 @@ Estados da conta: `Ativa`, `Bloqueada` (5 senhas erradas, 15 min), `Suspensa` (p
 ## Decisões do grupo já fechadas
 
 - Gateway de pagamento: Mercado Pago (ADR-002). Cartão por token e Pix com webhook assinado.
-- Hospedagem: Vercel (frontend e API) com banco PostgreSQL no Neon (ADR-005). Detalhes e limites do plano Hobby em [`docs/deploy/deploy.md`](docs/deploy/deploy.md).
+- Hospedagem: Vercel (frontend e API) com banco PostgreSQL no Neon (ADR-005). Detalhes e limites do plano Hobby em [`docs/deploy/deploy.md`](docs/deploy/deploy.md). Produção usa **credenciais de teste** do Mercado Pago (RN-PAG-10).
+- E-mail: Resend em produção (exige domínio próprio verificado) e Mailtrap em desenvolvimento (ADR-009). Imagens: Cloudinary (ADR-004). ORM: Prisma (ADR-001).
+- Modelo de segurança das APIs externas: "backend-cofre" (ADR-008), em [`docs/api/api.md`](docs/api/api.md). Travas de produção por `APP_ENV`, não por `NODE_ENV`.
+- Jobs agendados: endpoints `/api/v1/internal/jobs/:name` com `CRON_SECRET`; Vercel Cron nos diários e cron-job.org nos frequentes. Estorno com `await` e e-mail com `waitUntil`.
+- Turnstile (anti-bot) e Sentry entram depois do MVP; UptimeRobot monitora o `/health`.
 - Domínio institucional oficial: `@edu.unifor.br`.
 - Anúncio é item único, mas pode ter quantidade (várias unidades).
 - Taxa de serviço: R$ 0,00 por enquanto.
@@ -165,6 +179,16 @@ Estados da conta: `Ativa`, `Bloqueada` (5 senhas erradas, 15 min), `Suspensa` (p
 - Login social: apenas Google entra no MVP; Apple fica de fora (custo anual e possível e-mail de retransmissão fora do domínio institucional).
 - Termos de uso e Política de privacidade: conteúdo será definido durante o desenvolvimento.
 - Repasse ao vendedor: simulado, via conta única de teste.
+
+## Pendências abertas (dependem de resposta ou ação externa)
+
+- **Professor:** o limite de imagem de 4 MB (hospedagem) contra os 5 MB do RNF005/RN-ANU-03/RN-PER-05. Se não aceitar, o frontend reduz a imagem antes de enviar, mantendo a regra.
+- **`openapi.yaml`:** não existe; Pedro escreve a partir do Backend §9. Frontend, backend e skills dependem dele.
+- **Domínio próprio:** necessário para o Resend (e-mail de confirmação e de senha) e para o login do Google.
+- **Plano Hobby da Vercel:** sem equipe; conferir se commits de outros autores são bloqueados em repositório privado.
+- **Prova de conceito do Mercado Pago:** Pix de teste gerar o webhook de aprovação; escolher Payments API ou Orders API (ADR-002).
+- **Documento de banco de dados** (Ana Clara) e conferência do PDF para os RNF012 a RNF016.
+- Lista completa em `docs/api/api.md` (seção 12), `docs/backend/backend.md` (seção 21) e `docs/deploy/deploy.md` (seção 17.3).
 
 ## Pontos em aberto no modelo de dados
 
@@ -187,7 +211,7 @@ docs/
 ├─ backend/backend.md                      # arquitetura, rotas, pagamentos, segurança (v0.2)
 ├─ deploy/deploy.md                        # deploy na Vercel + Neon (v0.2)
 ├─ skills/skills.md                        # skills do Claude Code no projeto
-├─ api/                     # a publicar (Pedro Cândido)
+├─ api/api.md                              # APIs externas e segurança (v0.2); openapi.yaml ainda não existe
 └─ banco-de-dados/          # a publicar (Ana Clara Macêdo)
 ```
 

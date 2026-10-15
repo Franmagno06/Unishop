@@ -149,18 +149,19 @@ Requisição HTTP ▶ Route ▶ Controller ▶ Service ▶ Repository ▶ Postgr
 | Versionamento | Git, código organizado em camadas |
 | Gestão | Trello (Kanban) |
 
-### Sugestões em avaliação
+### Serviços e bibliotecas decididos
 
-Itens abaixo constam na documentação técnica como proposta e **ainda não foram decididos pelo grupo**:
+Os documentos técnicos foram fechados pelo grupo em 15/10/2026. As escolhas abaixo valem; as pendências restantes estão no [CLAUDE.md](CLAUDE.md) e nos documentos de [API](docs/api/api.md), [backend](docs/backend/backend.md) e [deploy](docs/deploy/deploy.md).
 
-| Área | Sugestão |
+| Área | Decisão |
 |---|---|
 | Frontend | Vite, React Router, TanStack Query, React Hook Form + Zod, Vitest, Testing Library e Playwright |
-| Backend | Estrutura route/controller/service/repository, Prisma (ORM), Zod, bcrypt, jsonwebtoken, node-cron, pino, helmet, Vitest + Supertest |
-| E-mail | Resend (produção) e Mailtrap (desenvolvimento) |
-| Imagens | Cloudinary ou Cloudflare R2 |
-| Ambiente local | Docker Compose para PostgreSQL e aplicação |
+| Backend | Estrutura route/controller/service/repository, Prisma (ORM), Zod, bcrypt, jsonwebtoken, node-cron (só em desenvolvimento), pino, helmet, Vitest + Supertest |
+| E-mail | Resend (produção, com domínio próprio) e Mailtrap (desenvolvimento) |
+| Imagens | Cloudinary (Cloudflare R2 fica como alternativa) |
+| Ambiente local | Docker Compose para o PostgreSQL de desenvolvimento e o de testes |
 | Login social | Somente Google no MVP (desejável) |
+| Depois do MVP | Cloudflare Turnstile (anti-bot) e Sentry |
 
 ## Estrutura do repositório
 
@@ -171,7 +172,9 @@ Unishop/
 ├─ CLAUDE.md                 # contexto e regras para o Claude Code
 ├─ README.md
 ├─ skills-lock.json          # origem das skills externas instaladas
-├─ .claude/skills/           # skills do Claude Code: unishop-frontend, unishop-backend, vercel-react-best-practices,
+├─ .claude/skills/           # skills do Claude Code: unishop-frontend, unishop-backend, unishop-api, unishop-deploy,
+│                            # vercel-cli-with-tokens, neon-postgres, neon-postgres-branches, resend, email-best-practices,
+│                            # vercel-react-best-practices,
 │                            # vercel-composition-patterns, web-design-guidelines, supabase-postgres-best-practices,
 │                            # webapp-testing, skill-creator
 ├─ docs/
@@ -216,7 +219,7 @@ Cada módulo segue o mesmo molde: `routes`, `controller`, `service`, `rules`, `r
 | admin | `/admin/users`, `/admin/listings`, `/admin/audit-logs` | Somente admin |
 | técnica | `GET /health` | Público |
 
-O contrato final (campos, exemplos e códigos de resposta) ficará no `openapi.yaml`, do documento de API.
+O contrato final (campos, exemplos e códigos de resposta) ficará no `openapi.yaml`, que ainda não existe (pendência do [documento de API](docs/api/api.md)).
 
 ### Pagamentos
 
@@ -284,7 +287,8 @@ O modelo de dados ainda precisa evoluir (responsável: Ana Clara Macêdo):
 | [docs/regras-de-negócio/regras-de-negócio.md](docs/regras-de-negócio/regras-de-negócio.md) | Regras de negócio (RN-XXX-nn), estados, permissões e cenários de teste |
 | [docs/skills/skills.md](docs/skills/skills.md) | O que são as skills do Claude Code, as instaladas no projeto e como usá-las |
 | [CLAUDE.md](CLAUDE.md) | Contexto, regras de idioma e prioridades de fontes para o Claude Code |
-| `docs/api/` | Especificação da API (`openapi.yaml`) *(a publicar)* |
+| [docs/api/api.md](docs/api/api.md) | APIs externas (Google, Mercado Pago, Resend, Cloudinary, Turnstile e outras), arquitetura de segurança "backend-cofre", providers, variáveis e ADRs. O contrato `openapi.yaml` ainda não existe |
+| [docs/deploy/deploy.md](docs/deploy/deploy.md) | Deploy na Vercel + Neon: ambientes, segredos, CORS, jobs, backup, atualização e reversão |
 | `docs/banco-de-dados/` | DER, MER e modelagem do banco *(a publicar)* |
 
 Em caso de conflito entre fontes, vale esta ordem: (1) PDF do trabalho, (2) decisões do grupo, (3) documentos técnicos em `docs/`, (4) protótipos no Figma.

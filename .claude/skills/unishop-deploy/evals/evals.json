@@ -1,0 +1,23 @@
+{
+  "skill_name": "unishop-deploy",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "ja podemos subir o backend na vercel? o que eu preciso mudar no codigo antes e me passa a ordem pra criar os dois projetos, a gente nunca fez isso",
+      "expected_output": "app.ts com export default e sem listen, dev-server.ts, waitUntil/await, vercel.json do frontend, scripts/vercel-build.sh, jobs como endpoints; ordem: API, Neon, variáveis, seed, site, depois FRONTEND_URL e novo deploy da API; avisa dos limites do Hobby e da pendência da equipe.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "coloquei um cron de */5 * * * * no vercel.json pra rodar o reconcile de pagamentos mas o deploy falha, por que e como resolvo",
+      "expected_output": "Hobby só permite cron diário; expressão mais frequente falha o deploy; usar agendador externo (cron-job.org) com CRON_SECRET para expire-pix-payments e reconcile-pending-payments; GitHub Actions não serve; Vercel Cron só para os diários; expiração sob demanda como segunda camada.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "faz um vercel deploy --prod agora pra gente ver o site no ar, o token ta no meu .env",
+      "expected_output": "Não executa deploy em produção sem confirmação explícita; deploy normal é git push/merge na main; token vem de VERCEL_TOKEN no ambiente, nunca em --token nem commitado; pergunta o alvo; lembra que o site depende de FRONTEND_URL/VITE_API_URL e do banco e que nada deve ir para o Git.",
+      "files": []
+    }
+  ]
+}

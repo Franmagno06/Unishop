@@ -4,11 +4,11 @@ project: Unishop
 version: 0.2
 revision: 2ª versão (substitui a v0.1 de 13/10/2026)
 date: 2026-10-14
-status: rascunho para revisão da equipe
+status: fechado pelo grupo em 15/10/2026; pendências abertas na seção 21
 owners: Felipe Bessa (backend), Pedro Cândido (engenheiro de API), Ana Clara (banco de dados), Francisco Magno (integração front-back)
 context: README.md
-based_on: Regras de Negócio v0.3 (docs/visao-geral/regras-de-negocio.md)
-related: docs/database/, docs/api/, docs/frontend/
+based_on: Regras de Negócio v0.3 (docs/regras-de-negócio/regras-de-negócio.md)
+related: docs/banco-de-dados/, docs/api/, docs/frontend/, docs/deploy/
 language: pt-BR (código e pastas em inglês; interface em português)
 ---
 
@@ -19,7 +19,7 @@ language: pt-BR (código e pastas em inglês; interface em português)
 - Versão 0.2 · 14/10/2026
 - Base: Regras de Negócio v0.3, requisitos RF001–RF024 e RNF001–RNF016
 - Responsáveis: Felipe Bessa (backend) · Pedro Cândido (engenheiro de API) · Ana Clara (banco de dados) · Francisco Magno (integração front-back)
-- Documentos relacionados: Regras de Negócio (docs/regras-de-negocio.md/) · Banco de Dados (docs/banco-de-dados/) · API (docs/api/) · Frontend (docs/frontend/)
+- Documentos relacionados: Regras de Negócio (docs/regras-de-negócio/regras-de-negócio.md) · Banco de Dados (docs/banco-de-dados/, a publicar) · API e segurança das APIs externas (docs/api/api.md) · Frontend (docs/frontend/) · Deploy (docs/deploy/deploy.md)
 
 ## Sumário
 
@@ -260,6 +260,7 @@ NODE_ENV=development
 PORT=3000
 DATABASE_URL=postgresql://user:senha@localhost:5432/unishop
 DATABASE_URL_UNPOOLED=       # conexão direta (sem pooler); só em produção, para migração e backup
+APP_ENV=development          # development | test | preview | production (na Vercel, definido por ambiente)
 FRONTEND_URL=http://localhost:5173   # uma ou mais origens, separadas por vírgula
 
 JWT_SECRET=troque-por-um-texto-longo-e-aleatorio
@@ -280,6 +281,14 @@ LOGIN_LOCK_MINUTES=15
 
 CRON_SECRET=                 # senha dos endpoints de jobs (produção, seção 14)
 
+# Drivers dos providers (detalhes e travas de produção em docs/api/api.md, seções 6 e 7)
+PAYMENT_MODE=sandbox         # sandbox = credenciais de teste (valem também na produção, RN-PAG-10)
+PAYMENT_DRIVER=mock          # mock | mercadopago
+MAIL_DRIVER=console          # console | mailtrap | resend
+STORAGE_DRIVER=local         # local | cloudinary
+CLOUDINARY_UPLOAD_FOLDER=unishop-dev
+ANTIBOT_DRIVER=noop          # noop | turnstile (Turnstile entra depois do MVP)
+
 ADMIN_EMAIL=                 # usados só pelo seed (RN-ADM-11)
 ADMIN_PASSWORD=
 ```
@@ -291,6 +300,10 @@ ADMIN_PASSWORD=
 | `DATABASE_URL_UNPOOLED` | Conexão direta ao Neon, sem pooler. Usada pelo `prisma migrate deploy` (`directUrl` no `schema.prisma`) e pelo backup |
 | `FRONTEND_URL` | Origem(ns) aceita(s) no CORS, separadas por vírgula, sem curinga; a primeira é a base dos links enviados por e-mail. Em produção deve ser `https` e sem barra no fim |
 | `CRON_SECRET` | Senha que o agendador envia (`Authorization: Bearer`) para chamar os endpoints de jobs |
+| `APP_ENV` | Ambiente de verdade: `development`, `test`, `preview` ou `production`. As travas de produção usam `APP_ENV`, não `NODE_ENV`, que na Vercel é `production` também no Preview |
+| `PAYMENT_MODE · PAYMENT_DRIVER` | `sandbox` (credenciais de teste) ou `production` (reais); `mock` ou `mercadopago`. Credencial real só com `APP_ENV=production` (`docs/api/api.md`, seção 6.3) |
+| `MAIL_DRIVER · STORAGE_DRIVER · ANTIBOT_DRIVER` | Escolhem a implementação de cada provider. `console` e `local` são proibidos em produção |
+| `CLOUDINARY_UPLOAD_FOLDER` | Pasta das imagens do ambiente (`unishop-prod` em produção) |
 | `JWT_SECRET · JWT_EXPIRES_IN` | Segredo que assina os tokens e a validade deles |
 | `ALLOWED_EMAIL_DOMAIN` | Domínio de e-mail aceito no cadastro (RN-ACE-02) |
 | `GOOGLE_CLIENT_ID` | Audiência esperada no ID token do Google |
@@ -392,10 +405,14 @@ shared/
 │  ├─ notFound.ts
 │  └─ errorHandler.ts           # formato único de erro
 ├─ providers/                   # serviços externos atrás de interfaces
+│  ├─ http-client.ts            # chamada externa com timeout, retry e circuit breaker
 │  ├─ oauth/                    # google.provider.ts
-│  ├─ payment-gateway/          # interface + mercadopago.provider.ts
-│  ├─ mail/                     # interface + resend.provider.ts + templates/
-│  └─ storage/                  # interface + cloudinary.provider.ts
+│  ├─ payment-gateway/          # interface + mercadopago.provider.ts + mock.provider.ts
+│  ├─ mail/                     # interface + resend + mailtrap + console + templates/
+│  ├─ storage/                  # interface + cloudinary.provider.ts + local.provider.ts
+│  ├─ antibot/                  # interface + turnstile.provider.ts + noop.provider.ts (depois do MVP)
+│  └─ index.ts                  # escolhe a implementação de cada interface pelo ambiente
+├─ security/                    # secret.ts (wrapper Secret), webhook-signature.ts, redact.ts
 ├─ errors/                      # AppError, NotFoundError, ForbiddenError...
 ├─ utils/                       # hash, token, pagination, whatsapp, money
 └─ types/express.d.ts           # usuário dentro da requisição
@@ -1027,12 +1044,12 @@ O Unishop **não guarda dado de cartão**: o pagamento é processado por um gate
 
 | Método | Para quê |
 |---|---|
-| `createCardPayment(token, valor, parcelas, referência)` | Cobra no cartão com o token vindo do frontend |
-| `createPixPayment(valor, expiração, referência)` | Gera o QR Code e o código "copia e cola" |
+| `createCardPayment(token, valor, parcelas, referência, chaveDeIdempotência)` | Cobra no cartão com o token vindo do frontend |
+| `createPixPayment(valor, expiração, referência, chaveDeIdempotência)` | Gera o QR Code e o código "copia e cola" |
 | `getPayment(id)` | Consulta o status real do pagamento |
-| `verifyWebhookSignature(cabeçalhos, corpo)` | Confere se o aviso veio mesmo do gateway |
+| `verifyWebhook(cabeçalhos, query)` | Confere a assinatura (HMAC, janela de 5 min) do aviso (`docs/api/api.md`, seção 5.6) |
 | `cancelPayment(id)` | Cancela uma cobrança pendente (Pix expirado) |
-| `refundPayment(id)` | Estorna um pagamento aprovado (estoque acabou antes da confirmação) |
+| `refundPayment(id, chaveDeIdempotência)` | Estorna um pagamento aprovado (estoque acabou antes da confirmação) |
 
 
 ### Cálculo do valor
@@ -1302,7 +1319,8 @@ Um valor por estado no banco; o texto na interface muda conforme o lado (RN §4)
 | `OAuthProvider` | `google.provider.ts` | GOOGLE_CLIENT_ID | auth |
 | `PaymentGateway` | `mercadopago.provider.ts` | MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET | payments, jobs |
 | `MailProvider` | `resend.provider.ts (Mailtrap em dev)` | RESEND_API_KEY, MAIL_FROM | auth, users, notifications |
-| `StorageProvider` | `cloudinary.provider.ts` | CLOUDINARY_URL | listings, users, admin |
+| `StorageProvider` | `cloudinary.provider.ts` | CLOUDINARY_URL, CLOUDINARY_UPLOAD_FOLDER | listings, users, admin |
+| `AntiBotProvider` | `turnstile.provider.ts` (depois do MVP) | TURNSTILE_SECRET_KEY | auth |
 
 
 ### Regras para todo provider
@@ -1310,7 +1328,8 @@ Um valor por estado no banco; o texto na interface muda conforme o lado (RN §4)
 - Cada um tem uma **interface** própria; o resto do código só conhece a interface.
 - A implementação é escolhida em um único ponto (`config/`), o que permite trocar de serviço ou usar **mock nos testes**.
 - Toda chamada externa tem **tempo limite** (10 segundos) e, se falhar, vira 502 ou 503 `EXTERNAL_SERVICE_ERROR`, sem expor detalhe do serviço.
-- Chaves nunca aparecem em log.
+- Chaves nunca aparecem em log. Todo segredo é embrulhado no wrapper `Secret` e só o provider chama `reveal()`.
+- A implementação de teste (`mock`, `console`, `local`) é proibida em produção: o servidor se recusa a iniciar. A lista completa das APIs externas, as travas, os timeouts e o modelo de segurança "backend-cofre" estão em `docs/api/api.md`.
 
 
 ### E-mails enviados
@@ -1388,7 +1407,7 @@ Erro:
 | 400 | Entrada inválida | VALIDATION_ERROR, TOKEN_INVALID, TOKEN_EXPIRED |
 | 401 | Sem login, token inválido ou credencial errada | UNAUTHENTICATED, TOKEN_EXPIRED, INVALID_CREDENTIALS |
 | 402 | Pagamento recusado | PAYMENT_DECLINED |
-| 403 | Sem permissão, perfil errado ou conta barrada | FORBIDDEN, OWN_LISTING, ACCOUNT_SUSPENDED, EMAIL_NOT_VERIFIED, EMAIL_DOMAIN_NOT_ALLOWED |
+| 403 | Sem permissão, perfil errado ou conta barrada | FORBIDDEN, OWN_LISTING, ACCOUNT_SUSPENDED, EMAIL_NOT_VERIFIED, EMAIL_DOMAIN_NOT_ALLOWED, BOT_CHECK_FAILED (quando o Turnstile entrar) |
 | 404 | Inexistente ou invisível para quem pediu | NOT_FOUND |
 | 409 | Conflito de estado | EMAIL_ALREADY_REGISTERED, OUT_OF_STOCK, INVALID_STATE, PIX_EXPIRED |
 | 413 · 415 | Arquivo grande ou de tipo não aceito | FILE_TOO_LARGE, FILE_TYPE_NOT_ALLOWED |
@@ -1449,7 +1468,7 @@ arquivo recebido
 | `Geral` | 100 requisições por minuto por IP |
 | `/auth/*` | 10 por minuto por IP (mais o bloqueio de 5 erros por conta) |
 | `/payments/* (exceto webhook)` | 30 por minuto por usuário |
-| `/payments/webhook` | Sem limite do rateLimiter; protegida pela assinatura |
+| `/payments/webhook` | Limite próprio e folgado (300 por minuto por IP), separado do `rateLimiter` geral; a defesa principal é a assinatura (`docs/api/api.md`, seção 5.6) |
 | `/internal/jobs/*` | Sem limite do rateLimiter; protegidas pelo `CRON_SECRET` |
 
 > O `express-rate-limit` guarda a contagem **em memória de cada instância**. Na Vercel, várias instâncias contam separado, e o limite fica mais frouxo do que o descrito. No escopo acadêmico isso é aceito; se virar problema, o limite passa para um armazenamento compartilhado (por exemplo Redis). O **bloqueio de login** (5 erros / 15 min) já é gravado no banco e não é afetado.
@@ -1740,14 +1759,14 @@ Cada regra do documento de **Regras de Negócio v0.3** que cabe ao backend (ou a
 
 ### Pendências em aberto
 
-A coluna **Proposta** é o que este documento assume até o grupo decidir.
+**Fechamento em 15/10/2026.** O grupo fechou este documento: as propostas da coluna **Proposta** passam a valer como decisão, **exceto** a pendência 6 (precisa do teste com um e-mail `@edu.unifor.br` real), a 15 (limite de imagem, pergunta ao professor) e a 17 (`openapi.yaml`, Pedro). Os ADRs 001, 004 e 009 (Prisma, Cloudinary e Resend) estão decididos.
 
 | # | Pendência | Proposta |
 |---|---|---|
 | 1 | Primeiro acesso por Google: aceite dos Termos (RN-ACE-06) e dados que faltam (curso, WhatsApp) | Tela de "completar cadastro" após o 1º login. O Google é desejável, então só entra se houver tempo |
 | 2 | Canal da notificação ao vendedor (RN-NOT-01 e 02) | E-mail; sem tela de notificações no MVP |
 | 3 | Validade do JWT e renovação (RN-ACE-11 só diz "com validade") | 2 horas, sem refresh token |
-| 4 | ORM, storage e e-mail definitivos (o gateway já está decidido: Mercado Pago, ADR-002) | Prisma, Cloudinary e Resend (ADRs 001, 003 e 004) |
+| 4 | ORM, storage e e-mail definitivos (o gateway já está decidido: Mercado Pago, ADR-002; a hospedagem também: Vercel + Neon, ADR-005) | Prisma (ADR-001), Cloudinary (ADR-004) e Resend (ADR-009). Numeração única dos ADRs em `docs/api/api.md`, seção 12 |
 | 5 | RNF005 cita "NoSQL Injection" com banco PostgreSQL | Corrigir para SQL Injection |
 | 6 | O e-mail `@edu.unifor.br` está vinculado a uma conta Google? | Testar com um e-mail real antes de fechar o login com Google |
 | 7 | Exclusão de usuário pelo admin (RN-ADM-06): as regras só dizem "remove a conta e os anúncios" | Mesmo tratamento do RN-PER-06 (anonimização), mantendo os pedidos pagos |
@@ -1760,4 +1779,5 @@ A coluna **Proposta** é o que este documento assume até o grupo decidir.
 | 14 | Proteção do admin: não suspender nem excluir a si mesmo e manter ao menos um admin | Aplicar no service |
 | 15 | **Limite de imagem: 4 MB na API (limite da Vercel) contra 5 MB no RN-ANU-03, RN-PER-05 e RNF005.** O PDF do trabalho tem prioridade sobre as decisões do grupo | Confirmar com o professor se 4 MB é aceitável. Se não for, o frontend reduz a imagem (redimensiona ou comprime) antes de enviar, para aceitar arquivos de até 5 MB e subir menos de 4 MB, sem mudar a regra |
 | 16 | Armazenamento do rate limit (em memória por instância) | Aceitar a limitação no escopo acadêmico; Redis se virar problema |
+| 17 | O `openapi.yaml` ainda não existe, e este documento, o frontend e as skills dependem dele | Pedro escreve a partir da seção 9 (`docs/api/api.md`, pendência 13) |
 

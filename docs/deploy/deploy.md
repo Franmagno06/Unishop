@@ -3,9 +3,9 @@ title: Documentação Técnica — Deploy
 project: Unishop
 version: 0.2
 date: 2026-10-15
-status: rascunho para revisão da equipe
+status: fechado pelo grupo em 15/10/2026; pendências abertas na seção 17.3
 owners: Francisco Magno (gestão e integração front-back)
-related: docs/backend/, docs/frontend/, docs/banco-de-dados/, docs/regras-de-negócio/
+related: docs/backend/, docs/frontend/, docs/api/, docs/banco-de-dados/, docs/regras-de-negócio/
 based_on: Backend v0.2, Frontend v0.3, Regras de Negócio v0.3, requisitos RNF001–RNF016
 language: pt-BR (código e pastas em inglês; documentação em português)
 ---
@@ -15,7 +15,7 @@ language: pt-BR (código e pastas em inglês; documentação em português)
 - Versão 0.2 · 15/10/2026
 - Base: Backend v0.2, Frontend v0.3, Regras de Negócio v0.3 e requisitos RNF001–RNF016
 - Elaboração: Francisco Magno (gestão e integração front-back)
-- Documentos relacionados: Backend (docs/backend/), Frontend (docs/frontend/), Banco de Dados (docs/banco-de-dados/)
+- Documentos relacionados: Backend (docs/backend/), Frontend (docs/frontend/), API e segurança das APIs externas (docs/api/api.md), Banco de Dados (docs/banco-de-dados/, a publicar)
 
 > **Este é o guia de deploy oficial do Unishop.** A hospedagem é a **Vercel** (frontend e API) com **Neon** (PostgreSQL), e o gateway de pagamento é o **Mercado Pago**. Uma hospedagem em servidor próprio (Oracle Cloud + Docker) foi avaliada e **não foi adotada**; a comparação está no ADR-005 (seção 17.1).
 
@@ -196,6 +196,7 @@ Todas são **públicas**: o Vite as grava no JavaScript do navegador. Nunca colo
 VITE_API_URL=https://<api>.vercel.app/api/v1
 VITE_MP_PUBLIC_KEY=             # chave pública de TESTE do Mercado Pago (RN-PAG-10)
 VITE_GOOGLE_CLIENT_ID=
+VITE_TURNSTILE_SITE_KEY=        # só depois do MVP (anti-bot)
 ```
 
 ### 4.2 Projeto `unishop-api` (backend)
@@ -203,7 +204,16 @@ VITE_GOOGLE_CLIENT_ID=
 Os nomes vêm do documento de Backend (seção 4).
 
 ```text
-NODE_ENV=production             # defina explicitamente; vale também no Preview
+NODE_ENV=production             # vale também no Preview (a Vercel usa 'production' nos dois)
+APP_ENV=production              # o ambiente DE VERDADE: production na Production, preview no Preview (docs/api/api.md, seção 6.3)
+
+# Drivers dos providers (produção). No Preview: MAIL_DRIVER=mailtrap
+PAYMENT_MODE=sandbox            # sandbox = credenciais de TESTE do Mercado Pago, também em produção (RN-PAG-10)
+PAYMENT_DRIVER=mercadopago
+MAIL_DRIVER=resend
+STORAGE_DRIVER=cloudinary
+ANTIBOT_DRIVER=noop             # noop até o Turnstile entrar; depois, turnstile (e noop passa a ser proibido)
+
 JWT_SECRET=
 JWT_EXPIRES_IN=2h
 ALLOWED_EMAIL_DOMAIN=edu.unifor.br
@@ -339,7 +349,7 @@ O Vite lê as variáveis `VITE_*` **na hora do build**. O arquivo abaixo (em `fr
 }
 ```
 
-Arquivos que existem de verdade (como `/assets/...`) têm prioridade sobre o `rewrite`, então ele só pega as rotas do React Router. A Vercel já envia **HSTS** nos domínios `vercel.app`; confirme com o `curl` da seção 14. A **CSP** fica para uma etapa futura: o SDK do Mercado Pago carrega scripts e quadros de outros domínios, e a lista deles deve ser levantada quando a CSP for escrita.
+Arquivos que existem de verdade (como `/assets/...`) têm prioridade sobre o `rewrite`, então ele só pega as rotas do React Router. A Vercel já envia **HSTS** nos domínios `vercel.app`; confirme com o `curl` da seção 14. A **CSP** fica para uma etapa futura, como cabeçalho neste mesmo `vercel.json`: o SDK do Mercado Pago carrega scripts e quadros de outros domínios. A lista-base dos provedores (Google, Mercado Pago, Turnstile, Cloudinary e a API) está em `docs/api/api.md`, seção 5.8. Dono proposto: Francisco.
 
 ### 5.3 Upload de imagens (uma por requisição, até 4 MB)
 
@@ -492,7 +502,7 @@ E, em `config/env.ts`, a API se recusa a subir com uma configuração perigosa:
 ```ts
 const origins = env.FRONTEND_URL.split(',').map((o) => o.trim());
 if (
-  env.NODE_ENV === 'production' &&
+  env.APP_ENV !== 'development' && env.APP_ENV !== 'test' &&   // preview e production
   origins.some((o) => o === '*' || !o.startsWith('https://') || o.endsWith('/'))
 ) {
   throw new Error('FRONTEND_URL de produção deve ser https, sem barra final e sem curinga');
@@ -502,7 +512,7 @@ if (
 **Regras de CORS e proxy:**
 - Nunca use `*` nem `credentials: true` com origem aberta.
 - `FRONTEND_URL` é igual ao endereço do site, com `https://` e sem barra no fim. A API usa o mesmo valor nos links dos e-mails (com lista, usa-se a primeira origem).
-- Defina `NODE_ENV=production` explicitamente também no Preview. Por isso a validação acima exige `https` nos previews; `http://localhost:5173` só entra no ambiente *Development*.
+- Na Vercel o `NODE_ENV` é `production` também no Preview, então as travas usam `APP_ENV` (`production`, `preview`, `development`, `test`), definido por ambiente no painel. A validação acima exige `https` em `preview` e `production`; `http://localhost:5173` só entra em `development`.
 - **Previews do frontend não chamam a API de produção** (a origem do preview não está em `FRONTEND_URL`), e o endereço de cada preview muda a cada deploy, então também não dá para listá-lo. Use o preview **só para revisão visual**. Os testes funcionais rodam localmente ou em produção.
 - **Previews também não recebem o webhook do Mercado Pago**: a URL do webhook é cadastrada uma vez por aplicação no painel do Mercado Pago, e o endereço de cada preview muda. Teste de Pix e de cartão ponta a ponta só em produção ou localmente, com túnel público (ngrok ou Cloudflare Tunnel).
 - Com `trust proxy` em `1`, o `req.ip` deve ser o IP do usuário. Verifique uma vez, em um deploy de teste, antes de confiar no rate limit (seção 14).
@@ -860,7 +870,7 @@ A decisão "uma única instância da API" do Backend §14 **deixa de valer** na 
 
 ### 17.3 Pendências em aberto
 
-A coluna **Proposta** é o que este guia assume até o grupo decidir.
+**Fechamento em 15/10/2026.** O grupo fechou este guia: as propostas das pendências 2, 4 e 8 passam a valer como decisão (exceção da regra 4 aceita, cron-job.org como agendador externo, rate limit em memória aceito no escopo acadêmico). Continuam abertas, porque dependem de ação ou resposta externa: **1** (verificar o bloqueio de commits no Hobby), **3** (domínio próprio), **5** (limite de imagem, pergunta ao professor), **6** (conferir o PDF), **7** (testar o Google), **9** (Felipe confirma o Prisma), **10** (prova de conceito do Pix de teste) e **11** (Ana Clara).
 
 | # | Pendência | Proposta |
 | --- | --- | --- |
@@ -883,6 +893,7 @@ A coluna **Proposta** é o que este guia assume até o grupo decidir.
 | Felipe (backend) | `src/app.ts` com `export default app` e sem `listen`; `dev-server.ts` só local; `await`/`waitUntil` nas tarefas depois da resposta (e-mail, notificação, estorno); jobs como endpoints idempotentes com `CRON_SECRET`; upload de uma imagem por requisição (até 4 MB) com `POST /listings`, `POST /listings/:id/images` e `DELETE /listings/:id/images/:imageId`; `trust proxy` e CORS como na seção 9; `GET /health` consulta o banco; seed idempotente e `npm run db:seed`; Prisma com pooler e `directUrl`; prova de conceito do Pix de teste |
 | Pedro (API) | O `openapi.yaml` usa o servidor `https://<api>.vercel.app/api/v1`; documentar as rotas de imagem (`POST` e `DELETE /listings/:id/images`) e o limite de 4 MB |
 | Francisco (frontend e deploy) | `VITE_API_URL` absoluto; `frontend/vercel.json` com o `rewrite` do React Router; `ImageUploader` com uma imagem por requisição, conferência de 4 MB antes de enviar e tratamento do 413; `VITE_MP_PUBLIC_KEY` e `VITE_GOOGLE_CLIENT_ID`; bloqueio de commits de outros autores no Hobby; agendador externo; segredo do backup no GitHub |
+| Felipe e Pedro (providers e segurança) | `config/env.ts` com `APP_ENV`, `FRONTEND_URL` em lista e `CRON_SECRET`; travas de produção por `APP_ENV` (`docs/api/api.md`, seção 6.3); lista de variáveis do `api.md` igual à da seção 4.2 deste guia; `openapi.yaml` (pendência 13 do `api.md`) |
 | Ana Clara (banco) | Nome das tabelas para o teste de restauração; índices e `CHECK (quantity >= 0)` presentes nas migrações; compatibilidade com o Neon (versão do PostgreSQL) |
 | Grupo | Pendências 1 a 5 e 8 acima |
 
@@ -894,4 +905,5 @@ A coluna **Proposta** é o que este guia assume até o grupo decidir.
 | `docs/frontend/frontend.md` | **Aplicado em 15/10/2026:** `VITE_API_URL` absoluto, `VITE_MP_PUBLIC_KEY`, `VITE_GOOGLE_CLIENT_ID`, `vercel.json` e envio de uma imagem por requisição |
 | `docs/regras-de-negócio/regras-de-negócio.md`, `CLAUDE.md`, `README.md` | **Pendente:** a RN-ANU-03, a RN-PER-05 e a regra central do CLAUDE.md dizem "até 5 MB". Só mudam se o professor aceitar 4 MB (pendência 5) |
 | `docs/skills/skills.md` | Registrar que o deploy não tem skill própria |
-| Todas as docs com `context: docs/contexto-do-projeto.md` | O arquivo não existe: remover a linha ou criar o documento |
+| `docs/api/api.md` | **Aplicado em 15/10/2026:** `APP_ENV` e travas por ambiente, `FRONTEND_URL` em lista, variáveis unificadas, ADR-005 de hospedagem e ADR-008 para o backend-cofre, upload de uma imagem por requisição, `waitUntil`, backup |
+| `README.md`, `CLAUDE.md`, `docs/skills/skills.md` | **Aplicado em 15/10/2026:** referências ao `api.md` e ao `deploy.md` |

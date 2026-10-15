@@ -3,7 +3,7 @@ name: unishop-frontend
 description: Regras e fluxo de trabalho do frontend do Unishop (React + TypeScript + Vite + Tailwind). Use SEMPRE que o usuário criar, editar ou revisar telas, rotas, guards, componentes, hooks, services, formulários Zod, áreas (public/user/admin), estados de tela ou PR do frontend do Unishop, mesmo que não diga "Unishop" ou "frontend" explicitamente.
 metadata:
   author: unishop-team
-  version: "0.5.0"
+  version: "0.6.0"
 ---
 
 # Frontend do Unishop
@@ -67,7 +67,10 @@ Código, pastas e arquivos em inglês. Interface e documentação em português 
 - Estado do servidor sempre via TanStack Query (uma chave por recurso); nada de store global para isso.
 - Estado de tela (modal aberto, aba ativa) fica local ao componente.
 - Busca, categoria, preço, ordenação e página vão na query string (estado compartilhável via URL).
-- Pagamento: cartão nunca passa pelo backend do Unishop — token gerado pelo SDK do gateway no navegador (RNF006). WhatsApp só é exibido/renderizado para usuário logado.
+- Pagamento: cartão nunca passa pelo backend do Unishop — token gerado pelo SDK do Mercado Pago no navegador (RNF006). WhatsApp só é exibido/renderizado para usuário logado.
+- **Variáveis públicas (`VITE_*`, lidas no build):** `VITE_API_URL` (em produção, o endereço completo da API, que fica em outro domínio da Vercel), `VITE_MP_PUBLIC_KEY`, `VITE_GOOGLE_CLIENT_ID` e `VITE_TURNSTILE_SITE_KEY` (depois do MVP). Nenhuma recebe segredo. Trocar uma exige novo deploy do site.
+- **Imagens:** o `ImageUploader` envia **uma imagem por requisição, até 4 MB** (limite da Vercel). Anúncio: a primeira em `POST /listings`, as demais em `POST /listings/:id/images`, com progresso e nova tentativa se uma falhar. Confira o tamanho antes e trate o 413 como `FILE_TOO_LARGE`. A regra fala em 5 MB (pendência 15 do Backend, a perguntar ao professor).
+- `frontend/vercel.json` faz as rotas do React Router abrirem o `index.html` (F5 em `/categorias` não pode dar 404). Segredos e domínios: `unishop-deploy` e `unishop-api`.
 
 ## Estados obrigatórios em toda tela que busca dados
 
@@ -99,6 +102,8 @@ Esta skill dá o contexto do Unishop; as outras cobrem a técnica geral. Use em 
 | Revisar UI, acessibilidade (WCAG 2.1 AA), foco, contraste, formulários | `web-design-guidelines` |
 | Testar no navegador, capturar screenshot/console, fluxos Playwright | `webapp-testing` |
 | Telas que dependem de rota/campo da API | `unishop-backend` (contrato e regras do servidor) |
+| SDK do Mercado Pago ou do Google, chaves públicas, CSP, upload | `unishop-api` |
+| Build, variáveis por ambiente, `vercel.json`, preview e produção | `unishop-deploy` |
 
 Atenção: o frontend é uma SPA Vite, não Next.js. Em `vercel-react-best-practices`, aplique as regras `async-`, `bundle-`, `client-`, `rerender-`, `rendering-` e `js-`; ignore as `server-*` e o que for específico de Next.js/SSR (hidratação, Server Components, Server Actions).
 

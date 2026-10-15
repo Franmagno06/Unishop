@@ -3,18 +3,18 @@ name: unishop-backend
 description: Regras e arquitetura do backend do Unishop (Node.js + Express + TypeScript, PostgreSQL, JWT). Use SEMPRE que o usuário criar, editar ou revisar rotas, controllers, services, repositories, middlewares, providers, jobs, autenticação, pagamentos (cartão, Pix, webhook), estoque, pedidos, anúncios, área admin, logs de auditoria ou erros da API do Unishop, mesmo que não diga "backend" ou "Unishop" explicitamente.
 metadata:
   author: unishop-team
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Backend do Unishop
 
-Resumo operacional da API REST do Unishop (`/api/v1`). Fonte completa e autoritativa: [`docs/backend/backend.md`](../../../docs/backend/backend.md) (v0.2, baseada nas Regras de Negócio v0.3). Em dúvida, releia a seção relevante do doc; este arquivo não o substitui. Regras de negócio: [`docs/regras-de-negócio/regras-de-negócio.md`](../../../docs/regras-de-negócio/regras-de-negócio.md). Seção 20 do doc de backend mapeia cada `RN-XXX-nn` ao arquivo onde ela deve morar.
+Resumo operacional da API REST do Unishop (`/api/v1`). Fonte completa e autoritativa: [`docs/backend/backend.md`](../../../docs/backend/backend.md) (v0.2, revisão de 15/10/2026, baseada nas Regras de Negócio v0.3). Em dúvida, releia a seção relevante do doc; este arquivo não o substitui. Providers, segurança e variáveis: skill `unishop-api` ([`docs/api/api.md`](../../../docs/api/api.md)). Deploy (Vercel + Neon): skill `unishop-deploy` ([`docs/deploy/deploy.md`](../../../docs/deploy/deploy.md)). Regras de negócio: [`docs/regras-de-negócio/regras-de-negócio.md`](../../../docs/regras-de-negócio/regras-de-negócio.md). Seção 20 do doc de backend mapeia cada `RN-XXX-nn` ao arquivo onde ela deve morar.
 
 Prioridade entre fontes (CLAUDE.md): PDF do trabalho > decisões do grupo > docs em `docs/` > Figma. O gateway de pagamento (Mercado Pago) é decisão do grupo. Itens "sugestão" (Prisma, Resend, Cloudinary, Vite etc.) não são decisões; ao usá-los, diga que são propostas. Se algo não está documentado, diga que não está definido; não invente rota, campo ou regra.
 
 ## Arquitetura
 
-API em camadas, sem estado no servidor (sessão = JWT), um único processo Node.js que também roda os jobs (node-cron).
+API em camadas, sem estado no servidor (sessão = JWT). Em produção é uma **função serverless na Vercel** (`src/app.ts` exporta o app, sem `listen`); em desenvolvimento roda em `src/dev-server.ts`, com os jobs por `node-cron`. Em produção os jobs são endpoints `GET /api/v1/internal/jobs/:name` protegidos por `CRON_SECRET`.
 
 ```
 Route → Controller → Service → Repository → PostgreSQL
@@ -43,13 +43,13 @@ Estrutura: `src/modules/` (aluno: auth, users, categories, listings, orders, pay
 - **Cartão:** só o token do gateway chega ao servidor; nunca dado de cartão.
 - **Estoque nunca é reservado.** Desconto atômico: `UPDATE listing SET quantity = quantity - :n WHERE id = :id AND quantity >= :n` (0 linhas = sem estoque) + `CHECK (quantity >= 0)`. Desconta só na liquidação do pagamento ou quando o vendedor conclui a venda por WhatsApp. Quantidade 0 → anúncio `Vendido`.
 - **Liquidação única** (`settlePayment`), em transação, idempotente (webhook repetido não duplica): se havia estoque → pedido `Pago`; se não → pedido `Cancelado` + `refundPayment`. É a única rotina que muda o pedido para `Pago`.
-- **Webhook** `/payments/webhook`: sem JWT, validado por **assinatura**; consulta o pagamento no gateway antes de confiar no aviso; responde 200 rápido (e-mail e estorno rodam depois da transação).
+- **Webhook** `/payments/webhook`: sem JWT, validado por **assinatura**; consulta o pagamento no gateway antes de confiar no aviso; responde 200 rápido. Na Vercel, o **estorno usa `await` antes de responder** e o e-mail/notificação usam `waitUntil` (`@vercel/functions`); uma promessa solta pode ser cortada quando a função é suspensa. Assinatura HMAC e janela de 5 min: `unishop-api`.
 - **Pedido** congela preço unitário e total; id próprio; aluno não pede o próprio anúncio (`OWN_LISTING`). Pago: vendedor marca `Retirada combinada`, **comprador** confirma o recebimento. WhatsApp (`Em negociação`): vendedor conclui (desconta estoque) ou cancela.
 - **Taxa de serviço R$ 0,00** (`SERVICE_FEE_PERCENT=0`); repasse simulado em conta única de teste. Dinheiro em **centavos** (inteiros).
 - **Visibilidade de anúncio em um único filtro** no repository (ativo + conta ativa + não excluído) para listagens, busca, carrossel e contagem de categorias. WhatsApp só em rotas autenticadas; `/listings/recent` (carrossel) é a única rota de catálogo pública.
 - **Exclusão de perfil = anonimização** ("Usuário removido"); pedidos pagos permanecem. Só o admin reverte `Vendido`, e a ação vai para o log.
 - **Auditoria:** toda edição/suspensão/exclusão do admin grava log na **mesma transação** da ação (sem log, sem ação).
-- **Upload:** JPG/PNG até 5 MB, tipo conferido pelo conteúdo real (file-type), pelo menos 1 imagem por anúncio; se o banco falhar após o upload, remover do storage.
+- **Upload:** JPG/PNG, tipo conferido pelo conteúdo real (file-type), pelo menos 1 imagem por anúncio. Na Vercel, **uma imagem por requisição, até 4 MB** (a requisição aceita 4,5 MB): a primeira vai em `POST /listings`, as demais em `POST /listings/:id/images`. A regra RN-ANU-03/RNF005 fala em 5 MB (pendência 15, a perguntar ao professor). Se o banco falhar após o upload, remover do storage.
 - **Nunca em log:** senha, JWT, token de cartão, corpo de `/auth` e `/payments`, WhatsApp completo.
 
 ## Convenções
@@ -79,6 +79,8 @@ Casos de teste obrigatórios: duas compras simultâneas da última unidade (só 
 
 ## Skills que complementam esta
 
-- Schema, migração, índice, transação, lock ou query lenta no PostgreSQL → `supabase-postgres-best-practices` (use-a junto, sem adotar nada específico do Supabase; o banco é PostgreSQL puro).
+- Integração com Google, Mercado Pago, Resend, Cloudinary, Turnstile, segredos, variáveis, travas de produção, webhook → `unishop-api`.
+- Hospedagem, `app.ts`/`dev-server.ts`, jobs por endpoint, `waitUntil`, migração e backup em produção → `unishop-deploy`.
+- Schema, migração, índice, transação, lock ou query lenta no PostgreSQL → `supabase-postgres-best-practices` (use-a junto, sem adotar nada específico do Supabase; o banco é o PostgreSQL do Neon). Branches e conexões do Neon → `neon-postgres` e `neon-postgres-branches`.
 - Revisão final de código com `code-review` / `security-review` antes do PR.
 - Para criar ou melhorar skills do projeto → `skill-creator`.
