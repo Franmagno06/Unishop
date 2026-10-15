@@ -1,9 +1,9 @@
 ---
 name: unishop-frontend
-description: Convenções e estrutura do frontend do Unishop (React + TypeScript + Vite + Tailwind). Use ao criar, editar ou revisar qualquer tela, componente, rota, hook ou serviço em frontend/, ou ao discutir estrutura de pastas, rotas, estado ou padrões de qualidade do frontend do projeto.
+description: Regras e fluxo de trabalho do frontend do Unishop (React + TypeScript + Vite + Tailwind). Use SEMPRE que o usuário criar, editar ou revisar telas, rotas, guards, componentes, hooks, services, formulários Zod, áreas (public/user/admin), estados de tela ou PR do frontend do Unishop, mesmo que não diga "Unishop" ou "frontend" explicitamente.
 metadata:
   author: unishop-team
-  version: "0.4.0"
+  version: "0.5.0"
 ---
 
 # Frontend do Unishop
@@ -88,4 +88,18 @@ Regras de segurança a nunca violar no frontend: nunca usar `dangerouslySetInner
 
 Sempre citar os códigos de origem: `RF`/`RNF` (requisitos do PDF) e `RN-XXX-nn` (regras de negócio em `docs/regras-de-negócio/regras-de-negócio.md`). Se uma informação não estiver documentada em `docs/frontend/frontend.md`, `docs/regras-de-negócio/`, no PDF do trabalho ou nas decisões do grupo registradas no `CLAUDE.md`, diga que não está definida — não invente rota, campo ou comportamento.
 
-Ao escrever ou revisar componentes React, combine esta skill com `vercel-react-best-practices` (performance) e `web-design-guidelines` (acessibilidade e UI), ambas instaladas no projeto. Mais contexto sobre as skills do projeto e como usá-las: [`docs/skills/skills.md`](../../../docs/skills/skills.md).
+## Skills que complementam esta
+
+Esta skill dá o contexto do Unishop; as outras cobrem a técnica geral. Use em conjunto:
+
+| Situação | Skill |
+|---|---|
+| Performance de React: waterfalls, bundle, re-renders, listas, lazy loading | `vercel-react-best-practices` |
+| Projetar `shared/components/ui` (Button, Modal, Table...), muitas props booleanas, compound components, contexto | `vercel-composition-patterns` |
+| Revisar UI, acessibilidade (WCAG 2.1 AA), foco, contraste, formulários | `web-design-guidelines` |
+| Testar no navegador, capturar screenshot/console, fluxos Playwright | `webapp-testing` |
+| Telas que dependem de rota/campo da API | `unishop-backend` (contrato e regras do servidor) |
+
+Atenção: o frontend é uma SPA Vite, não Next.js. Em `vercel-react-best-practices`, aplique as regras `async-`, `bundle-`, `client-`, `rerender-`, `rendering-` e `js-`; ignore as `server-*` e o que for específico de Next.js/SSR (hidratação, Server Components, Server Actions).
+
+Mais contexto sobre as skills do projeto e como usá-las: [`docs/skills/skills.md`](../../../docs/skills/skills.md).

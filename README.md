@@ -173,7 +173,9 @@ Unishop/
 ├─ CLAUDE.md                 # contexto e regras para o Claude Code
 ├─ README.md
 ├─ skills-lock.json          # origem das skills externas instaladas
-├─ .claude/skills/           # skills do Claude Code (unishop-frontend, vercel-react-best-practices, web-design-guidelines)
+├─ .claude/skills/           # skills do Claude Code: unishop-frontend, unishop-backend, vercel-react-best-practices,
+│                            # vercel-composition-patterns, web-design-guidelines, supabase-postgres-best-practices,
+│                            # webapp-testing, skill-creator
 ├─ docs/
 │  ├─ frontend/frontend.md
 │  ├─ backend/backend.md

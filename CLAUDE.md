@@ -10,6 +10,30 @@ Contexto para o Claude Code trabalhar no projeto **Unishop**, e-commerce web par
 - [`docs/skills/skills.md`](docs/skills/skills.md) — skills do Claude Code instaladas no projeto e como usá-las.
 - `Trabalho Desenvolvimento Web 2026.pdf` — requisitos funcionais (RF001–RF024) e não-funcionais (RNF001–RNF016) originais do trabalho.
 
+## Skills do projeto: quando usar
+
+As skills ficam em `.claude/skills/` (detalhes e análise de cobertura em [`docs/skills/skills.md`](docs/skills/skills.md)). Acione a skill certa pelo contexto da tarefa; mais de uma pode valer ao mesmo tempo.
+
+| Contexto da tarefa | Skill |
+|---|---|
+| Telas, rotas, guards, componentes, hooks, services, formulários, estados de tela do frontend | `unishop-frontend` |
+| Rotas, controllers, services, repositories, middlewares, providers, jobs, autenticação, pagamentos, estoque, pedidos, admin, erros da API | `unishop-backend` |
+| Performance de React: waterfalls, bundle, re-renders, lazy loading (SPA Vite: ignorar regras `server-*` e de Next.js) | `vercel-react-best-practices` |
+| Projetar `shared/components/ui`, compound components, contexto, excesso de props booleanas | `vercel-composition-patterns` |
+| Revisar UI, acessibilidade (WCAG 2.1 AA), formulários, foco e contraste | `web-design-guidelines` |
+| Schema, migração, índice, transação, lock, consulta lenta, concorrência de estoque no PostgreSQL | `supabase-postgres-best-practices` |
+| Rodar a aplicação local no navegador, screenshots, console, fluxos Playwright | `webapp-testing` |
+| Criar, testar ou melhorar skills do projeto | `skill-creator` |
+
+Regras de uso:
+
+- As skills `unishop-*` são resumos; a fonte de verdade são os documentos em `docs/`. Em conflito, vale o documento (e, acima dele, o PDF e as decisões do grupo).
+- Tarefa que cruza front e back (ex.: fluxo de pagamento): use `unishop-frontend` e `unishop-backend` juntas.
+- Mudou um documento técnico, uma rota ou uma decisão? Revise a skill `unishop-*` correspondente.
+- Skill nova ou removida: atualize esta tabela, `docs/skills/skills.md` e o `skills-lock.json` (só para skills externas).
+- Uma pasta só para skills: `.claude/skills/<nome>/SKILL.md`. Não manter `.agents/` nem symlinks.
+- Ainda sem skill própria: API (`docs/api/`) e banco (`docs/banco-de-dados/`), pois os documentos não foram publicados.
+
 ## Ordem de prioridade entre fontes
 
 Quando houver conflito, vale nesta ordem:
@@ -66,6 +90,18 @@ admin/    → administrador (painel, usuários, produtos)
 shared/   → componentes e utilitários comuns
 ```
 
+## Estrutura esperada do backend
+
+Em camadas (route → controller → service → repository), com serviços externos atrás de providers. Detalhes em [`docs/backend/backend.md`](docs/backend/backend.md).
+
+```
+backend/src/
+├─ modules/   → aluno: auth, users, categories, listings, orders, payments, notifications
+├─ admin/     → administrador: users, listings, audit-logs (proteção aplicada uma vez)
+├─ shared/    → middlewares, providers, errors, utils, types
+└─ jobs/      → expirar Pix, limpar tokens, conciliar pagamentos
+```
+
 ## Regras centrais a nunca violar
 
 - O catálogo (categorias, listagens, produtos) só abre para aluno autenticado; verificação de papel sempre no backend, nunca só no frontend.
@@ -76,6 +112,9 @@ shared/   → componentes e utilitários comuns
 - Ações irreversíveis (excluir perfil, excluir anúncio/produto, marcar como vendido) exigem confirmação explícita do usuário.
 - Anúncio tem pelo menos uma imagem (JPG/PNG até 5 MB) obrigatória.
 - Pedido feito via WhatsApp não desconta estoque; só desconta quando o vendedor confirma a conclusão.
+- Estoque nunca é reservado (Pix pendente não reserva); desconto atômico na confirmação do pagamento. Se o estoque acabar antes, o pedido é cancelado e o valor estornado.
+- Administrador não compra, não paga e não anuncia; a conta admin só nasce por seed.
+- Valor, taxa e confirmação de pagamento são calculados e decididos só no backend (webhook assinado, idempotente).
 
 ## Vocabulário
 
