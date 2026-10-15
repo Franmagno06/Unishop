@@ -1,72 +1,126 @@
 ---
 title: Documentação — Skills do Claude Code
 project: Unishop
-version: 0.1
-date: 2026-10-13
+version: 0.2
+date: 2026-10-14
 status: rascunho para revisão da equipe
 context: CLAUDE.md
+related: docs/frontend/frontend.md, docs/backend/backend.md
 ---
 
 # Skills do Claude Code
 
-Skills são pacotes de instruções que o Claude Code carrega sob demanda durante uma conversa. Cada skill é uma pasta em `.claude/skills/<nome>/` com um arquivo `SKILL.md` (ou `SKILL.MD`): um cabeçalho YAML (`name`, `description`, `metadata`) seguido do conteúdo em Markdown com as instruções, regras ou checklist que a skill ensina.
+## 1. O que são skills
 
-O Claude decide quando invocar uma skill comparando o pedido do usuário com o campo `description` de cada skill disponível — por isso a descrição deve dizer claramente **quando** usar a skill, não só o que ela é. Uma skill pode ser chamada automaticamente (quando o Claude julga relevante) ou explicitamente pelo nome (ex.: `/unishop-frontend`).
+Skills são pacotes de instruções que o Claude Code carrega **sob demanda** durante uma conversa. Cada skill é uma pasta em `.claude/skills/<nome>/` com um arquivo `SKILL.md` (sempre com esse nome e extensão minúscula, para funcionar em Linux e macOS). O arquivo tem:
 
-Skills não são código executável: são contexto adicional que molda como o Claude trabalha numa tarefa — convenções do projeto, checklists de qualidade, guias de uma biblioteca, etc.
+- **Cabeçalho YAML** com `name` e `description` (e, opcionalmente, `metadata`). A `description` é o que o Claude lê para decidir se a skill vale a pena naquele momento; por isso ela diz **quando** usar, não só o que a skill é.
+- **Corpo em Markdown** com as instruções, regras ou checklist.
+- Opcionalmente, pastas de apoio: `references/` (documentos lidos só se necessário), `scripts/` (código que a skill executa) e `assets/`.
 
-## Onde ficam
+O carregamento é em três níveis, para não gastar contexto à toa: (1) só nome e descrição ficam sempre visíveis; (2) o corpo do `SKILL.md` entra quando a skill é acionada; (3) arquivos de apoio são lidos apenas quando o corpo manda.
 
-```
-.claude/skills/
-├─ unishop-frontend/            # skill própria do projeto
-│  └─ SKILL.MD
-├─ vercel-react-best-practices/ # skill externa (Vercel)
-│  ├─ SKILL.md
-│  ├─ AGENTS.md
-│  └─ rules/                    # 70 regras, uma por arquivo .md
-└─ web-design-guidelines/       # skill externa (Vercel)
-   └─ SKILL.md
-```
+Skills **não são programas independentes**: são contexto que molda como o Claude trabalha. Algumas trazem scripts, mas é o Claude quem decide executá-los, e sempre sob as permissões do usuário.
 
-Todas as skills do projeto ficam só em `.claude/skills/` — cada uma com seu conteúdo real, sem symlink e sem duplicação em outra pasta (como `.agents/`, que era criada por padrão pelo instalador `npx skills add` e foi removida).
+## 2. Como usar
 
-## Skills instaladas no projeto
+- **Automático:** descreva a tarefa normalmente. Se ela combinar com a `description` de uma skill, o Claude a aciona sozinho (ex.: pedir "crie a tela de pagamento" aciona a `unishop-frontend`).
+- **Explícito:** cite o nome ("use a skill unishop-backend para revisar esta rota") ou digite `/nome-da-skill`.
+- **Combinadas:** uma tarefa pode usar mais de uma skill. Exemplo: criar o componente `Modal` usa `unishop-frontend` (onde ele mora e quais regras seguir), `vercel-composition-patterns` (como projetar a API do componente) e `web-design-guidelines` (foco, Esc, acessibilidade).
+- **Revisar antes de confiar:** skills externas rodam com as permissões do usuário. Leia o `SKILL.md` e os scripts antes de instalar, e prefira fontes conhecidas (o instalador exibe uma avaliação de risco).
 
-### `unishop-frontend` (própria do projeto)
+## 3. Skills instaladas no projeto
 
-Resumo operacional das convenções de frontend do Unishop: stack (React, TypeScript, Vite, Tailwind, React Router, TanStack Query, React Hook Form + Zod), estrutura por área (`public`/`user`/`admin`/`shared`), regras de isolamento entre áreas, convenções de código, vocabulário PT↔EN, integração com a API e checklist de qualidade de tela.
+Todas ficam em `.claude/skills/`, cada uma com seu conteúdo real (sem symlinks e sem a pasta `.agents/`, que o instalador cria por padrão e foi removida).
 
-Baseada em [`docs/frontend/frontend.md`](../frontend/frontend.md) — em caso de divergência, a doc completa é a fonte de verdade; esta skill é só o resumo prático para o dia a dia.
+| Skill | Origem | Para que serve | Quando usar |
+|---|---|---|---|
+| `unishop-frontend` | Própria | Regras do frontend do Unishop: áreas, rotas, guards, estado, estados de tela, qualidade | Qualquer tela, componente, rota, hook ou serviço do frontend |
+| `unishop-backend` | Própria | Regras do backend: camadas, autenticação, pagamentos, estoque, pedidos, admin, erros | Qualquer rota, service, repository, middleware, job ou provider da API |
+| `vercel-react-best-practices` | Vercel (MIT) | 70 regras de performance de React em 8 categorias | Escrever ou revisar componentes, data fetching e bundle |
+| `vercel-composition-patterns` | Vercel (MIT) | Padrões de composição: compound components, contexto, fim do excesso de props booleanas | Projetar `shared/components/ui` e refatorar componentes |
+| `web-design-guidelines` | Vercel | Revisão de UI contra as Web Interface Guidelines (busca as regras atuais online) | Auditar acessibilidade, UX e formulários |
+| `supabase-postgres-best-practices` | Supabase (MIT) | Boas práticas de PostgreSQL: schema, índices, transações, locks, conexões | Modelagem, migrações, consultas e concorrência de estoque |
+| `webapp-testing` | Anthropic | Testar a aplicação local com Playwright (Python): screenshots, logs do console, fluxos | Verificar telas rodando e depurar a interface |
+| `skill-creator` | Anthropic | Criar, testar e melhorar skills; otimizar a descrição de acionamento | Criar ou refinar skills do Unishop |
 
-**Quando usar:** ao criar, editar ou revisar qualquer tela, componente, rota, hook ou serviço em `frontend/`, ou ao discutir estrutura de pastas, estado ou padrões de qualidade do frontend.
+### 3.1 `unishop-frontend` e `unishop-backend` (próprias)
 
-### `vercel-react-best-practices` (externa, mantida pela Vercel)
+Resumos operacionais, escritos para o Unishop, dos documentos [frontend](../frontend/frontend.md) e [backend](../backend/backend.md). Cada uma lista as regras que nunca podem ser violadas, as convenções, os estados e o critério de "pronto", e aponta para a doc completa, que é a fonte de verdade. Também dizem quais outras skills combinar. Não entram no `skills-lock.json`: são mantidas à mão, junto com o código.
 
-70 regras de performance para React e Next.js, organizadas em 8 categorias por prioridade (eliminar waterfalls de dados, tamanho de bundle, performance no servidor, data fetching no cliente, etc.). Cada regra é um arquivo próprio em `rules/`.
+Regra de manutenção: se um documento técnico mudar (rota, regra, decisão), a skill correspondente precisa ser revisada.
 
-**Quando usar:** ao escrever ou revisar componentes React, páginas, data fetching ou otimização de bundle — em qualquer área do frontend do Unishop.
+### 3.2 `vercel-react-best-practices`
 
-### `web-design-guidelines` (externa, mantida pela Vercel)
+Regras ordenadas por impacto: eliminar waterfalls (`async-`), tamanho do bundle (`bundle-`), servidor (`server-`), data fetching no cliente (`client-`), re-renderizações (`rerender-`), renderização (`rendering-`), JavaScript (`js-`) e avançadas (`advanced-`).
 
-Revisa código de UI contra as *Web Interface Guidelines*. Busca a versão mais atual das diretrizes direto da fonte (via `WebFetch`) antes de cada revisão, então checa os arquivos indicados contra todas as regras e aponta os problemas no formato `arquivo:linha`.
+**Cobertura para o Unishop:** o frontend é uma SPA Vite, não Next.js. Valem `async-`, `bundle-` (lazy loading das áreas, barrel imports), `client-`, `rerender-`, `rendering-` (sem hidratação) e `js-`. As `server-*` e o que for de SSR não se aplicam.
 
-**Quando usar:** ao pedir revisão de UI, auditoria de acessibilidade, ou conferência de uma tela contra boas práticas de interface — ex.: "revise esta tela", "confira a acessibilidade deste componente".
+### 3.3 `vercel-composition-patterns`
 
-## Como usar
+Cobre componentes que escalam: compound components, estado levantado, contexto, evitar props booleanas em excesso, APIs do React 19. Cabe aos componentes de `shared/components/ui` (`Button`, `Modal`, `ConfirmDialog`, `Table`...) e aos formulários de anúncio (mesmo componente em modo criar e editar).
 
-- **Automático:** o Claude invoca a skill sozinho quando o pedido combina com a `description` dela. Não é preciso nomear a skill.
-- **Explícito:** peça pelo nome (ex.: "use a skill unishop-frontend para revisar essa página") ou, em harnesses que suportam, via `/nome-da-skill`.
-- **Combinadas:** ao trabalhar em componentes React do Unishop, as três podem se complementar — `unishop-frontend` dá o contexto do projeto, `vercel-react-best-practices` cobre performance, `web-design-guidelines` cobre acessibilidade/UX.
+### 3.4 `web-design-guidelines`
 
-## Instalar ou atualizar skills externas
+Busca a versão mais recente das diretrizes direto do repositório da Vercel (precisa de acesso à internet) e aponta violações no formato `arquivo:linha`. Atende à meta de acessibilidade WCAG 2.1 AA (RNF013) e ao critério "funciona por teclado, com rótulos e contraste verificados" da definição de pronto.
 
-Skills externas (não escritas para o Unishop) foram baixadas com o instalador `skills` (pacote `skills` via `npx`), que clona o repositório de origem e copia o `SKILL.md` da skill escolhida para `.claude/skills/<nome>/`:
+### 3.5 `supabase-postgres-best-practices`
+
+O banco é PostgreSQL puro; a skill vale para qualquer Postgres (o nome vem de quem a mantém). Relevante para: índices e chaves estrangeiras, `CHECK (quantity >= 0)`, transações curtas, bloqueios e deadlocks na compra simultânea da última unidade (RN-EST-04), paginação, pool de conexões e leitura de `EXPLAIN`. Use junto com o trabalho de Ana Clara (banco) e Felipe Bessa (backend). Partes de RLS e específicas do Supabase não se aplicam, pois o controle de acesso fica na API.
+
+### 3.6 `webapp-testing`
+
+Escreve scripts Playwright em Python para abrir a aplicação local, tirar screenshots, ler o console e testar fluxos. Inclui `scripts/with_server.py`, que sobe o backend e o frontend, roda o teste e encerra os servidores. O instalador marcou risco médio porque esse script executa, via shell, os comandos de servidor que a pessoa informa; ele não faz chamadas de rede nem executa nada por conta própria. Complementa (não substitui) os testes automatizados previstos: Vitest/Testing Library e Playwright no repositório.
+
+### 3.7 `skill-creator`
+
+Guia o ciclo de criar uma skill: rascunhar, escrever casos de teste, rodar com e sem a skill, comparar resultados e reescrever; também otimiza a `description` para o acionamento correto. Traz scripts de validação (`quick_validate.py`), empacotamento e avaliação em `scripts/`, que usam Python e o CLI `claude`. Use-a ao criar skills novas (por exemplo, `unishop-api` ou `unishop-database` quando esses documentos forem publicados) ou ao ajustar as existentes.
+
+## 4. Análise de cobertura do projeto
+
+| Necessidade do Unishop | Coberta por | Situação |
+|---|---|---|
+| Convenções, áreas, rotas e qualidade do frontend | `unishop-frontend` | Coberta |
+| Performance de React/Vite | `vercel-react-best-practices` | Coberta (ignorar regras de servidor/Next.js) |
+| Arquitetura de componentes (`shared/components/ui`) | `vercel-composition-patterns` | Coberta |
+| Acessibilidade e UX | `web-design-guidelines` | Coberta |
+| Arquitetura, regras e segurança do backend | `unishop-backend` | Coberta |
+| Modelagem e consultas PostgreSQL, concorrência | `supabase-postgres-best-practices` | Coberta |
+| Testes E2E e verificação de telas | `webapp-testing` | Coberta (Playwright em Python; testes do repositório usam o Playwright de Node) |
+| Criar e manter skills | `skill-creator` | Coberta |
+| Contrato da API (`openapi.yaml`) | — | Lacuna: `docs/api/` ainda não foi publicada |
+| Modelo de dados do projeto (DER/tabelas) | — | Lacuna: `docs/banco-de-dados/` ainda não foi publicada |
+| Revisão de código e segurança | Comandos nativos `/code-review` e `/security-review` | Coberta pelo Claude Code |
+
+**Não instaladas de propósito:** `deploy-to-vercel`, `vercel-cli-with-tokens` e `vercel-optimize` (a hospedagem ainda não foi decidida e o foco é Next.js); `supabase` (o banco em nuvem Neon/Supabase é só sugestão); `vercel-react-native-skills` (o produto é web); `vercel-react-view-transitions` (animações de rota não são requisito); `frontend-design` (o projeto segue fielmente o Figma, e a skill incentiva criar estilos novos); `writing-guidelines` (a documentação é em português do Brasil); `docx`, `pdf`, `pptx`, `xlsx` e demais skills de documentos (fora do escopo do código).
+
+**Próximos passos sugeridos:** quando a documentação de API e a de banco de dados forem publicadas, criar `unishop-api` e `unishop-database` com a `skill-creator`, no mesmo molde das skills próprias.
+
+## 5. Instalar, atualizar e criar skills
+
+Instalar uma skill externa (clona o repositório e copia a skill escolhida):
 
 ```bash
 npx skills add <url-do-repositório> --skill <nome-da-skill>
 ```
 
-O arquivo `skills-lock.json`, na raiz do projeto, registra a origem (`source`), o caminho (`skillPath`) e o hash do conteúdo de cada skill externa instalada — serve para saber de onde veio e detectar se o conteúdo mudou na fonte.
+O instalador guarda o conteúdo em `.agents/skills/` e cria um symlink em `.claude/skills/`. Neste projeto mantemos **uma pasta só**: depois de instalar, copie a skill para `.claude/skills/<nome>/` no lugar do symlink e apague `.agents/`.
 
-Skills próprias do projeto (como `unishop-frontend`) não entram no `skills-lock.json`: são escritas e versionadas manualmente, junto com o resto do código.
+```bash
+# exemplo, a partir da raiz do projeto
+rm .claude/skills/<nome> && cp -r .agents/skills/<nome> .claude/skills/<nome> && rm -rf .agents
+```
+
+Listar o que um repositório oferece antes de instalar:
+
+```bash
+npx skills add <url-do-repositório> --list
+```
+
+O `skills-lock.json`, na raiz, registra origem, caminho e hash de cada skill externa instalada. Skills próprias não entram nele.
+
+Para criar uma skill nova, peça ao Claude para usar a `skill-creator` descrevendo o que a skill deve fazer. Boas práticas da própria skill-creator: descrição que diga quando acionar (e um pouco "insistente", para não deixar de disparar), corpo enxuto, detalhes em `references/` e teste com prompts reais antes de adotar.
+
+## 6. Como o `CLAUDE.md` usa as skills
+
+O `CLAUDE.md` traz um quadro "Skills do projeto: quando usar" que liga cada tipo de tarefa à skill certa, para o Claude acioná-las no contexto correto. Se uma skill for adicionada, removida ou renomeada, atualize aquele quadro e a tabela da seção 3.
