@@ -4,8 +4,10 @@ Contexto para o Claude Code trabalhar no projeto **Unishop**, e-commerce web par
 
 ## Leia primeiro
 
-- [`docs/regras-de-negócio.md`](docs/regras-de-negócio.md) — regras RN-XXX-nn, estados, permissões e cenários de teste.
-- [`docs/frontend.md`](docs/frontend.md) — estrutura, rotas, componentes, estado e padrões de qualidade do frontend.
+- [`docs/regras-de-negócio/regras-de-negócio.md`](docs/regras-de-negócio/regras-de-negócio.md) — regras RN-XXX-nn, estados, permissões e cenários de teste.
+- [`docs/frontend/frontend.md`](docs/frontend/frontend.md) — estrutura, rotas, componentes, estado e padrões de qualidade do frontend.
+- [`docs/backend/backend.md`](docs/backend/backend.md) — arquitetura em camadas, autenticação, módulos e rotas, pagamentos, estados, jobs, erros, segurança e mapa das regras RN no backend.
+- [`docs/skills/skills.md`](docs/skills/skills.md) — skills do Claude Code instaladas no projeto e como usá-las.
 - `Trabalho Desenvolvimento Web 2026.pdf` — requisitos funcionais (RF001–RF024) e não-funcionais (RNF001–RNF016) originais do trabalho.
 
 ## Ordem de prioridade entre fontes
@@ -24,7 +26,7 @@ Itens marcados como "sugestão" nesta ou em outras docs **não** foram decididos
 - Responder sempre em português do Brasil.
 - Código, pastas e nomes de arquivo ficam em **inglês**.
 - Interface (textos visíveis ao usuário) e documentação ficam em **português**.
-- Citar sempre os códigos de origem ao implementar algo: `RF`/`RNF` (requisitos do PDF) e `RN-XXX-nn` (regras de negócio em `docs/regras-de-negócio.md`).
+- Citar sempre os códigos de origem ao implementar algo: `RF`/`RNF` (requisitos do PDF) e `RN-XXX-nn` (regras de negócio em `docs/regras-de-negócio/regras-de-negócio.md`).
 - Se uma informação não estiver documentada, dizer que não está definida — não inventar regra, rota, campo ou decisão.
 
 ## Visão geral do sistema
@@ -118,9 +120,10 @@ Ao mexer em banco/backend, atenção a estes gaps conhecidos entre o PDF/DER ori
 
 ```
 docs/
-├─ frontend.md              # estrutura, rotas, componentes, estado, qualidade
-├─ regras-de-negócio.md     # regras RN-XXX-nn, estados, permissões, testes
-├─ backend/                 # a publicar (Felipe Bessa)
+├─ frontend/frontend.md                    # estrutura, rotas, componentes, estado, qualidade
+├─ regras-de-negócio/regras-de-negócio.md  # regras RN-XXX-nn, estados, permissões, testes
+├─ backend/backend.md                      # arquitetura, rotas, pagamentos, segurança (v0.2)
+├─ skills/skills.md                        # skills do Claude Code no projeto
 ├─ api/                     # a publicar (Pedro Cândido)
 └─ banco-de-dados/          # a publicar (Ana Clara Macêdo)
 ```
