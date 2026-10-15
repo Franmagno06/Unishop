@@ -121,7 +121,7 @@ SPA em React que consome uma API REST em Node.js/Express (`/api/v1`), sem sessã
                             └── webhook: o gateway avisa quando o pagamento é aprovado
 ```
 
-> Os serviços externos (Google, Mercado Pago, Resend, Cloudinary) são **propostas em avaliação** pelo grupo; o código os acessa sempre por interfaces (providers), o que permite trocá-los sem mexer nas regras de negócio.
+> O gateway de pagamento é o **Mercado Pago** (decidido pelo grupo). Os demais serviços externos (Google, Resend, Cloudinary) são **propostas em avaliação**. O código acessa todos por interfaces (providers), o que permite trocá-los sem mexer nas regras de negócio.
 
 ### Camadas do backend
 
@@ -157,10 +157,8 @@ Itens abaixo constam na documentação técnica como proposta e **ainda não for
 |---|---|
 | Frontend | Vite, React Router, TanStack Query, React Hook Form + Zod, Vitest, Testing Library e Playwright |
 | Backend | Estrutura route/controller/service/repository, Prisma (ORM), Zod, bcrypt, jsonwebtoken, node-cron, pino, helmet, Vitest + Supertest |
-| Pagamento | Mercado Pago (gateway candidato; escolha final pendente) |
 | E-mail | Resend (produção) e Mailtrap (desenvolvimento) |
 | Imagens | Cloudinary ou Cloudflare R2 |
-| Banco em nuvem | Neon ou Supabase |
 | Ambiente local | Docker Compose para PostgreSQL e aplicação |
 | Login social | Somente Google no MVP (desejável) |
 
@@ -300,7 +298,8 @@ Em caso de conflito entre fontes, vale esta ordem: (1) PDF do trabalho, (2) deci
 - Taxa de serviço de R$ 0,00 por enquanto; repasse ao vendedor simulado, via conta única de teste.
 - Login do admin: mesma tela do aluno, rota separada, redirecionamento ao painel admin.
 - Login social: só Google entra no MVP; Apple fica de fora (custo anual e possível e-mail de retransmissão fora do domínio institucional).
-- Gateway de pagamento: serviço externo; a escolha final ainda está pendente.
+- Gateway de pagamento: Mercado Pago.
+- Hospedagem: Vercel (frontend e API) com banco PostgreSQL no Neon; guia em [Deploy](docs/deploy/deploy.md).
 - Termos de uso e Política de privacidade: conteúdo definido durante o desenvolvimento.
 
 ### Pendências relevantes

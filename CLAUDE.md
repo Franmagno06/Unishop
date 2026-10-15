@@ -7,6 +7,7 @@ Contexto para o Claude Code trabalhar no projeto **Unishop**, e-commerce web par
 - [`docs/regras-de-negócio/regras-de-negócio.md`](docs/regras-de-negócio/regras-de-negócio.md) — regras RN-XXX-nn, estados, permissões e cenários de teste.
 - [`docs/frontend/frontend.md`](docs/frontend/frontend.md) — estrutura, rotas, componentes, estado e padrões de qualidade do frontend.
 - [`docs/backend/backend.md`](docs/backend/backend.md) — arquitetura em camadas, autenticação, módulos e rotas, pagamentos, estados, jobs, erros, segurança e mapa das regras RN no backend.
+- [`docs/deploy/deploy.md`](docs/deploy/deploy.md) — deploy em produção (Vercel + Neon): ambientes, segredos, CORS, jobs agendados, backup, atualização e reversão.
 - [`docs/skills/skills.md`](docs/skills/skills.md) — skills do Claude Code instaladas no projeto e como usá-las.
 - `Trabalho Desenvolvimento Web 2026.pdf` — requisitos funcionais (RF001–RF024) e não-funcionais (RNF001–RNF016) originais do trabalho.
 
@@ -48,7 +49,7 @@ Regras de uso:
 - Mudou um documento técnico, uma rota ou uma decisão? Revise a skill `unishop-*` correspondente.
 - Skill nova ou removida: atualize esta tabela, `docs/skills/skills.md` e o `skills-lock.json` (só para skills externas).
 - Uma pasta só para skills: `.claude/skills/<nome>/SKILL.md`. Não manter `.agents/` nem symlinks.
-- Ainda sem skill própria: API (`docs/api/`) e banco (`docs/banco-de-dados/`), pois os documentos não foram publicados.
+- Ainda sem skill própria: API (`docs/api/`) e banco (`docs/banco-de-dados/`), pois os documentos não foram publicados, e deploy (`docs/deploy/`).
 
 ## Ordem de prioridade entre fontes
 
@@ -96,7 +97,7 @@ Sistema web onde alunos verificados (e-mail `@edu.unifor.br`) anunciam e compram
 
 Decisões fechadas da stack: Vite, Tailwind CSS, Prisma, React Router, TanStack Query, React Hook Form, Zod e Vitest/Testing Library/Playwright, e estrutura do backend em camadas (routes/controller/service/repository). O projeto ainda não foi iniciado: a documentação está sendo completada, então não criar código nem estrutura de pastas até o grupo liberar.
 
-Sugestões ainda em avaliação (não confirmadas): gateway de pagamento Mercado Pago; e-mail via Resend/Mailtrap; imagens via Cloudinary/Cloudflare R2; banco em nuvem Neon/Supabase; login social restrito ao Google no MVP.
+Sugestões ainda em avaliação (não confirmadas): e-mail via Resend/Mailtrap; imagens via Cloudinary/Cloudflare R2; login social restrito ao Google no MVP.
 
 ## Estrutura esperada do frontend
 
@@ -155,7 +156,8 @@ Estados da conta: `Ativa`, `Bloqueada` (5 senhas erradas, 15 min), `Suspensa` (p
 
 ## Decisões do grupo já fechadas
 
-- Gateway de pagamento: serviço externo, escolha final ainda pendente.
+- Gateway de pagamento: Mercado Pago (ADR-002). Cartão por token e Pix com webhook assinado.
+- Hospedagem: Vercel (frontend e API) com banco PostgreSQL no Neon (ADR-005). Detalhes e limites do plano Hobby em [`docs/deploy/deploy.md`](docs/deploy/deploy.md).
 - Domínio institucional oficial: `@edu.unifor.br`.
 - Anúncio é item único, mas pode ter quantidade (várias unidades).
 - Taxa de serviço: R$ 0,00 por enquanto.
@@ -183,6 +185,7 @@ docs/
 ├─ frontend/frontend.md                    # estrutura, rotas, componentes, estado, qualidade
 ├─ regras-de-negócio/regras-de-negócio.md  # regras RN-XXX-nn, estados, permissões, testes
 ├─ backend/backend.md                      # arquitetura, rotas, pagamentos, segurança (v0.2)
+├─ deploy/deploy.md                        # deploy na Vercel + Neon (v0.2)
 ├─ skills/skills.md                        # skills do Claude Code no projeto
 ├─ api/                     # a publicar (Pedro Cândido)
 └─ banco-de-dados/          # a publicar (Ana Clara Macêdo)

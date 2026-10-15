@@ -124,7 +124,11 @@ Variáveis de ambiente ficam em `.env` (copie de `.env.example`). No Vite, só a
 
 ```bash
 VITE_API_URL=http://localhost:3000/api/v1
+VITE_MP_PUBLIC_KEY=            # chave pública (de teste) do Mercado Pago, usada pelo SDK de pagamento
+VITE_GOOGLE_CLIENT_ID=         # Client ID do login com Google (desejável)
 ```
+
+Em **produção** (Vercel) o site e a API ficam em domínios diferentes, então o `VITE_API_URL` é o endereço completo da API, por exemplo `https://<api>.vercel.app/api/v1`. O Vite lê as variáveis `VITE_*` **na hora do build**: para trocá-las é preciso refazer o deploy do site. As três são públicas; nunca coloque segredo nelas. O guia completo está em [`docs/deploy/deploy.md`](../deploy/deploy.md).
 
 ## 5. Estrutura de pastas
 
@@ -135,6 +139,7 @@ frontend/
 ├─ public/                 # favicon, logo, imagens estáticas
 ├─ index.html
 ├─ vite.config.ts · tsconfig.json · .env.example
+├─ vercel.json             # devolve o index.html em qualquer rota (React Router) e cabeçalhos de segurança
 └─ src/
    ├─ main.tsx
    ├─ app/
@@ -374,6 +379,8 @@ A tela de criar e a de editar anúncio usam o mesmo formulário, em dois modos (
 - **Login com Google:** o frontend inicia o fluxo e o backend valida o domínio `@edu.unifor.br` e se o e-mail é verificado. O botão do Apple fica fora do MVP.
 - **Pagamento:** cartão vira token no navegador pelo SDK do gateway; o backend só recebe o token (RNF006). A confirmação do Pix vem pelo webhook, e a tela consulta o status do pedido.
 - **WhatsApp:** link `https://wa.me/55<número>?text=<mensagem>`, montado por `whatsappLink`. Antes de abrir o link, o frontend chama o backend para registrar o contato.
+- **Imagens (uma por requisição):** na Vercel, cada requisição aceita no máximo 4,5 MB no total. Por isso o `ImageUploader` envia **uma imagem por chamada**, de até **4 MB** (pendência 15 do Backend: a regra fala em 5 MB). No anúncio, o frontend publica com a primeira imagem (`POST /listings`) e acrescenta as demais, em sequência, com `POST /listings/:id/images`; mostra o progresso (ex.: "2 de 4") e, se uma falhar, deixa o aluno tentar de novo sem perder o anúncio. A foto de perfil usa `PUT /users/me/avatar`. **Confira o tamanho antes de enviar**: um arquivo acima de 4,5 MB é barrado pela própria Vercel com um erro genérico (413), sem a mensagem do Unishop.
+- **Erro 413 da Vercel:** trate também o 413 como "imagem grande demais", para o aluno ver a mesma mensagem de `FILE_TOO_LARGE`.
 
 ## 12. Estados obrigatórios de cada tela
 
@@ -399,7 +406,7 @@ O protótipo mostra só o caminho feliz. Toda tela que busca dados trata os esta
 | Senha forte e confirmação | Valida e avisa | Valida e recusa |
 | Aceite dos Termos no cadastro | Exige a marcação | Registra o aceite |
 | Bloqueio após 5 tentativas | Mostra a mensagem | Conta e bloqueia |
-| Imagem JPG/PNG até 5 MB | Valida antes de enviar | Valida de novo |
+| Imagem JPG/PNG (4 MB por imagem na API; a regra diz 5 MB, pendência 15 do Backend) | Valida tipo e tamanho antes de enviar, uma imagem por requisição | Valida de novo |
 | Quantidade menor ou igual ao estoque | Limita o seletor | Desconta no banco, de forma atômica |
 | Confirmação de pagamento | Só exibe o status | Recebe o webhook do gateway |
 | Admin ou dono do anúncio | Esconde botões e guarda rotas | Autoriza cada chamada |
@@ -458,6 +465,6 @@ O protótipo mostra só o caminho feliz. Toda tela que busca dados trata os esta
 | Login social | Só Google no MVP; Apple fica fora (custo e e-mail de retransmissão) |
 | Login do admin | Mesma tela, rota `/admin/login`, destino no painel admin |
 | Tela inicial | Aberta a todos; `GuestRoute` só em login, cadastro e recuperação |
-| Gateway | Externo; Mercado Pago é o candidato recomendado, a confirmar pelo grupo |
+| Gateway | Externo: Mercado Pago (decisão do grupo) |
 | Quantidade | Anúncio com várias unidades; escolhida no pop-up "Fazer pedido" |
 | Termos e Privacidade | Textos definidos durante o desenvolvimento |

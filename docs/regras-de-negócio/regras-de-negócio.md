@@ -197,7 +197,7 @@ Ativa ──admin suspende──▶ Suspensa ──admin reativa──▶ Ativa
 
 | Código | Regra | Origem | Onde se aplica |
 |---|---|---|---|
-| RN-PAG-01 | O pagamento é processado por gateway externo, em cartão ou Pix. O candidato recomendado é o Mercado Pago, a ser confirmado pelo grupo. | RF010.7, RNF006, Grupo | Backend |
+| RN-PAG-01 | O pagamento é processado por gateway externo, em cartão ou Pix. O gateway é o Mercado Pago (decisão do grupo). | RF010.7, RNF006, Grupo | Backend |
 | RN-PAG-02 | Dados de cartão nunca passam pelo servidor do Unishop: o cartão vira token no navegador pelo SDK do gateway. | RF010.7, RNF006 | Frontend, Backend |
 | RN-PAG-03 | O cartão coleta número, nome impresso, validade, CVV e parcelas, validando cada campo. | RF010.2 | Frontend |
 | RN-PAG-04 | O Pix gera QR Code e código "copia e cola", e expira em 30 minutos. Expirado, o pedido é cancelado. | RF010.3, RF010.4 | Frontend, Backend |
@@ -253,7 +253,7 @@ Ativa ──admin suspende──▶ Suspensa ──admin reativa──▶ Ativa
 | Catálogo | Só para aluno logado; o visitante vê a tela inicial. |
 | Pedido | Dois caminhos: pagamento pelo site ou contato pelo WhatsApp ("Em negociação"). |
 | Login social | Só Google no MVP. O Apple custa US$ 99 por ano e pode entregar e-mail de retransmissão fora do domínio institucional. |
-| Gateway | Mercado Pago como candidato recomendado, a confirmar. |
+| Gateway | Mercado Pago (decisão do grupo). |
 | Repasse | Conta única de teste, repasse simulado. |
 | Estoque no WhatsApp | Não desconta em "Em negociação"; desconta quando o vendedor conclui. |
 | Imagem do anúncio | Pelo menos uma, obrigatória. |

@@ -10,7 +10,7 @@ metadata:
 
 Resumo operacional da API REST do Unishop (`/api/v1`). Fonte completa e autoritativa: [`docs/backend/backend.md`](../../../docs/backend/backend.md) (v0.2, baseada nas Regras de Negócio v0.3). Em dúvida, releia a seção relevante do doc; este arquivo não o substitui. Regras de negócio: [`docs/regras-de-negócio/regras-de-negócio.md`](../../../docs/regras-de-negócio/regras-de-negócio.md). Seção 20 do doc de backend mapeia cada `RN-XXX-nn` ao arquivo onde ela deve morar.
 
-Prioridade entre fontes (CLAUDE.md): PDF do trabalho > decisões do grupo > docs em `docs/` > Figma. Itens "sugestão" (Prisma, Mercado Pago, Resend, Cloudinary, Vite etc.) não são decisões; ao usá-los, diga que são propostas. Se algo não está documentado, diga que não está definido; não invente rota, campo ou regra.
+Prioridade entre fontes (CLAUDE.md): PDF do trabalho > decisões do grupo > docs em `docs/` > Figma. O gateway de pagamento (Mercado Pago) é decisão do grupo. Itens "sugestão" (Prisma, Resend, Cloudinary, Vite etc.) não são decisões; ao usá-los, diga que são propostas. Se algo não está documentado, diga que não está definido; não invente rota, campo ou regra.
 
 ## Arquitetura
 

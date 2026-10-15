@@ -44,6 +44,7 @@ language: pt-BR (código e pastas em inglês; interface em português)
 |---|---|---|
 | 0.1 | 13/10/2026 | Primeira versão, escrita a partir dos requisitos e do documento de Frontend. |
 | **0.2 (2ª versão)** | 14/10/2026 | Revisão completa com base nas **Regras de Negócio v0.3**. Substitui a v0.1. As mudanças estão listadas abaixo. |
+| 0.2 (rev. hospedagem) | 15/10/2026 | Ajustes para a hospedagem na Vercel + Neon (ADR-005): `app.ts` e `dev-server.ts`; jobs como endpoints; imagens uma por requisição, até 4 MB; `waitUntil`; novas variáveis; pendências 15 e 16. Ver `docs/deploy/deploy.md`. |
 
 
 ### O que mudou na 2ª versão
@@ -93,16 +94,16 @@ Quem chama a API:
 
 ## 2. Arquitetura e stack
 
-É uma API REST em camadas, **sem sessão guardada no servidor** (o login é um JWT), que fala com um PostgreSQL e com quatro serviços externos. Roda em um único processo Node.js, que também executa os jobs agendados.
+É uma API REST em camadas, **sem sessão guardada no servidor** (o login é um JWT), que fala com um PostgreSQL e com quatro serviços externos. Em produção roda como **função serverless na Vercel**, com o PostgreSQL no Neon (`docs/deploy/deploy.md`); os jobs agendados são endpoints HTTP chamados por um agendador (seção 14). Em desenvolvimento roda como um processo Node.js comum, com `node-cron`.
 
 ```text
  Navegador (SPA React)
         │   HTTPS · JSON · JWT
         ▼
  ┌─────────────────────────────────────────────────┐
- │  Servidor Unishop  (um único processo Node.js)  │
+ │  API Unishop  (função serverless na Vercel)     │
  │   ├─ API REST ........ Express + TypeScript     │
- │   └─ Jobs agendados .. node-cron                │
+ │   └─ Jobs agendados .. endpoints + agendador    │
  └───┬───────────┬────────────┬───────────┬────────┘
      │           │            │           │
      ▼           ▼            ▼           ▼
@@ -125,15 +126,16 @@ As versões exatas ficam no `package.json`; aqui só se registra a escolha.
 | Autenticação | jsonwebtoken (JWT) + bcrypt | Sessão com validade e senha com hash (RN-ACE-05, RN-ACE-11) |
 | Login social | google-auth-library | Valida o ID token do Google (desejável) |
 | Upload | multer + file-type | Recebe imagens e confere o tipo real do arquivo |
-| Pagamentos | API do Mercado Pago (candidato) | Cartão, Pix e estorno por gateway externo (RN-PAG-01) |
+| Pagamentos | API do Mercado Pago | Cartão, Pix e estorno por gateway externo (RN-PAG-01) |
 | E-mail | Resend | E-mails transacionais |
 | Imagens | Cloudinary | Armazenamento e entrega comprimida (RNF009) |
-| Agendamento | node-cron | Jobs de pedidos, tokens e conferência de pagamentos |
+| Agendamento | node-cron (desenvolvimento) · Vercel Cron e agendador externo (produção) | Jobs de pedidos, tokens e conferência de pagamentos (seção 14) |
 | Logs | pino + pino-http | Logs estruturados em JSON |
 | Segurança HTTP | helmet, cors, express-rate-limit | Cabeçalhos seguros, origem permitida e limite de requisições |
 | Testes | Vitest + Supertest | Unidade e integração das rotas |
 | Contrato da API | OpenAPI (`openapi.yaml`) | Combinado entre backend e frontend |
-| Ambiente local | Docker Compose | Sobe o PostgreSQL e a aplicação |
+| Ambiente local | Docker Compose | Sobe o PostgreSQL de desenvolvimento e o de testes |
+| Hospedagem | Vercel (frontend e API) + Neon (PostgreSQL) | Deploy por `git push`, um branch de banco por ambiente (ADR-005; ver `docs/deploy/deploy.md`) |
 
 
 ### Princípios
@@ -199,19 +201,29 @@ O conteúdo do `schema.prisma` e das migrações é definido no documento de Ban
 
 ### Passo 6 · Rodar para conferir
 
-Crie `src/server.ts` com uma única rota de saúde:
+Crie dois arquivos. O `app.ts` só **monta** a API (e é o que a Vercel usa); o `dev-server.ts` só liga a porta no seu computador:
 
 ```ts
+// src/app.ts
 import express from 'express'
 
-const app = express()
+export const app = express()
 
 app.get('/api/v1/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
 
+export default app // a Vercel usa este export; nada aqui chama listen
+```
+
+```ts
+// src/dev-server.ts — só desenvolvimento local
+import { app } from './app'
+
 app.listen(3000, () => console.log('API em http://localhost:3000'))
 ```
+
+> O arquivo local **não** se chama `server.ts` de propósito: a Vercel procura sozinha a entrada da API em `src/app.ts`, `src/index.ts` ou `src/server.ts`, e um `listen` em um desses nomes a confundiria (`docs/deploy/deploy.md`, seção 5.1).
 
 ```bash
 npm run dev        # abre em http://localhost:3000/api/v1/health
@@ -219,7 +231,7 @@ npm run dev        # abre em http://localhost:3000/api/v1/health
 
 Se aparecer `{"status":"ok"}`, a base está certa.
 
-> A rota `/health` fica no projeto definitivo: a hospedagem e o monitor de disponibilidade (RNF011) usam essa rota.
+> A rota `/health` fica no projeto definitivo e, na versão final, **consulta o banco** (por exemplo `SELECT 1`): a hospedagem e o monitor de disponibilidade (RNF011) usam essa rota.
 
 > Esta documentação assume **Express 5**, que repassa erros de funções assíncronas ao `errorHandler` sem biblioteca extra. Confira a versão instalada no `package.json`.
 
@@ -228,9 +240,9 @@ Se aparecer `{"status":"ok"}`, a base está certa.
 
 | Comando | O que faz |
 |---|---|
-| `npm run dev` | Servidor de desenvolvimento com recarga automática (tsx watch) |
-| `npm run build` | Compila o TypeScript para a pasta dist/ |
-| `npm start` | Roda a versão compilada (produção) |
+| `npm run dev` | Servidor de desenvolvimento com recarga automática (`tsx watch src/dev-server.ts`) |
+| `npm run build` | Compila o TypeScript para a pasta dist/ (confere os tipos; a Vercel compila a API sozinha) |
+| `npm start` | Roda a versão compilada (`dist/dev-server.js`) para conferir o build localmente. Em produção a API é a função de `src/app.ts` na Vercel |
 | `npm run lint` | Verifica o estilo do código |
 | `npm run test` | Roda os testes (Vitest) |
 | `npm run test:watch` | Testes em modo contínuo |
@@ -247,7 +259,8 @@ Ficam no `.env` (copie de `.env.example`). O `config/env.ts` lê e valida todas 
 NODE_ENV=development
 PORT=3000
 DATABASE_URL=postgresql://user:senha@localhost:5432/unishop
-FRONTEND_URL=http://localhost:5173
+DATABASE_URL_UNPOOLED=       # conexão direta (sem pooler); só em produção, para migração e backup
+FRONTEND_URL=http://localhost:5173   # uma ou mais origens, separadas por vírgula
 
 JWT_SECRET=troque-por-um-texto-longo-e-aleatorio
 JWT_EXPIRES_IN=2h
@@ -265,6 +278,8 @@ PIX_EXPIRATION_MINUTES=30    # validade do Pix e do pedido pendente (RN-PAG-04)
 LOGIN_MAX_ATTEMPTS=5         # RN-ACE-09
 LOGIN_LOCK_MINUTES=15
 
+CRON_SECRET=                 # senha dos endpoints de jobs (produção, seção 14)
+
 ADMIN_EMAIL=                 # usados só pelo seed (RN-ADM-11)
 ADMIN_PASSWORD=
 ```
@@ -272,8 +287,10 @@ ADMIN_PASSWORD=
 | Variável | Para quê |
 |---|---|
 | `NODE_ENV · PORT` | Ambiente de execução e porta da API |
-| `DATABASE_URL` | Conexão com o PostgreSQL |
-| `FRONTEND_URL` | Origem aceita no CORS e base dos links enviados por e-mail |
+| `DATABASE_URL` | Conexão com o PostgreSQL (em produção, o endereço **com pooler** do Neon, com `?pgbouncer=true&connection_limit=1`) |
+| `DATABASE_URL_UNPOOLED` | Conexão direta ao Neon, sem pooler. Usada pelo `prisma migrate deploy` (`directUrl` no `schema.prisma`) e pelo backup |
+| `FRONTEND_URL` | Origem(ns) aceita(s) no CORS, separadas por vírgula, sem curinga; a primeira é a base dos links enviados por e-mail. Em produção deve ser `https` e sem barra no fim |
+| `CRON_SECRET` | Senha que o agendador envia (`Authorization: Bearer`) para chamar os endpoints de jobs |
 | `JWT_SECRET · JWT_EXPIRES_IN` | Segredo que assina os tokens e a validade deles |
 | `ALLOWED_EMAIL_DOMAIN` | Domínio de e-mail aceito no cadastro (RN-ACE-02) |
 | `GOOGLE_CLIENT_ID` | Audiência esperada no ID token do Google |
@@ -294,7 +311,7 @@ ADMIN_PASSWORD=
 |---|---|---|---|---|
 | Desenvolvimento | PostgreSQL no Docker | Caixa de teste (Mailtrap) | Sandbox do gateway + túnel público (ngrok ou Cloudflare Tunnel) para o webhook | Cloudinary, pasta de testes |
 | Testes automáticos | PostgreSQL de teste, recriado a cada execução | Mock | Mock do provider | Mock |
-| Produção | PostgreSQL gerenciado, com backup diário | Resend | Gateway com credenciais reais | Cloudinary |
+| Produção | PostgreSQL no Neon (branch `production`), com backup diário e restauração a um ponto no tempo | Resend | Mercado Pago com credenciais de **teste** (RN-PAG-10) | Cloudinary |
 
 
 ## 5. Estrutura de pastas
@@ -308,10 +325,10 @@ backend/
 │  ├─ migrations/               # histórico versionado do banco
 │  └─ seed.ts                   # 6 categorias fixas + conta admin (RN-CAT-01, RN-ADM-11)
 ├─ src/
-│  ├─ server.ts                 # sobe o servidor e os jobs
-│  ├─ app.ts                    # monta o Express e os middlewares globais
+│  ├─ dev-server.ts             # só desenvolvimento: liga a porta e os jobs (node-cron)
+│  ├─ app.ts                    # monta o Express e os middlewares globais; export default (Vercel)
 │  ├─ config/                   # env, database, jwt, cors, constants
-│  ├─ routes/index.ts           # junta /api/v1/* e /api/v1/admin/*
+│  ├─ routes/index.ts           # junta /api/v1/*, /api/v1/admin/* e /api/v1/internal/jobs/*
 │  ├─ modules/                  # ALUNO
 │  │  ├─ auth/
 │  │  ├─ users/
@@ -336,9 +353,10 @@ backend/
 │  ├─ unit/
 │  ├─ integration/
 │  └─ helpers/                  # factories e mocks
+├─ scripts/vercel-build.sh      # build da API na Vercel: prisma generate + migrate deploy
 ├─ uploads/                     # imagens locais em dev (fora do Git)
 ├─ .env.example
-└─ package.json · tsconfig.json · eslint.config.js · .prettierrc · vitest.config.ts
+└─ package.json · tsconfig.json · eslint.config.js · .prettierrc · vitest.config.ts · vercel.json
 ```
 
 
@@ -369,7 +387,7 @@ shared/
 │  ├─ validate.ts               # aplica os schemas Zod
 │  ├─ rateLimiter.ts            # limite de requisições por IP
 │  ├─ loginAttempts.ts          # bloqueio após 5 erros por 15 min (RN-ACE-09)
-│  ├─ upload.ts                 # só JPG/PNG até 5 MB (RNF005)
+│  ├─ upload.ts                 # só JPG/PNG, uma imagem por requisição, até 4 MB (limite da Vercel; RNF005, pendência 15)
 │  ├─ trackLastSeen.ts          # alimenta last_seen e "logado agora" (RN-ADM-03)
 │  ├─ notFound.ts
 │  └─ errorHandler.ts           # formato único de erro
@@ -386,12 +404,12 @@ jobs/
 ├─ expire-pix-payments.job.ts        # cancela pedidos pendentes vencidos
 ├─ cleanup-expired-tokens.job.ts
 ├─ reconcile-pending-payments.job.ts # confere pagamentos e estornos pendentes
-└─ index.ts                          # agenda todos os jobs
+└─ index.ts                          # mapa nome → função (endpoints de jobs) e startCronJobs() (node-cron, só em desenvolvimento)
 ```
 
 | Pasta | O que vai nela |
 |---|---|
-| `config/` | Leitura e validação do ambiente, conexão com o banco, segredos do JWT, CORS e as constantes de negócio (domínio aceito, 5 MB, 30 min, 5 tentativas, 15 min de bloqueio, 5 min de "logado agora"). |
+| `config/` | Leitura e validação do ambiente, conexão com o banco, segredos do JWT, CORS e as constantes de negócio (domínio aceito, 4 MB por imagem, 30 min, 5 tentativas, 15 min de bloqueio, 5 min de "logado agora"). |
 | `routes/` | Um único `index.ts` que monta o prefixo `/api/v1` e liga as rotas de cada módulo e da área admin. |
 | `modules/` | Uma pasta por assunto do aluno. Cada uma segue o molde acima. |
 | `admin/` | Regras do administrador. A proteção (`authenticate` + `authorizeRole`) é aplicada uma única vez em `admin.routes.ts`. |
@@ -474,7 +492,7 @@ Requisição
 | # | Middleware | Quando | O que faz |
 |---|---|---|---|
 | 1 | helmet | Todas | Cabeçalhos de segurança HTTP (inclui HSTS) |
-| 2 | cors | Todas | Aceita só a origem de `FRONTEND_URL` |
+| 2 | cors | Todas | Aceita só as origens de `FRONTEND_URL` (uma ou mais, separadas por vírgula, sem curinga). A API usa `trust proxy = 1` para enxergar o IP real atrás da Vercel |
 | 3 | compression | Todas | Comprime as respostas |
 | 4 | request-id + pino-http | Todas | Gera um id por requisição e registra o log |
 | 5 | express.json (limite de 1 MB) | Todas | Lê o corpo JSON |
@@ -737,7 +755,7 @@ Perfil do usuário logado. Vale para aluno e para admin (RN §3: os dois editam 
 |---|---|---|---|
 | `GET /users/me` | Aluno ou Admin | Dados do próprio perfil | RF012.1 |
 | `PATCH /users/me` | Dono | Altera nome, curso e WhatsApp, com as validações do cadastro | RN-PER-01 |
-| `PUT /users/me/avatar` | Dono | Troca a foto de perfil (JPG ou PNG, até 5 MB) | RN-PER-05 |
+| `PUT /users/me/avatar` | Dono | Troca a foto de perfil (JPG ou PNG, até 4 MB; pendência 15) | RN-PER-05 |
 | `POST /users/me/email-change` | Dono | Pede a troca de e-mail (link ao novo endereço) | RN-PER-02 |
 | `POST /users/me/email-change/confirm` | Dono | Confirma a troca pelo token | RN-PER-02 |
 | `DELETE /users/me` | Dono | Exclui o perfil: exige a confirmação "EXCLUIR" e anonimiza a conta | RN-PER-06 |
@@ -769,8 +787,10 @@ Anúncios: vitrine, página do produto e gerenciamento pelo dono.
 | `GET /listings/mine` | Dono | "Meus anúncios", em todos os status | RF012.5 |
 | `GET /listings/:id` | Aluno ou Admin | Página do produto (galeria, vendedor com selo de aluno verificado, WhatsApp); conta a visualização | RF008, RN-ANU-08 |
 | `GET /listings/:id/management` | Dono | Resumo, status e indicadores (visualizações, contatos, pedidos) | RN-ANU-08 |
-| `POST /listings` | Aluno | Publica o anúncio (multipart, com imagens) | RN-ANU-01 a 03, RN-EST-01 |
-| `PATCH /listings/:id` | Dono | Edita o anúncio e as imagens | RN-ANU-04 |
+| `POST /listings` | Aluno | Publica o anúncio (multipart: dados + a **primeira** imagem) | RN-ANU-01 a 03, RN-EST-01 |
+| `POST /listings/:id/images` | Dono | Acrescenta **uma** imagem ao anúncio (multipart); máximo de 5 por anúncio | RN-ANU-03, RN-ANU-04 |
+| `DELETE /listings/:id/images/:imageId` | Dono | Remove uma imagem; o anúncio precisa continuar com pelo menos 1 | RN-ANU-03, RN-ANU-04 |
+| `PATCH /listings/:id` | Dono | Edita os dados do anúncio (as imagens têm rotas próprias, acima) | RN-ANU-04 |
 | `POST /listings/:id/pause` | Dono | Pausa o anúncio | RN-ANU-04 |
 | `POST /listings/:id/reactivate` | Dono | Reativa um anúncio pausado, se a conta não estiver suspensa | RN-ANU-04 |
 | `POST /listings/:id/mark-sold` | Dono | Marca como vendido e zera as unidades que sobraram (irreversível para o dono) | RF017.9 |
@@ -778,7 +798,9 @@ Anúncios: vitrine, página do produto e gerenciamento pelo dono.
 
 - **Campos obrigatórios** (RN-ANU-01): nome, categoria, descrição, preço, quantidade e WhatsApp (preenchido com o do cadastro e editável). Só **aluno** cria anúncio; admin recebe 403.
 - **Preço** maior que zero, com duas casas decimais (RN-ANU-02). **Quantidade** de 1 em diante (RN-EST-01).
-- **Imagens** (RN-ANU-03): pelo menos 1, JPG ou PNG, até 5 MB cada. O máximo de 5 por anúncio é proposta da equipe.
+- **Imagens** (RN-ANU-03): pelo menos 1, JPG ou PNG. O máximo de 5 por anúncio é proposta da equipe.
+- **Uma imagem por requisição, até 4 MB.** Na Vercel uma requisição aceita no máximo 4,5 MB no total. Por isso cada imagem sobe em uma chamada própria, com limite de **4 MB** (sobra margem para os campos do formulário). A regra RN-ANU-03 e o RNF005 falam em 5 MB: o conflito está na pendência 15 (seção 21). A API continua conferindo o tipo real do arquivo (`file-type`) e envia ao Cloudinary; nada de assinatura nem envio direto do navegador.
+- Se o anúncio tem mais de uma imagem, o frontend publica com a primeira (`POST /listings`) e acrescenta as demais com `POST /listings/:id/images`. Se uma delas falhar, o anúncio já existe com as imagens que subiram e o aluno pode tentar de novo.
 - **Visibilidade única** (RN-ANU-05). Toda listagem pública (categorias, busca, carrossel, contagem) usa o mesmo filtro: só anúncios ativos, de contas ativas e não excluídos. Ele mora em uma função do repository, para ninguém esquecer.
 - O anúncio novo aparece no topo (ordenação padrão por data, mais recente primeiro) (RN-ANU-07).
 - **Indicadores** (RN-ANU-08): visualizações (+1 a cada `GET /listings/:id` de quem não é o dono), contatos pelo WhatsApp e pedidos recebidos. A contagem é do backend.
@@ -831,7 +853,7 @@ Antes de cobrar, a API confere se ainda há estoque e responde 409 `OUT_OF_STOCK
 
 ### 9.7 notifications
 
-Módulo **interno**, sem rotas no MVP: os outros módulos chamam o `notifications.service`, que envia o e-mail em segundo plano.
+Módulo **interno**, sem rotas no MVP: os outros módulos chamam o `notifications.service`, que envia o e-mail. Na Vercel, o envio usa `await` ou `waitUntil`, porque uma tarefa solta depois da resposta pode ser cortada (seção 11).
 
 | Evento | Quem recebe | Canal | Origem |
 |---|---|---|---|
@@ -962,19 +984,22 @@ Os fluxos de **login, Google, cadastro e recuperação de senha** estão na seç
 ### Publicação de anúncio
 
 ```text
- 1. Frontend ▶ API      POST /listings (multipart: dados do anúncio + imagens)
+ 1. Frontend ▶ API      POST /listings (multipart: dados do anúncio + a 1ª imagem)
  2. API                 só aluno; valida nome, categoria, descrição, preço > 0, quantidade ≥ 1,
-                        WhatsApp e pelo menos 1 imagem JPG/PNG de até 5 MB
- 3. API ▶ Storage       envia as imagens
- 4. Storage ▶ API       URLs seguras das imagens
- 5. API ▶ Banco         em uma transação: cria o anúncio (status Ativo) e registra as imagens
- 6. API ▶ Frontend      201 {anúncio, categoria} ▶ pop-up "Anúncio publicado!"
+                        WhatsApp e a imagem (JPG/PNG de até 4 MB, tipo pelo conteúdo real)
+ 3. API ▶ Storage       envia a imagem
+ 4. Storage ▶ API       URL segura da imagem
+ 5. API ▶ Banco         em uma transação: cria o anúncio (status Ativo) e registra a imagem
+ 6. API ▶ Frontend      201 {anúncio, categoria}
 
-    Se o banco falhar no passo 5, as imagens já enviadas são removidas do storage.
+    Se o banco falhar no passo 5, a imagem já enviada é removida do storage.
+
+ 7. Frontend ▶ API      (se houver mais imagens) POST /listings/:id/images, uma chamada por imagem
+ 8. Frontend            ao terminar ▶ pop-up "Anúncio publicado!"
 ```
 
 - O tipo do arquivo é conferido pelo **conteúdo real**, não pela extensão.
-- O anúncio e suas imagens são gravados em uma única transação; se algo falhar, nada fica pela metade.
+- O anúncio e a primeira imagem são gravados em uma única transação; as demais imagens são acrescentadas uma a uma. Se uma falhar, o anúncio fica com as que subiram e o aluno tenta de novo.
 - A resposta informa a categoria em que o anúncio passou a aparecer (RF016.2).
 
 
@@ -995,7 +1020,7 @@ Os fluxos de **login, Google, cadastro e recuperação de senha** estão na seç
 
 ## 11. Pagamentos
 
-O Unishop **não guarda dado de cartão**: o pagamento é processado por um gateway externo, em cartão ou Pix (RN-PAG-01). O Mercado Pago é o candidato recomendado, a confirmar pelo grupo (ADR-002). O backend fala com o gateway só pela interface `PaymentGateway`.
+O Unishop **não guarda dado de cartão**: o pagamento é processado por um gateway externo, em cartão ou Pix (RN-PAG-01). O gateway é o Mercado Pago (ADR-002, decidido pelo grupo). O backend fala com o gateway só pela interface `PaymentGateway`.
 
 
 ### Interface do provider
@@ -1148,14 +1173,31 @@ Gateway chama POST /payments/webhook
 - **Assinatura obrigatória.** Aviso sem assinatura válida recebe 401 e é registrado em log.
 - **Quem confirma é o webhook** (RN-PAG-05). O backend consulta o pagamento no gateway antes de mudar qualquer status.
 - **Idempotente** (RN-PAG-06). O mesmo aviso pode chegar várias vezes; o segundo não desconta estoque de novo nem cria outro pedido pago, e não notifica de novo.
-- **Resposta rápida.** Responde 200 logo após gravar; o e-mail ao vendedor e o estorno rodam depois da transação.
+- **Resposta rápida.** Responde 200 logo após gravar. O e-mail ao vendedor e o estorno rodam depois da transação, mas **antes de a função terminar** (ver "Tarefas depois da resposta", abaixo).
 - Se o aviso se perder, o job `reconcile-pending-payments` corrige (seção 14).
 
+
+### Tarefas depois da resposta (Vercel)
+
+Na Vercel a API é uma função: quando a resposta sai, a função pode ser suspensa, e uma promessa solta (sem `await`) pode ser cortada no meio. Por isso, no que acontece "depois da transação":
+
+- **Estorno** (RN-PAG-08): `await` **antes** de responder. É decisão de dinheiro e não pode se perder. Se falhar, o pedido fica marcado e o job `reconcile-pending-payments` refaz o estorno (seção 14).
+- **E-mail e notificação ao vendedor** (RN-NOT-01, RN-NOT-02): `waitUntil(...)`, do pacote `@vercel/functions`, que mantém a função viva até a tarefa terminar, com o mesmo tempo limite da função (até 300 s no plano gratuito). Se o `waitUntil` falhar, o erro vai para o log, sem derrubar a resposta.
+
+```ts
+import { waitUntil } from '@vercel/functions'
+
+await refundPayment(paymentId)                       // estorno: esperar
+waitUntil(notifySeller(order).catch(logError))       // e-mail: não bloqueia a resposta
+res.json({ ok: true })
+```
+
+Em desenvolvimento local (`dev-server.ts`) o `waitUntil` não faz nada de especial e a tarefa roda normalmente, então o comportamento é o mesmo.
 
 ### Testando sem dinheiro real
 
 - Usar o **sandbox** do gateway: contas de teste de comprador e vendedor, cartões de teste e Pix simulado.
-- Para o webhook chegar ao computador local, usar um túnel público (ngrok ou Cloudflare Tunnel).
+- Para o webhook chegar ao computador local, usar um túnel público (ngrok ou Cloudflare Tunnel). Na Vercel, **previews não recebem o webhook** (a URL cadastrada no Mercado Pago é uma só); o teste de pagamento ponta a ponta é local ou em produção.
 - Credenciais de teste só no `.env` local; as de produção ficam fora do código e do Git.
 
 
@@ -1284,7 +1326,7 @@ Um valor por estado no banco; o texto na interface muda conforme o lado (RN §4)
 
 ## 14. Jobs agendados
 
-Rodam no mesmo processo da API, com `node-cron`. Todo job é **idempotente**: se rodar duas vezes seguidas, o resultado é o mesmo.
+Em **desenvolvimento**, rodam no mesmo processo da API, com `node-cron` (`startCronJobs()` no `dev-server.ts`). Em **produção (Vercel)** não existe processo ligado, então cada job é um **endpoint HTTP** que um agendador chama. Todo job é **idempotente**: se rodar duas vezes seguidas, o resultado é o mesmo.
 
 | Job | Frequência | O que faz | Origem |
 |---|---|---|---|
@@ -1292,7 +1334,19 @@ Rodam no mesmo processo da API, com `node-cron`. Todo job é **idempotente**: se
 | `cleanup-expired-tokens` | Uma vez por dia | Apaga tokens de confirmação e de senha vencidos ou já usados | RN-ACE-10 |
 | `reconcile-pending-payments` | A cada 5 minutos | Consulta no gateway os pagamentos pendentes recentes e corrige os que perderam o aviso do webhook. Também refaz estornos que falharam | RN-PAG-05, RN-PAG-08 |
 
-> No MVP roda **uma instância** da API. Se houver mais de uma, os jobs precisam de trava (para não rodar em duplicidade). O **backup diário** do banco (RNF011) é feito por script no servidor (`infra/scripts/backup-db.sh`), fora da aplicação.
+### Jobs em produção: endpoints e agendador
+
+Cada job responde em `GET /api/v1/internal/jobs/<nome>`, com o nome do job da tabela acima (`expire-pix-payments`, `reconcile-pending-payments`, `cleanup-expired-tokens`). O endpoint **não** usa `authenticate` nem `trackLastSeen`: ele só confere o cabeçalho `Authorization: Bearer <CRON_SECRET>` (comparação em tempo constante) e responde 401 se estiver errado. Nunca entra no `openapi.yaml` público.
+
+| Job | Quem chama em produção | Por quê |
+|---|---|---|
+| `expire-pix-payments` | **Agendador externo** (cron-job.org ou similar), a cada 1 a 5 minutos | O Vercel Cron gratuito só roda uma vez por dia |
+| `reconcile-pending-payments` | **Agendador externo**, a cada 5 minutos | É a rede de segurança do webhook; precisa ser frequente |
+| `cleanup-expired-tokens` | **Vercel Cron**, uma vez por dia (`backend/vercel.json`) | Diário cabe no plano gratuito |
+
+Além do job, a API **cancela o Pix vencido sob demanda**: ao ler ou pagar um pedido pendente cujo Pix expirou, o cancela na hora, sem depender do relógio do agendador.
+
+> Na Vercel a função escala sozinha, então a regra de "uma instância" deixa de valer: a segurança vem de os jobs serem **idempotentes**. O **backup diário** do banco (RNF011) não é mais um script no servidor: é um workflow do GitHub Actions mais a restauração a um ponto no tempo do Neon (`docs/deploy/deploy.md`, seção 11).
 
 
 ## 15. Erros e formato de resposta
@@ -1370,7 +1424,7 @@ Erro:
 | RNF002 | Domínio validado no servidor, inclusive no Google (RN-ACE-02, 14) | auth, config/constants.ts |
 | RNF003 | JWT com validade; bloqueio após 5 erros por 15 minutos (RN-ACE-09, 11) | authenticate, loginAttempts |
 | RNF004 | Perfil por `authorizeRole`; dono conferido no service | authorizeRole, services |
-| RNF005 | Zod em toda entrada; ORM com consultas parametrizadas; texto sem HTML; upload de JPG/PNG até 5 MB | validate, upload, sanitize-html |
+| RNF005 | Zod em toda entrada; ORM com consultas parametrizadas; texto sem HTML; upload de JPG/PNG (4 MB por imagem na API; o requisito diz 5 MB, pendência 15) | validate, upload, sanitize-html |
 | RNF006 | Só o token do cartão chega ao servidor; cobrança no gateway (RN-PAG-02) | payments |
 | RNF007 | Aceite dos Termos com data; WhatsApp só autenticado; anonimização dos dados pessoais | auth, users |
 
@@ -1381,7 +1435,7 @@ Erro:
 
 ```text
 arquivo recebido
- 1. multer ............ recebe em memória, limite de 5 MB
+ 1. multer ............ recebe uma imagem por requisição, em memória, limite de 4 MB (limite da Vercel)
  2. file-type ......... confere o conteúdo real: só JPEG e PNG passam, mesmo que a extensão diga outra coisa
  3. nome original ..... descartado; o storage gera um nome novo
  4. storage ........... envia a imagem (Cloudinary) e o banco guarda só a URL
@@ -1396,6 +1450,9 @@ arquivo recebido
 | `/auth/*` | 10 por minuto por IP (mais o bloqueio de 5 erros por conta) |
 | `/payments/* (exceto webhook)` | 30 por minuto por usuário |
 | `/payments/webhook` | Sem limite do rateLimiter; protegida pela assinatura |
+| `/internal/jobs/*` | Sem limite do rateLimiter; protegidas pelo `CRON_SECRET` |
+
+> O `express-rate-limit` guarda a contagem **em memória de cada instância**. Na Vercel, várias instâncias contam separado, e o limite fica mais frouxo do que o descrito. No escopo acadêmico isso é aceito; se virar problema, o limite passa para um armazenamento compartilhado (por exemplo Redis). O **bloqueio de login** (5 erros / 15 min) já é gravado no banco e não é afetado.
 
 
 ### LGPD e anonimização
@@ -1434,7 +1491,7 @@ Excluir o perfil **anonimiza** a conta (RN-PER-06). O mesmo tratamento vale para
 | Webhook repetido não duplica | settlePayment (trava + status) | RN-PAG-06 |
 | Transições de status | *.rules.ts (assertCanTransition) | RN §4 |
 | Log de auditoria do admin | admin/*/service + audit-logs.service.ts | RN-ADM-10 |
-| Imagem JPG/PNG até 5 MB | upload.ts | RNF005 |
+| Imagem JPG/PNG (4 MB na API; pendência 15) | upload.ts | RNF005 |
 
 
 ## 17. Desempenho e disponibilidade
@@ -1443,7 +1500,7 @@ Excluir o perfil **anonimiza** a conta (RN-PER-06). O mesmo tratamento vale para
 |---|---|
 | Páginas em até 3 s e API em até 500 ms (RNF008) | Listagens paginadas (máximo de 50), só os campos necessários, índices (ver Banco de Dados), compressão das respostas e carrossel com poucos itens e cache curto |
 | Imagens leves (RNF009) | O storage entrega imagem comprimida e redimensionada; o banco guarda só a URL |
-| 500 usuários simultâneos (RNF010) | API sem estado (escala por instâncias), pool de conexões dimensionado e nada pesado dentro da requisição: e-mail, notificação e estorno rodam depois da transação |
+| 500 usuários simultâneos (RNF010) | API sem estado (escala por instâncias), pooler do Neon com `connection_limit=1` por instância e nada pesado dentro da requisição: e-mail e notificação rodam em `waitUntil` depois da transação, e o estorno com `await` antes de responder (seção 11) |
 | 99% de disponibilidade e backup diário (RNF011) | Rota `/health` monitorada, backup automático do banco e restauração testada |
 
 Para validar os 500 usuários simultâneos, vale rodar um teste de carga (por exemplo, com k6 ou autocannon) antes da entrega. Inclua o cenário de **duas compras simultâneas da última unidade**.
@@ -1453,7 +1510,7 @@ Para validar os 500 usuários simultâneos, vale rodar um teste de carga (por ex
 
 | Tipo | Para quê | Onde fica |
 |---|---|---|
-| Log de aplicação | Diagnosticar erros e lentidão | Saída padrão em JSON (pino), coletada pela hospedagem |
+| Log de aplicação | Diagnosticar erros e lentidão | Saída padrão em JSON (pino), coletada pela hospedagem. Na Vercel gratuita ficam disponíveis por cerca de 1 hora |
 | Log de auditoria | Rastrear ações do administrador (RN-ADM-10) | Tabela no banco, pelo módulo `audit-logs` |
 
 
@@ -1562,7 +1619,7 @@ Cada regra do documento de **Regras de Negócio v0.3** que cabe ao backend (ou a
 | RN-PER-02 | Troca de e-mail confirmada no novo endereço | users.service.ts, tokens.repository.ts |
 | RN-PER-03 | WhatsApp novo vai para os anúncios ativos | users.service.ts (transação com listings) |
 | RN-PER-04 | WhatsApp só para logado | Serializadores das respostas |
-| RN-PER-05 | Foto JPG/PNG até 5 MB | upload.ts |
+| RN-PER-05 | Foto JPG/PNG (regra: 5 MB; API: 4 MB, pendência 15) | upload.ts |
 | RN-PER-06 | Excluir perfil: digitar "EXCLUIR", anonimizar, manter pedidos pagos | users.service.ts (anonimização) |
 
 
@@ -1582,7 +1639,7 @@ Cada regra do documento de **Regras de Negócio v0.3** que cabe ao backend (ou a
 |---|---|---|
 | RN-ANU-01 | Campos obrigatórios; só aluno cria | listings.schemas.ts, authorizeRole("student") |
 | RN-ANU-02 | Preço > 0, duas casas | listings.schemas.ts + CHECK no banco |
-| RN-ANU-03 | Pelo menos 1 imagem JPG/PNG até 5 MB | listings.schemas.ts, upload.ts |
+| RN-ANU-03 | Pelo menos 1 imagem JPG/PNG (regra: 5 MB; API: 4 MB, pendência 15) | listings.schemas.ts, upload.ts |
 | RN-ANU-04 | Só dono ou admin altera | listings.service.ts (conferência de dono) |
 | RN-ANU-05 | Pausado, vendido, excluído ou de conta suspensa não aparece | listings.repository.ts (filtro único) |
 | RN-ANU-06 | Filtro de preço e ordenação | listings.schemas.ts, listings.repository.ts |
@@ -1652,7 +1709,11 @@ Cada regra do documento de **Regras de Negócio v0.3** que cabe ao backend (ou a
 | Login social | Só Google no MVP (desejável); Apple fora (US$ 99/ano e e-mail de retransmissão) |
 | Login do admin | Mesma tela do aluno, rota separada; mesmo endpoint de login; o perfil vem na resposta |
 | Conta admin | Criada só por seed; exceção do domínio `@edu.unifor.br` |
-| Pagamento | Gateway externo; Mercado Pago como candidato; cartão por token; Pix com webhook |
+| Pagamento | Gateway externo: Mercado Pago (ADR-002); cartão por token; Pix com webhook |
+| Hospedagem | Vercel (API e frontend) + Neon (PostgreSQL), ADR-005; a API é uma função serverless exportada por `app.ts` |
+| Jobs agendados | Endpoints `/api/v1/internal/jobs/:name` protegidos por `CRON_SECRET`; Vercel Cron nos diários e agendador externo nos frequentes |
+| Tarefas depois da resposta | `await` no estorno; `waitUntil` no e-mail e na notificação |
+| Imagens | Passam pela API, uma por requisição, até 4 MB; a primeira vai com `POST /listings` e as demais com `POST /listings/:id/images` |
 | Estoque | Várias unidades por anúncio; **não reserva** no Pix; desconta atômico na confirmação; no WhatsApp, só quando o vendedor conclui |
 | Sem estoque na confirmação | Pedido cancelado e valor estornado |
 | Taxa e repasse | Taxa de R$ 0,00; conta única de teste e repasse simulado |
@@ -1686,7 +1747,7 @@ A coluna **Proposta** é o que este documento assume até o grupo decidir.
 | 1 | Primeiro acesso por Google: aceite dos Termos (RN-ACE-06) e dados que faltam (curso, WhatsApp) | Tela de "completar cadastro" após o 1º login. O Google é desejável, então só entra se houver tempo |
 | 2 | Canal da notificação ao vendedor (RN-NOT-01 e 02) | E-mail; sem tela de notificações no MVP |
 | 3 | Validade do JWT e renovação (RN-ACE-11 só diz "com validade") | 2 horas, sem refresh token |
-| 4 | ORM, gateway, storage e e-mail definitivos | Prisma, Mercado Pago, Cloudinary e Resend (ADRs 001 a 004) |
+| 4 | ORM, storage e e-mail definitivos (o gateway já está decidido: Mercado Pago, ADR-002) | Prisma, Cloudinary e Resend (ADRs 001, 003 e 004) |
 | 5 | RNF005 cita "NoSQL Injection" com banco PostgreSQL | Corrigir para SQL Injection |
 | 6 | O e-mail `@edu.unifor.br` está vinculado a uma conta Google? | Testar com um e-mail real antes de fechar o login com Google |
 | 7 | Exclusão de usuário pelo admin (RN-ADM-06): as regras só dizem "remove a conta e os anúncios" | Mesmo tratamento do RN-PER-06 (anonimização), mantendo os pedidos pagos |
@@ -1697,4 +1758,6 @@ A coluna **Proposta** é o que este documento assume até o grupo decidir.
 | 12 | Nomes no banco: as regras misturam português e inglês (`valor_total`, `id_pedido`, `last_seen`, `listing.quantity`) | Ana Clara define no documento de Banco de Dados |
 | 13 | O banco precisa de galeria de imagens, tokens, aceite dos Termos, pagamentos, log de auditoria e `last_seen`, que o DER atual não tem | Ana Clara incluir no documento de Banco de Dados |
 | 14 | Proteção do admin: não suspender nem excluir a si mesmo e manter ao menos um admin | Aplicar no service |
+| 15 | **Limite de imagem: 4 MB na API (limite da Vercel) contra 5 MB no RN-ANU-03, RN-PER-05 e RNF005.** O PDF do trabalho tem prioridade sobre as decisões do grupo | Confirmar com o professor se 4 MB é aceitável. Se não for, o frontend reduz a imagem (redimensiona ou comprime) antes de enviar, para aceitar arquivos de até 5 MB e subir menos de 4 MB, sem mudar a regra |
+| 16 | Armazenamento do rate limit (em memória por instância) | Aceitar a limitação no escopo acadêmico; Redis se virar problema |
 
