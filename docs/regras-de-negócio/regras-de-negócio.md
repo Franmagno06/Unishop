@@ -5,7 +5,7 @@ version: 0.3
 date: 2026-10-13
 status: rascunho para revisão da equipe
 owners: Francisco Magno (consolidação)
-context: docs/contexto-do-projeto.md
+context: README.md
 related: docs/frontend/frontend.md
 sources: requisitos RF001–RF024 e RNF001–RNF016 (PDF do trabalho), protótipos do Figma, decisões do grupo
 language: pt-BR
