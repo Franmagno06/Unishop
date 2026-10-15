@@ -25,8 +25,24 @@ As skills ficam em `.claude/skills/` (detalhes e análise de cobertura em [`docs
 | Rodar a aplicação local no navegador, screenshots, console, fluxos Playwright | `webapp-testing` |
 | Criar, testar ou melhorar skills do projeto | `skill-creator` |
 
+Fluxo sugerido por momento do trabalho (quando o código existir):
+
+| Momento | O que fazer |
+|---|---|
+| Antes de codar | Ler a regra em `docs/` e acionar `unishop-frontend` e/ou `unishop-backend` |
+| Banco | `supabase-postgres-best-practices` ao definir schema, migração e concorrência de estoque |
+| Ao escrever tela ou componente | `unishop-frontend` + `vercel-composition-patterns` (componentes de `shared/components/ui`) |
+| Depois de escrever a tela | `web-design-guidelines` (acessibilidade e UX), `vercel-react-best-practices` (performance) |
+| Verificar rodando | `webapp-testing` (screenshots, console, fluxo) |
+| Antes do PR | `/code-review` e, em mudança sensível (auth, pagamento, admin), `/security-review` |
+| Documentação mudou | Revisar a skill `unishop-*` correspondente |
+
+Enquanto o projeto estiver só em documentação, as skills `unishop-*` servem para revisar e manter a coerência dos documentos, não para gerar código.
+
 Regras de uso:
 
+- `web-design-guidelines` busca as regras online: precisa de internet.
+- `webapp-testing` precisa de Python e dos servidores de front e back rodando; o `scripts/with_server.py` executa via shell os comandos de servidor informados (risco médio), então confira o comando antes de rodar.
 - As skills `unishop-*` são resumos; a fonte de verdade são os documentos em `docs/`. Em conflito, vale o documento (e, acima dele, o PDF e as decisões do grupo).
 - Tarefa que cruza front e back (ex.: fluxo de pagamento): use `unishop-frontend` e `unishop-backend` juntas.
 - Mudou um documento técnico, uma rota ou uma decisão? Revise a skill `unishop-*` correspondente.
@@ -70,14 +86,17 @@ Sistema web onde alunos verificados (e-mail `@edu.unifor.br`) anunciam e compram
 
 | Camada | Tecnologia |
 |---|---|
-| Frontend | TypeScript + React, Tailwind CSS, HTML |
-| Backend | Node.js + Express |
+| Frontend | TypeScript + React, Vite, Tailwind CSS, React Router, TanStack Query, React Hook Form + Zod, HTML |
+| Testes (frontend) | Vitest, Testing Library, Playwright |
+| Backend | Node.js + Express, Prisma (ORM) |
 | Banco de dados | PostgreSQL |
 | Prototipação | Figma |
 | Versionamento | Git, código organizado em camadas |
 | Gestão | Trello (Kanban) |
 
-Sugestões ainda em avaliação (não confirmadas): Vite, React Router, TanStack Query, React Hook Form, Zod, Vitest/Testing Library/Playwright no frontend; estrutura em camadas (routes/controller/service/repository) + Prisma no backend; gateway de pagamento Mercado Pago; e-mail via Resend/Mailtrap; imagens via Cloudinary/Cloudflare R2; banco em nuvem Neon/Supabase; login social restrito ao Google no MVP.
+Decisões fechadas da stack: Vite, Tailwind CSS, Prisma, React Router, TanStack Query, React Hook Form, Zod e Vitest/Testing Library/Playwright, e estrutura do backend em camadas (routes/controller/service/repository). O projeto ainda não foi iniciado: a documentação está sendo completada, então não criar código nem estrutura de pastas até o grupo liberar.
+
+Sugestões ainda em avaliação (não confirmadas): gateway de pagamento Mercado Pago; e-mail via Resend/Mailtrap; imagens via Cloudinary/Cloudflare R2; banco em nuvem Neon/Supabase; login social restrito ao Google no MVP.
 
 ## Estrutura esperada do frontend
 
@@ -158,6 +177,8 @@ Ao mexer em banco/backend, atenção a estes gaps conhecidos entre o PDF/DER ori
 ## Estrutura de documentação
 
 ```
+README.md                                  # apresentação do projeto
+skills-lock.json                           # origem e hash das skills externas
 docs/
 ├─ frontend/frontend.md                    # estrutura, rotas, componentes, estado, qualidade
 ├─ regras-de-negócio/regras-de-negócio.md  # regras RN-XXX-nn, estados, permissões, testes
