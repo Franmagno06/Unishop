@@ -16,7 +16,7 @@
     {
       "id": 3,
       "prompt": "quero adicionar o Sentry no backend. o que preciso configurar e tem algum cuidado com os dados dos alunos?",
-      "expected_output": "Sentry é etapa depois do MVP (ADR-007); DSN é credencial de infraestrutura no inventário; não enviar e-mail, WhatsApp, Authorization nem corpo de /auth e /payments; só 5xx e exceções; plano gratuito tem 1 usuário (pendência 4); adicionar ao inventário e ao .env.example.",
+      "expected_output": "Sentry é etapa depois do MVP (ADR-007); DSN é credencial de infraestrutura no inventário; não enviar e-mail, WhatsApp, Authorization nem corpo de /auth e /payments; só 5xx e exceções; plano gratuito tem 1 usuário (veja a seção 10 do api.md); adicionar ao inventário e ao .env.example.",
       "files": []
     },
     {

@@ -1,0 +1,29 @@
+{
+  "skill_name": "unishop-rules",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "o aluno pagou o pix mas o vendedor pausou o anuncio antes do webhook chegar. o que acontece com o pedido e com o dinheiro?",
+      "expected_output": "RN-PAG-14: liquidação só conclui com anúncio ativo, vendedor com conta ativa e estoque; senão o pedido é cancelado e o valor estornado (mesmo caminho da RN-PAG-08); comprador avisado por e-mail (RN-NOT-03).",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "o comprador quer cancelar um pedido que ja esta pago. tem botao pra isso? e se o vendedor sumiu?",
+      "expected_output": "RN-PED-12: Pago e Retirada combinada não se cancelam pelo sistema no MVP; combinar por WhatsApp; pendência 2 das Regras (cancelamento com estorno entra depois). Não inventar rota nem botão.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "a tela de anunciar aceita ate 5MB por imagem porque o pdf do trabalho diz isso, certo? e quantas imagens pode?",
+      "expected_output": "Limite é 4 MB por imagem, de 1 a 5 imagens, desvio do PDF (RNF005 5 MB) registrado na seção 10 e confirmado pelo grupo em 16/10/2026; uma imagem por requisição; se o enunciado exigir 5 MB, o frontend comprime.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "preciso decidir se a confirmacao de email por link e a tela de notificacoes entram na primeira entrega",
+      "expected_output": "Seção 8: ambas ficam para depois do MVP (confirmação atrás da chave EMAIL_VERIFICATION_REQUIRED; notificação só por e-mail, sem tela). Login com Google entra no MVP; Apple fora.",
+      "files": []
+    }
+  ]
+}

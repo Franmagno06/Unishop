@@ -1,0 +1,29 @@
+{
+  "skill_name": "unishop-database",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "vou escrever o schema.prisma. posso deixar as tabelas em ingles (User, Listing, Order) e criar o banco a partir dele? e o status do pedido, uso enum em ingles tipo PAID?",
+      "expected_output": "Banco em português (usuario, anuncio, pedido...), backend em inglês com @map/@@map; valores de estado gravados em português (pago, em_negociacao) com enum do Prisma mapeado; ainda precisa da migração manual com CHECK, índices parciais e view (Prisma não gera); migração só pelo Prisma (0_init + manual), sem restaurar o dump antigo.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "o aluno pediu pra excluir o perfil. eu faço DELETE FROM usuario WHERE id_usuario = ? ou como fica por causa dos pedidos?",
+      "expected_output": "Não há DELETE físico: anonimiza a linha (nome 'Usuário removido', e-mail removido_<id>@removido.invalid, senha_hash/google_sub/whatsapp/curso/foto NULL, status_conta 'excluida'); anúncios com excluido_em; pedidos pendente e em_negociacao cancelados; tokens apagados; bloqueada com pedido pago ou retirada_combinada em aberto (409 HAS_OPEN_PAID_ORDERS); FKs são NO ACTION; backups antigos exigem reaplicar a anonimização.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "dois alunos pagaram o pix da ultima unidade quase juntos e o webhook chegou duas vezes pra um deles. como garanto no banco que nao desconta duas vezes nem fica negativo?",
+      "expected_output": "Transação única de liquidação: SELECT ... FOR UPDATE no pedido (se já pago, não faz nada), confere anuncio_visivel e estoque, UPDATE atômico com quantidade >= n, CHECK ck_anuncio_qtd, uq_pagamento_ativo; quem perde vira cancelado + pagamento estorno_pendente; e-mail e gateway fora da transação.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "o pagamento recusado do cartao, quando o aluno tenta de novo eu faco UPDATE na mesma linha do pagamento ou crio outra?",
+      "expected_output": "Cria outra linha (histórico de tentativas); uq_pagamento_ativo permite só uma pendente/aprovado por pedido; chave_idempotencia inclui o número da tentativa; sem UNIQUE em id_pedido.",
+      "files": []
+    }
+  ]
+}

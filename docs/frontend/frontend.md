@@ -1,20 +1,28 @@
 ---
 title: Documentação Técnica — Frontend
 project: Unishop
-version: 0.3
-date: 2026-10-13
-status: fechado pelo grupo em 15/10/2026
+version: 0.4
+date: 2026-10-16
+status: vigente; alinhado ao conjunto de documentos de 16/10/2026
 owners: Pedro Cândido (frontend e API), Francisco Magno (integração front-back)
 context: README.md
-related: docs/regras-de-negócio/regras-de-negócio.md, docs/backend/backend.md, docs/api/api.md, docs/deploy/deploy.md
+related: docs/regras-de-negocio/regras-de-negocio.md, docs/banco-de-dados/banco-de-dados.md, docs/backend/backend.md, docs/api/api.md, docs/deploy/deploy.md
+based_on: Regras de Negócio v0.4, Backend v0.3, API v0.3, Deploy v0.3
 language: pt-BR (código e pastas em inglês; interface em português)
 ---
 
 # Documentação Técnica — Frontend
 
-- Versão 0.3 · 13/10/2026
+- Versão 0.4 · 16/10/2026
 - Responsáveis: Pedro Cândido (frontend e API) · Francisco Magno (integração front-back)
-- Regras de negócio: ver "Documentação Técnica — Regras de Negócio" (docs/regras-de-negócio/regras-de-negócio.md)
+- Regras de negócio: ver "Documentação Técnica — Regras de Negócio" (docs/regras-de-negocio/regras-de-negocio.md)
+
+### Histórico de versões
+
+| Versão | Data | O que mudou |
+|---|---|---|
+| 0.3 | 13/10/2026 | Estrutura por área, rotas do protótipo, envio de uma imagem por requisição. |
+| 0.4 | 16/10/2026 | Alinhado às Regras v0.4, Backend v0.3 e API v0.3. **Telas e rotas que faltavam:** completar cadastro (Google), trocar senha, confirmar troca de e-mail, confirmar e-mail (atrás da chave), Termos e Privacidade, 404. **Sessão:** JWT em memória com cópia em `sessionStorage` e restauração por `GET /auth/me`. **Pedidos:** cancelar (comprador), encerrar negociação e concluir (vendedor), retirada combinada, pedido aberto reaproveitado. **Pagamento:** aviso de ambiente de demonstração (RN-PAG-15), Pix expirado vira pedido cancelado. **Erros:** conta suspensa, e-mail não confirmado, 429, 502, 413, `TERMS_NOT_ACCEPTED`, `HAS_OPEN_*`. Limite de imagem de **4 MB** confirmado pelo grupo. Tabela de regras no frontend ampliada. Caminhos de pasta sem acento. |
 
 ## 1. Objetivo
 
@@ -24,8 +32,8 @@ São três atores, e cada um tem uma **área** própria no código, com layout, 
 
 | Área | Ator | O que faz |
 |---|---|---|
-| `public` | Visitante | Vê a tela inicial, cria conta, entra e recupera a senha. |
-| `user` | Aluno logado | Navega nas categorias, compra, anuncia, acompanha pedidos e edita o perfil. |
+| `public` | Visitante | Vê a tela inicial, cria conta, entra (e-mail e senha ou Google) e recupera a senha. |
+| `user` | Aluno logado | Navega nas categorias, compra, anuncia, acompanha e cancela pedidos, e edita o perfil e a senha. |
 | `admin` | Administrador | Gerencia usuários e produtos no painel. |
 
 > O visitante só enxerga a tela inicial (inclusive o carrossel de anúncios recentes). Categorias, listagens e página do produto são telas internas, que exigem login (RF003.4, RF005.1).
@@ -43,6 +51,8 @@ São três atores, e cada um tem uma **área** própria no código, com layout, 
 | Dados do servidor | TanStack Query | Cache e atualização das listas |
 | Formulários e validação | React Hook Form + Zod | Validação dos campos |
 | Testes | Vitest, Testing Library, Playwright | Unidade, componente e fluxo completo |
+| Login Google | Google Identity Services (botão oficial) | Entrega o ID token que a API valida (`POST /auth/google`) |
+| Pagamento | SDK do Mercado Pago (chave pública de teste) | Gera o token do cartão no navegador |
 | Design | Figma | Protótipos de usuário e de admin |
 
 ## 3. Criando o projeto do zero
@@ -125,11 +135,11 @@ Variáveis de ambiente ficam em `.env` (copie de `.env.example`). No Vite, só a
 ```bash
 VITE_API_URL=http://localhost:3000/api/v1
 VITE_MP_PUBLIC_KEY=            # chave pública (de teste) do Mercado Pago, usada pelo SDK de pagamento
-VITE_GOOGLE_CLIENT_ID=         # Client ID do login com Google (desejável)
+VITE_GOOGLE_CLIENT_ID=         # Client ID do login com Google (MVP)
 VITE_TURNSTILE_SITE_KEY=       # site key do anti-bot (Turnstile); só depois do MVP
 ```
 
-Em **produção** (Vercel) o site e a API ficam em domínios diferentes, então o `VITE_API_URL` é o endereço completo da API, por exemplo `https://<api>.vercel.app/api/v1`. O Vite lê as variáveis `VITE_*` **na hora do build**: para trocá-las é preciso refazer o deploy do site. As quatro são públicas; nunca coloque segredo nelas (nada com "SECRET", "TOKEN" ou chave privada pode começar com `VITE_`; um teste varre o `dist/` depois do build, `docs/api/api.md`, seção 5.8). O guia completo está em [`docs/deploy/deploy.md`](../deploy/deploy.md).
+Em **produção** (Vercel) o site e a API ficam em domínios diferentes, então o `VITE_API_URL` é o endereço completo da API, por exemplo `https://<api>.vercel.app/api/v1`. O Vite lê as variáveis `VITE_*` **na hora do build**: para trocá-las é preciso refazer o deploy do site. As quatro são públicas (a `VITE_TURNSTILE_SITE_KEY` só entra depois do MVP); nunca coloque segredo nelas (nada com "SECRET", "TOKEN" ou chave privada pode começar com `VITE_`; um teste varre o `dist/` depois do build, `docs/api/api.md`, seção 5.8). O guia completo está em [`docs/deploy/deploy.md`](../deploy/deploy.md).
 
 ## 5. Estrutura de pastas
 
@@ -154,16 +164,18 @@ frontend/
    │  │  ├─ layout/        # PublicLayout, PublicHeader, Footer
    │  │  ├─ routes.tsx
    │  │  ├─ landing/       # LandingPage, Hero, Carousel, FAQ...
-   │  │  └─ auth/          # Login, Register, ForgotPassword, CheckEmail,
-   │  │                    # ResetPassword, ResetSuccess
+   │  │  ├─ auth/          # Login, Register, ForgotPassword, CheckEmail,
+   │  │  │                 # ResetPassword, ResetSuccess, VerifyEmail (com a chave ligada)
+   │  │  └─ legal/         # Terms, Privacy (textos definidos no desenvolvimento)
    │  ├─ user/             # ALUNO LOGADO
    │  │  ├─ layout/        # AppLayout, AppHeader
    │  │  ├─ routes.tsx
    │  │  ├─ categories/
    │  │  ├─ listings/      # listagem, produto, criar/editar, gerenciar
-   │  │  ├─ orders/        # Meus pedidos, MakeOrderModal
-   │  │  ├─ checkout/      # Pagamento, Pedido confirmado
-   │  │  └─ profile/       # Perfil, Editar perfil
+   │  │  ├─ orders/        # Meus pedidos, MakeOrderModal, cancelar pedido
+   │  │  ├─ checkout/      # Pagamento (cartão, Pix, aviso de demonstração), Pedido confirmado
+   │  │  ├─ onboarding/    # CompleteProfile (primeiro acesso por Google)
+   │  │  └─ profile/       # Perfil, Editar perfil, ChangePassword, ConfirmEmailChange
    │  └─ admin/            # ADMINISTRADOR
    │     ├─ layout/        # AdminLayout, AdminSidebar
    │     ├─ routes.tsx
@@ -173,7 +185,7 @@ frontend/
    │  ├─ components/ui/    # Button, Input, Modal, Badge, Card, Table, Pagination,
    │  │                    # ConfirmDialog, Toast, Skeleton, EmptyState
    │  ├─ hooks/            # useDebounce, usePagination, useCopyToClipboard
-   │  ├─ lib/              # api.ts (cliente HTTP), queryClient
+   │  ├─ lib/              # api.ts (cliente HTTP), queryClient, session.ts (token)
    │  ├─ utils/            # formatCurrency, formatDate, whatsappLink
    │  ├─ constants/        # rotas, categorias, status
    │  └─ types/
@@ -229,6 +241,7 @@ Código, pastas e arquivos em inglês; interface e documentos em português do B
 - Componente não chama a API direto: o caminho é componente → hook → `services/`.
 - Esquemas Zod ficam em `schemas/` e espelham as regras do backend.
 - Pull request só entra com lint e testes verdes e revisão de outro membro.
+- Mensagens de erro vêm do `code` da API (tabela da seção 12), nunca do texto técnico. Valores de dinheiro chegam em centavos e só são formatados na tela.
 
 ## 7. Rotas e telas
 
@@ -248,8 +261,12 @@ Cada área tem seu `routes.tsx`. A coluna RF liga a tela ao requisito.
 | `/recuperar-senha/enviado` | "Verifique seu e-mail" | RF004.3 |
 | `/redefinir-senha/:token` | Definir nova senha | RF004.4, RF004.5 |
 | `/senha-redefinida` | Confirmação | RF004.7 |
+| `/confirmar-email/:token` | Confirma o e-mail do cadastro. **Só existe com a chave `EMAIL_VERIFICATION_REQUIRED` ligada** (fora do MVP) | RF002.5, RN-ACE-07 |
+| `/termos` | Termos de uso (texto definido no desenvolvimento) | RN-ACE-06 |
+| `/privacidade` | Política de privacidade (idem) | RN-ACE-06, RNF007 |
+| `*` | Página não encontrada, com link para a tela inicial | — |
 
-Depois do login, o aluno vai para `/categorias` (RF003.4) e o admin para `/admin/usuarios`. As páginas de Termos de uso e Política de privacidade entram quando os textos forem definidos.
+O cadastro e o login mostram também o botão "Entrar com Google" (RN-ACE-14). Depois do login, o aluno vai para `/categorias` (RF003.4) e o admin para `/admin/usuarios`. O `/termos` e o `/privacidade` abrem sem login, para o aluno ler antes de aceitar.
 
 ### Área `user` (aluno logado, `PrivateRoute`)
 
@@ -261,10 +278,13 @@ Depois do login, o aluno vai para `/categorias` (RF003.4) e o admin para `/admin
 | `/pagamento/:pedidoId` | Pagamento por cartão ou Pix | RF010 |
 | `/pedido-confirmado/:pedidoId` | Confirmação do pedido | RF011 |
 | `/perfil` | Perfil e "Meus anúncios" | RF012 |
-| `/perfil/editar` | Editar perfil e excluir perfil | RF013 |
-| `/meus-pedidos` | Histórico de compras | RF014 |
+| `/completar-cadastro` | Primeiro acesso por Google: aceite dos Termos e, se quiser, curso e WhatsApp. Todas as outras rotas privadas levam para cá enquanto o aceite não for gravado | RN-ACE-06, RN-ACE-14 |
+| `/perfil/editar` | Editar nome, curso, WhatsApp, foto e e-mail (pede confirmação por link) e excluir perfil | RF013, RN-PER-02 |
+| `/perfil/senha` | Trocar a senha logado (senha atual e nova) | RN-ACE-15 |
+| `/confirmar-troca-email/:token` | Confirma a troca de e-mail pelo link recebido | RN-PER-02 |
+| `/meus-pedidos` | Histórico de compras, com "Cancelar pedido" (Pendente ou Em negociação) e "Confirmar recebimento" (Retirada combinada) | RF014, RN-PED-08, RN-PED-12 |
 | `/anunciar` | Criar anúncio | RF015, RF016 |
-| `/anuncios/:id/gerenciar` | Gerenciar anúncio (status, pedidos recebidos, indicadores) | RF017 |
+| `/anuncios/:id/gerenciar` | Gerenciar anúncio (status, indicadores, pedidos recebidos com "Combinar retirada", "Concluir venda" e "Encerrar negociação") | RF017, RN-PED-08, RN-PED-12 |
 | `/anuncios/:id/editar` | Editar anúncio (mesmo formulário da criação) | RF015.7, RF017.6 |
 
 ### Área `admin` (`AdminRoute`)
@@ -284,8 +304,11 @@ Depois do login, o aluno vai para `/categorias` (RF003.4) e o admin para `/admin
 
 ```text
 Início ▶ Criar conta (aceite dos Termos) ▶ confirmação de e-mail ▶ Login ▶ Categorias
-Login com Google (MVP) ▶ servidor confere @edu.unifor.br ▶ Categorias
+Login com Google (MVP) ▶ servidor confere @edu.unifor.br ▶ 1º acesso: "Completar cadastro" (aceite dos Termos) ▶ Categorias
+                                                           ▶ já cadastrado: Categorias
 ```
+
+Com a confirmação de e-mail desligada (padrão do MVP), o cadastro por e-mail e senha cai direto no login; a etapa "confirmação de e-mail" só aparece com a chave ligada (RN-ACE-07). Quem entrou por Google define senha, se quiser, pela recuperação de senha (RN-ACE-15).
 
 ### Compra
 
@@ -297,12 +320,19 @@ Categorias ▶ Anúncios da categoria ▶ Página do produto ▶ "Fazer pedido" 
 
 No pop-up o aluno escolhe a **quantidade** (limitada ao estoque). Pelo pagamento, o pedido nasce como pendente e vira "Pago" quando o gateway confirma. Pelo WhatsApp, o pedido nasce como "Em negociação".
 
+- **Pedido aberto é reaproveitado.** Se o aluno já tem um pedido Pendente ou Em negociação nesse anúncio e forma de negociação, o novo clique devolve o mesmo pedido (com a quantidade atualizada), e o frontend segue com ele em vez de mostrar erro (RN-PED-10).
+- **Pendente expira em 30 minutos** (RN-PAG-12). Na tela de pagamento, o contador mostra o tempo restante.
+- **Pix expirado:** a tela mostra "Pedido cancelado" e o botão "Fazer novo pedido". O mesmo código Pix não é reaproveitado (o pedido já foi cancelado).
+- **Cancelar:** o comprador cancela pedido Pendente ou Em negociação em "Meus pedidos", com confirmação. Pedido Pago ou em Retirada combinada não tem botão de cancelar: a tela orienta combinar com o vendedor pelo WhatsApp (RN-PED-12).
+- **Retirada:** o vendedor marca "Retirada combinada" no pedido pago; o comprador confirma o recebimento e o pedido conclui (RN-PED-08).
+- **Aviso de demonstração:** a tela de pagamento e o rodapé mostram que o ambiente é de demonstração e que nenhum valor é cobrado de verdade (RN-PAG-15).
+
 ### Venda
 
 ```text
 Anunciar item ▶ "Anúncio publicado!" ▶ Perfil (Meus anúncios) ▶ Gerenciar anúncio
    ▶ Editar / Pausar / Reativar / Marcar como vendido / Excluir
-   ▶ Pedidos recebidos ▶ WhatsApp do comprador
+   ▶ Pedidos recebidos ▶ WhatsApp do comprador ▶ Combinar retirada (pago) · Concluir venda (negociação) · Encerrar negociação
 ```
 
 ### Administração
@@ -310,6 +340,8 @@ Anunciar item ▶ "Anúncio publicado!" ▶ Perfil (Meus anúncios) ▶ Gerencia
 ```text
 Login ▶ Usuários (buscar, ver, editar, suspender, excluir)
       └▶ Produtos (buscar, filtrar, ver, editar, mudar status, excluir)
+
+O admin não suspende nem exclui a própria conta, e o último admin não é removido (RN-ADM-12): o frontend esconde essas ações para a própria conta e mostra a mensagem da API (`ADMIN_PROTECTED`) se mesmo assim for recusada. O histórico de auditoria (`/admin/audit-logs`) não tem tela no MVP.
 ```
 
 ## 9. Componentes
@@ -330,12 +362,14 @@ Login ▶ Usuários (buscar, ver, editar, suspender, excluir)
 | Área | Telas | Componentes principais |
 |---|---|---|
 | `public/landing` | LandingPage | HeroSection, RecentListingsCarousel, HowItWorks, CategoriesShowcase, FaqAccordion, SecuritySection |
-| `public/auth` | Login, Register, ForgotPassword, CheckEmail, ResetPassword, ResetSuccess | LoginForm, RegisterForm, SocialAuthButtons (Google), PasswordRequirements |
+| `public/auth` | Login, Register, ForgotPassword, CheckEmail, ResetPassword, ResetSuccess, VerifyEmail | LoginForm, RegisterForm, SocialAuthButtons (Google), PasswordRequirements |
+| `public/legal` | TermsPage, PrivacyPage | LegalDocument |
+| `user/onboarding` | CompleteProfilePage | CompleteProfileForm (aceite dos Termos, curso, WhatsApp) |
 | `user/categories` | CategoriesPage | CategoryCard, CategorySearch |
-| `user/listings` | CategoryListingsPage, ProductPage, CreateEditListingPage, ManageListingPage | ListingCard, ListingGrid, ListingFilters, ImageGallery, SellerCard, ListingForm, ImageUploader, ListingStatusBadge, ListingStatsCards, ReceivedOrdersList, PublishedListingModal, MarkAsSoldModal, DeleteListingModal |
-| `user/orders` | MyOrdersPage | OrderCard, OrderStatusBadge, MakeOrderModal |
-| `user/checkout` | PaymentPage, OrderConfirmedPage | PaymentMethodTabs, CardPaymentForm, PixPayment (QR, copia e cola, contador), OrderSummary |
-| `user/profile` | ProfilePage, EditProfilePage | ProfileHeader, MyListingsList, AvatarUploader, DeleteAccountModal (digitar "EXCLUIR") |
+| `user/listings` | CategoryListingsPage, ProductPage, CreateEditListingPage, ManageListingPage | ListingCard, ListingGrid, ListingFilters, ImageGallery, SellerCard, ListingForm, ImageUploader, ListingStatusBadge, ListingStatsCards, ReceivedOrdersList (ações do vendedor), PublishedListingModal, MarkAsSoldModal, DeleteListingModal |
+| `user/orders` | MyOrdersPage | OrderCard, OrderStatusBadge, MakeOrderModal, CancelOrderDialog, ConfirmReceiptDialog |
+| `user/checkout` | PaymentPage, OrderConfirmedPage | PaymentMethodTabs, CardPaymentForm, PixPayment (QR, copia e cola, contador), OrderSummary, DemoEnvironmentNotice |
+| `user/profile` | ProfilePage, EditProfilePage, ChangePasswordPage, ConfirmEmailChangePage | ProfileHeader, MyListingsList, AvatarUploader, ChangePasswordForm, ChangeEmailForm, DeleteAccountModal (digitar "EXCLUIR") |
 | `admin/users` | AdminUsersPage, AdminUserDetailPage, AdminUserEditPage | UsersTable, StatsCards, UserForm, DeleteUserModal, SavedChangesModal |
 | `admin/products` | AdminProductsPage, AdminProductDetailPage, AdminProductEditPage | ProductsTable, StatsCards, ProductForm, SellerSearchSelect, DeleteProductModal, SavedChangesModal |
 
@@ -343,15 +377,17 @@ Login ▶ Usuários (buscar, ver, editar, suspender, excluir)
 
 | Layout | Navegação |
 |---|---|
-| `PublicLayout` | Logo, Início, Categorias e Segurança (rolam a página), Entrar, Criar conta; rodapé com suporte, Termos e Privacidade |
-| `AppLayout` | Logo, Início, Categorias, Meus anúncios, "+ Anunciar item" e avatar com as iniciais, que leva ao perfil |
+| `PublicLayout` | Logo, Início, Categorias e Segurança (rolam a página), Entrar, Criar conta; rodapé com suporte, Termos, Privacidade e o aviso de ambiente de demonstração |
+| `AppLayout` | Logo, Início, Categorias, Meus anúncios, "+ Anunciar item" e avatar com as iniciais, que leva ao perfil (com "Trocar senha" e "Sair"); rodapé com o aviso de demonstração |
 | `AdminLayout` | Menu lateral com "Painel admin", Usuários, Produtos, nome e e-mail do admin e "Sair" |
 
 A tela de criar e a de editar anúncio usam o mesmo formulário, em dois modos (RF015.7).
 
 ## 10. Dados e estado
 
-- **Sessão:** o login devolve um JWT, enviado em todas as chamadas no cabeçalho `Authorization: Bearer <jwt>`. O `api.ts` aplica o token e, se a API responder 401, encerra a sessão e leva ao login. Como o token fica acessível ao JavaScript, o risco de XSS é tratado com as regras da seção 14.
+- **Sessão:** o login devolve um JWT (validade de 2 horas, sem renovação, RN-ACE-11), enviado em todas as chamadas no cabeçalho `Authorization: Bearer <jwt>`. O token fica **em memória** (módulo `session.ts`) e, para sobreviver ao F5, numa **cópia em `sessionStorage`**, que some ao fechar a aba. Ao abrir o app com um token guardado, o `AuthProvider` chama `GET /auth/me`: se responder 200, restaura a sessão; se responder 401, apaga o token e leva ao login. Nunca use `localStorage` para o token. O `api.ts` aplica o token e, se a API responder 401 em qualquer chamada, encerra a sessão e leva ao login, guardando o destino. Como o token fica acessível ao JavaScript, o risco de XSS é tratado com as regras da seção 14. Não há refresh token nem "sair" no servidor: "Sair" apaga o token no navegador.
+- **Troca de senha:** `POST /users/me/password` devolve um **token novo**; o frontend substitui o antigo na hora, senão o token antigo (emitido antes da troca) seria recusado (401). A tela só pede a senha atual e a nova.
+- **Primeiro acesso por Google:** enquanto o aceite dos Termos não é gravado, a API responde 403 `TERMS_NOT_ACCEPTED` nas rotas privadas. O `PrivateRoute` consulta o `GET /auth/me` e, se o aceite estiver pendente, leva para `/completar-cadastro`; só depois o aluno segue para `/categorias`.
 - **Guards:** `GuestRoute` (quem já está logado sai de login e cadastro), `PrivateRoute` (aluno) e `AdminRoute` (admin). Sem sessão, vai ao login guardando o destino; sem permissão, mostra "acesso negado".
 - **Dados do servidor:** TanStack Query, com uma chave por recurso (anúncios, anúncio, pedidos). Depois de criar, editar ou pagar, as chaves afetadas são atualizadas.
 - **Estado de tela:** só o que pertence à tela (modal aberto, aba ativa). Sem store global.
@@ -369,18 +405,19 @@ A tela de criar e a de editar anúncio usam o mesmo formulário, em dois modos (
 
 | Grupo | Base | Acesso |
 |---|---|---|
-| Auth | `/auth` | Público |
-| Usuários | `/users` | Autenticado |
+| Auth | `/auth` | Público (`GET /auth/me` exige login) |
+| Usuários | `/users` | Autenticado (inclui `POST /users/me/password` e `POST /users/me/complete-profile`) |
 | Categorias | `/categories` | Autenticado |
 | Anúncios | `/listings` | Leitura autenticada (o carrossel da home é público) |
 | Pedidos | `/orders` | Autenticado |
 | Pagamentos | `/payments` | Autenticado; `/payments/webhook` é chamado só pelo gateway |
 | Admin | `/admin/users`, `/admin/listings`, `/admin/audit-logs` | Só admin |
 
-- **Login com Google:** o frontend inicia o fluxo e o backend valida o domínio `@edu.unifor.br` e se o e-mail é verificado. O botão do Apple fica fora do MVP.
-- **Pagamento:** cartão vira token no navegador pelo SDK do gateway; o backend só recebe o token (RNF006). A confirmação do Pix vem pelo webhook, e a tela consulta o status do pedido.
+- **Login com Google (MVP):** o botão oficial do Google devolve um ID token; o frontend o envia para `POST /auth/google`, e o backend valida o domínio `@edu.unifor.br` e se o e-mail é verificado. Domínio errado volta como `EMAIL_DOMAIN_NOT_ALLOWED`. O botão do Apple fica fora do MVP.
+- **Pagamento:** cartão vira token no navegador pelo SDK do gateway; o backend só recebe o token (RNF006). A confirmação do Pix vem pelo webhook, e a tela consulta o status do pedido (`GET /orders/:id`); o "pago" mostrado vem **sempre** do pedido na API, nunca do retorno do SDK (RN-PAG-11). Com credenciais de teste, a tela avisa que é demonstração (RN-PAG-15).
+- **Cancelamento e ações do pedido:** `POST /orders/:id/cancel` (comprador ou vendedor), `/arrange-pickup`, `/confirm-receipt` e `/complete`. Concluir uma negociação sem estoque responde 409 e o pedido continua "Em negociação" (RN-PED-13): mostre a mensagem e mantenha o botão.
 - **WhatsApp:** link `https://wa.me/55<número>?text=<mensagem>`, montado por `whatsappLink`. Antes de abrir o link, o frontend chama o backend para registrar o contato.
-- **Imagens (uma por requisição):** na Vercel, cada requisição aceita no máximo 4,5 MB no total. Por isso o `ImageUploader` envia **uma imagem por chamada**, de até **4 MB** (pendência 15 do Backend: a regra fala em 5 MB). No anúncio, o frontend publica com a primeira imagem (`POST /listings`) e acrescenta as demais, em sequência, com `POST /listings/:id/images`; mostra o progresso (ex.: "2 de 4") e, se uma falhar, deixa o aluno tentar de novo sem perder o anúncio. A foto de perfil usa `PUT /users/me/avatar`. **Confira o tamanho antes de enviar**: um arquivo acima de 4,5 MB é barrado pela própria Vercel com um erro genérico (413), sem a mensagem do Unishop.
+- **Imagens (uma por requisição):** na Vercel, cada requisição aceita no máximo 4,5 MB no total. Por isso o `ImageUploader` envia **uma imagem por chamada**, de até **4 MB** (limite confirmado pelo grupo em 16/10/2026, nas Regras v0.4). No anúncio, o frontend publica com a primeira imagem (`POST /listings`) e acrescenta as demais, em sequência, com `POST /listings/:id/images`; mostra o progresso (ex.: "2 de 4") e, se uma falhar, deixa o aluno tentar de novo sem perder o anúncio. O anúncio tem no máximo **5 imagens**; o seletor bloqueia a sexta. A foto de perfil usa `PUT /users/me/avatar` (JPG ou PNG, até 4 MB). **Confira o tamanho antes de enviar**: um arquivo acima de 4,5 MB é barrado pela própria Vercel com um erro genérico (413), sem a mensagem do Unishop.
 - **Erro 413 da Vercel:** trate também o 413 como "imagem grande demais", para o aluno ver a mesma mensagem de `FILE_TOO_LARGE`.
 
 ## 12. Estados obrigatórios de cada tela
@@ -391,13 +428,28 @@ O protótipo mostra só o caminho feliz. Toda tela que busca dados trata os esta
 |---|---|
 | Carregando | Esqueleto no lugar do conteúdo; botões de ação desabilitados |
 | Vazio | Mensagem e próxima ação ("Nenhum anúncio encontrado — limpar filtros") |
-| Erro de rede ou servidor | Mensagem clara e botão "Tentar de novo", sem detalhe técnico |
+| Erro de rede ou servidor (500, 502, 503) | Mensagem clara e botão "Tentar de novo", sem detalhe técnico |
+| Muitas tentativas (429 `TOO_MANY_REQUESTS`) | "Muitas tentativas. Tente de novo em instantes", respeitando o `retryAfter` |
+| Conta bloqueada por tentativas (429 `ACCOUNT_LOCKED`) | "Conta bloqueada por 15 minutos" com o tempo restante |
+| Credenciais inválidas (401 `INVALID_CREDENTIALS`) | Mensagem única, sem dizer se o e-mail existe |
+| Conta suspensa (403 `ACCOUNT_SUSPENDED`) | "Sua conta está suspensa. Fale com o suporte" |
+| E-mail não confirmado (403 `EMAIL_NOT_VERIFIED`) | Aviso e "Reenviar e-mail" (só com a chave ligada) |
+| Domínio recusado (`EMAIL_DOMAIN_NOT_ALLOWED`) | "Use seu e-mail @edu.unifor.br" |
+| Aceite pendente (403 `TERMS_NOT_ACCEPTED`) | Leva à tela "Completar cadastro" |
 | Sem permissão (403) | Tela "Acesso negado" com link de volta |
 | Não encontrado (404) | Anúncio inexistente, excluído ou pausado: tela amigável |
-| Sessão expirada | Aviso e volta ao login, guardando o destino |
-| Pix expirado | Aviso e opção de gerar novo código |
+| Sessão expirada (401) | Aviso e volta ao login, guardando o destino |
+| Pix expirado | "Pedido cancelado" e botão "Fazer novo pedido" |
 | Pagamento recusado | Mensagem de erro e nova tentativa (RF010.8) |
 | Sem estoque | Marcado como indisponível; pedido bloqueado |
+| Anúncio indisponível (`LISTING_UNAVAILABLE`) | "Este anúncio não está mais disponível" e volta à lista |
+| Próprio anúncio (`OWN_LISTING`) | Esconde "Fazer pedido" no próprio anúncio (RN-ANU-10) |
+| Imagem grande demais (413 ou `FILE_TOO_LARGE`) | "A imagem passa de 4 MB" |
+| Imagem de tipo inválido | "Use JPG ou PNG" |
+| Exclusão bloqueada (409 `HAS_OPEN_PAID_ORDERS`) | Explica que há pedido pago ou em retirada combinada em aberto |
+| Troca de vendedor ou anúncio com pedido aberto (409 `HAS_OPEN_ORDERS`) | Mostra a mensagem da API |
+| Senha atual errada (`CURRENT_PASSWORD_INVALID`) | Erro no campo "senha atual" |
+| Ação sobre admin (`ADMIN_PROTECTED`) | Mensagem da API; botão oculto na própria conta |
 
 ## 13. O que fica no frontend e o que só no backend
 
@@ -407,7 +459,16 @@ O protótipo mostra só o caminho feliz. Toda tela que busca dados trata os esta
 | Senha forte e confirmação | Valida e avisa | Valida e recusa |
 | Aceite dos Termos no cadastro | Exige a marcação | Registra o aceite |
 | Bloqueio após 5 tentativas | Mostra a mensagem | Conta e bloqueia |
-| Imagem JPG/PNG (4 MB por imagem na API; a regra diz 5 MB, pendência 15 do Backend) | Valida tipo e tamanho antes de enviar, uma imagem por requisição | Valida de novo |
+| Imagem JPG/PNG de até 4 MB, no máximo 5 por anúncio (RN-ANU-03, RN-PER-05) | Valida tipo, tamanho e quantidade antes de enviar, uma imagem por requisição | Valida de novo |
+| WhatsApp com 10 ou 11 dígitos, com DDD (RN-PER-07) | Máscara e validação | Guarda só os dígitos |
+| Limites de campos e itens proibidos (Regras, seção 9; RN-ANU-12) | Limita a digitação e mostra o contador | Valida e recusa; o admin remove o proibido |
+| Um pedido aberto por anúncio e forma (RN-PED-10) | Segue com o pedido devolvido | Reaproveita o pedido |
+| Cancelar pedido (RN-PED-12) | Mostra o botão só nos status permitidos | Autoriza e valida o status |
+| Pendente expira em 30 minutos (RN-PAG-12) | Mostra o contador | Cancela (job e sob demanda) |
+| Aviso de ambiente de demonstração (RN-PAG-15) | Mostra na tela de pagamento e no rodapé | — |
+| Excluir perfil: digitar "EXCLUIR" (RN-PER-06) | Exige o texto | Anonimiza; recusa com pedido pago em aberto |
+| Trocar senha (RN-ACE-15) | Valida a nova senha e a confirmação | Confere a senha atual e devolve um token novo |
+| Login só com @edu.unifor.br (Google, RN-ACE-14) | Mostra o botão | Valida o domínio e o e-mail verificado |
 | Quantidade menor ou igual ao estoque | Limita o seletor | Desconta no banco, de forma atômica |
 | Confirmação de pagamento | Só exibe o status | Recebe o webhook do gateway |
 | Admin ou dono do anúncio | Esconde botões e guarda rotas | Autoriza cada chamada |
@@ -439,13 +500,14 @@ O protótipo mostra só o caminho feliz. Toda tela que busca dados trata os esta
 - Nenhum segredo no código do frontend; só variáveis `VITE_*` públicas.
 - WhatsApp só é exibido a usuários logados.
 - Ações irreversíveis sempre pedem confirmação em modal (RNF014).
+- O token de sessão nunca vai para `localStorage`, para a URL nem para logs do console; só memória e `sessionStorage`.
 - Links externos com `rel="noopener noreferrer"`; todo o tráfego em HTTPS.
 
 ## 15. Testes e Definição de Pronto
 
 - **Unitários:** validações (Zod), formatadores de preço e data, `whatsappLink`.
 - **Componentes:** formulários, cards, modais, selos de status, guards.
-- **Fluxo completo (Playwright):** cadastro e login; compra com Pix; contato por WhatsApp; criar e pausar anúncio; acesso negado a rota admin.
+- **Fluxo completo (Playwright):** cadastro e login; login com Google (com o Google simulado) e "completar cadastro"; compra com Pix; Pix expirado; contato por WhatsApp; cancelar pedido; criar e pausar anúncio; envio de imagem acima de 4 MB; troca de senha; F5 mantém a sessão; acesso negado a rota admin.
 
 ### Uma tela está pronta quando
 
@@ -462,10 +524,13 @@ O protótipo mostra só o caminho feliz. Toda tela que busca dados trata os esta
 |---|---|
 | Acesso ao catálogo | Só logado; o visitante vê a tela inicial |
 | Estrutura | Por área (`public`, `user`, `admin`) mais `shared/` |
-| Sessão | JWT no cabeçalho `Authorization: Bearer` |
-| Login social | Só Google no MVP; Apple fica fora (custo e e-mail de retransmissão) |
+| Sessão | JWT no cabeçalho `Authorization: Bearer`, guardado em memória com cópia em `sessionStorage` e restaurado por `GET /auth/me` |
+| Login | E-mail e senha, e Google (`@edu.unifor.br`) no MVP; Apple fora (custo e e-mail de retransmissão) |
+| Imagens | JPG ou PNG, até 4 MB cada (confirmado pelo grupo em 16/10/2026), até 5 por anúncio, uma por requisição |
+| Ambiente de pagamento | Produção com credenciais de teste; aviso de demonstração na tela (RN-PAG-15) |
+| Notificações | Só por e-mail; sem tela de notificações no MVP (RN-NOT-04) |
 | Login do admin | Mesma tela, rota `/admin/login`, destino no painel admin |
 | Tela inicial | Aberta a todos; `GuestRoute` só em login, cadastro e recuperação |
 | Gateway | Externo: Mercado Pago (decisão do grupo) |
 | Quantidade | Anúncio com várias unidades; escolhida no pop-up "Fazer pedido" |
-| Termos e Privacidade | Textos definidos durante o desenvolvimento |
+| Termos e Privacidade | Páginas `/termos` e `/privacidade`; textos definidos durante o desenvolvimento |

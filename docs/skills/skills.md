@@ -1,12 +1,19 @@
 ---
 title: Documentação — Skills do Claude Code
 project: Unishop
-version: 0.3
-date: 2026-10-15
+version: 0.4
+date: 2026-10-16
 status: rascunho para revisão da equipe
 context: CLAUDE.md
-related: docs/frontend/frontend.md, docs/backend/backend.md, docs/api/api.md, docs/deploy/deploy.md
+related: docs/regras-de-negócio/regras-de-negócio.md, docs/BancoDeDados/bd.md, docs/frontend/frontend.md, docs/backend/backend.md, docs/api/api.md, docs/deploy/deploy.md
 ---
+
+### Histórico de versões
+
+| Versão | Data | O que mudou |
+|---|---|---|
+| 0.3 | 15/10/2026 | Skills `unishop-api` e `unishop-deploy`, análise de cobertura e skills externas de deploy, banco e e-mail. |
+| 0.4 | 16/10/2026 | Revisão das quatro skills `unishop-*` contra o conjunto de documentos de 16/10 (Regras v0.4, Banco v0.2, Backend v0.3, Frontend v0.4, API v0.3, Deploy v0.3). Duas skills novas: `unishop-database` e `unishop-rules`. Quadro "Quando usar em cada etapa do projeto" (seção 7). Análise de cobertura atualizada. |
 
 # Skills do Claude Code
 
@@ -39,6 +46,8 @@ Todas ficam em `.claude/skills/`, cada uma com seu conteúdo real (sem symlinks 
 | `unishop-backend` | Própria | Regras do backend: camadas, autenticação, pagamentos, estoque, pedidos, admin, erros | Qualquer rota, service, repository, middleware, job ou provider da API |
 | `unishop-api` | Própria | APIs externas e segurança: backend-cofre, providers, Mercado Pago, webhook assinado, segredos, variáveis, travas de produção, ADRs | Integrar ou revisar Google, Mercado Pago, Resend, Cloudinary, Turnstile; mexer em `env.ts`, chaves ou webhook |
 | `unishop-deploy` | Própria | Deploy na Vercel + Neon: ambientes, `APP_ENV`, `vercel.json`, jobs por endpoint, `waitUntil`, backup, rollback, limites do Hobby | Publicar, configurar variáveis, domínio, cron, migração em produção, backup |
+| `unishop-database` | Própria | Banco: as 8 tabelas em português, `@map` do Prisma, constraints, migração `0_init` + manual, seed, papéis, estoque atômico, liquidação, anonimização | Schema, migração, repository, consulta SQL, seed, exclusão ou anonimização de dados |
+| `unishop-rules` | Própria | Regras de negócio: índice das RN-XXX-nn, ciclo de vida, permissões, escopo do MVP, limites de campos, desvios do PDF | Dúvida de "pode ou não pode", critério de aceite, teste de regra, conflito entre documentos |
 | `vercel-cli-with-tokens` | Vercel | Operar o Vercel CLI com token de acesso (variáveis, logs, deploy) | `vercel env`, `vercel logs`, deploy pelo CLI; sempre sob as regras da `unishop-deploy` |
 | `neon-postgres` | Neon | Conexões pooled × direta, migrações, branching, restauração, IP allow list no Neon | Trabalhar com a `DATABASE_URL` e o banco de produção |
 | `neon-postgres-branches` | Neon | Escolher e criar o tipo certo de branch (teste de migração, dados sensíveis, reset) | Branch por preview, teste de migração com dados reais, CI |
@@ -51,9 +60,9 @@ Todas ficam em `.claude/skills/`, cada uma com seu conteúdo real (sem symlinks 
 | `webapp-testing` | Anthropic | Testar a aplicação local com Playwright (Python): screenshots, logs do console, fluxos | Verificar telas rodando e depurar a interface |
 | `skill-creator` | Anthropic | Criar, testar e melhorar skills; otimizar a descrição de acionamento | Criar ou refinar skills do Unishop |
 
-### 3.1 `unishop-frontend`, `unishop-backend`, `unishop-api` e `unishop-deploy` (próprias)
+### 3.1 `unishop-frontend`, `unishop-backend`, `unishop-api`, `unishop-deploy`, `unishop-database` e `unishop-rules` (próprias)
 
-Resumos operacionais, escritos para o Unishop, dos documentos [frontend](../frontend/frontend.md), [backend](../backend/backend.md), [API](../api/api.md) e [deploy](../deploy/deploy.md). A `unishop-api` e a `unishop-deploy` foram criadas com a `skill-creator` em 15/10/2026 e trazem casos de teste em `evals/evals.json` (ainda não executados: a máquina não tem Python, que os scripts de avaliação exigem). Cada uma lista as regras que nunca podem ser violadas, as convenções, os estados e o critério de "pronto", e aponta para a doc completa, que é a fonte de verdade. Também dizem quais outras skills combinar. Não entram no `skills-lock.json`: são mantidas à mão, junto com o código.
+Resumos operacionais, escritos para o Unishop, dos documentos [frontend](../frontend/frontend.md) (v0.4), [backend](../backend/backend.md) (v0.3), [API](../api/api.md) (v0.3), [deploy](../deploy/deploy.md) (v0.3), [banco de dados](../BancoDeDados/bd.md) (v0.2) e [regras de negócio](../regras-de-negócio/regras-de-negócio.md) (v0.4). Em 16/10/2026 as quatro primeiras foram revisadas contra o conjunto atualizado (4 MB confirmado, Google no MVP, jobs de 30 minutos, três papéis de banco, estados em português, liquidação com anúncio ativo, exclusão lógica) e as duas últimas foram criadas com a `skill-creator`. Todas trazem casos de teste em `evals/evals.json` (ainda não executados: a máquina não tem Python, que os scripts de avaliação e o visualizador exigem). Cada uma lista as regras que nunca podem ser violadas, as convenções, os estados e o critério de "pronto", e aponta para a doc completa, que é a fonte de verdade. Também dizem quais outras skills combinar. Não entram no `skills-lock.json`: são mantidas à mão, junto com o código.
 
 Regra de manutenção: se um documento técnico mudar (rota, regra, decisão), a skill correspondente precisa ser revisada.
 
@@ -110,12 +119,15 @@ Guia o ciclo de criar uma skill: rascunhar, escrever casos de teste, rodar com e
 | Mercado Pago (cartão, Pix, webhook) | `unishop-api` | Coberta pelo doc do projeto; não há skill oficial do Mercado Pago |
 | Cloudinary (imagens) | `unishop-api` | Coberta pelo doc do projeto; a skill oficial da Cloudinary não foi instalada |
 | Contrato da API própria (`openapi.yaml`) | — | Lacuna: o `openapi.yaml` ainda não existe |
-| Modelo de dados do projeto (DER/tabelas) | — | Lacuna: `docs/banco-de-dados/` ainda não foi publicada |
+| Modelo de dados do projeto (tabelas, migração, papéis, anonimização) | `unishop-database` + `supabase-postgres-best-practices` | Coberta (`docs/BancoDeDados/bd.md` v0.2) |
+| Regras de negócio, escopo do MVP, limites de campos, desvios do PDF | `unishop-rules` | Coberta (`docs/regras-de-negócio/` v0.4) |
 | Revisão de código e segurança | Comandos nativos `/code-review` e `/security-review` | Coberta pelo Claude Code |
 
 **Não instaladas de propósito:** `deploy-to-vercel` (foi instalada, revisada e **removida**: o plano B dela envia o projeto inteiro, sem login, a um endpoint da Vercel e vem com um `Archive.zip` solto; o Unishop publica por `git push`); `vercel-optimize` (foco em Next.js e em projetos já no ar; reavaliar depois do deploy); `neon`, `neon-auth`, `neon-functions`, `neon-object-storage`, `neon-ai-gateway`, `neon-realtime` e `neon-postgres-egress-optimizer` (empurram recursos do Neon que o projeto não usa); `react-email` e `agent-email-inbox` (fora da stack de e-mail); `cloudinary-docs` (oficial, mas busca documentação em tempo de execução e a auditoria do `skills.sh` a marca como risco médio; a `unishop-api` cobre o uso do Unishop); skills do Mercado Pago (só existem as da comunidade, nenhuma oficial); `supabase` (o banco em nuvem é o Neon, não o Supabase); `vercel-react-native-skills` (o produto é web); `vercel-react-view-transitions` (animações de rota não são requisito); `frontend-design` (o projeto segue fielmente o Figma, e a skill incentiva criar estilos novos); `writing-guidelines` (a documentação é em português do Brasil); `docx`, `pdf`, `pptx`, `xlsx` e demais skills de documentos (fora do escopo do código).
 
-**Próximos passos sugeridos:** (1) quando o documento de banco de dados for publicado, criar `unishop-database` com a `skill-creator`; (2) quando o `openapi.yaml` existir, acrescentar o contrato à `unishop-backend` e à `unishop-api`; (3) instalar Python e rodar os casos de `evals/evals.json` das skills `unishop-api` e `unishop-deploy` e, depois, a otimização da descrição de acionamento.
+**Skills avaliadas e não criadas (16/10/2026):** *testes* (as estratégias de teste já estão em Backend §19, Frontend e nas Regras §7, e `webapp-testing` cobre a execução no navegador; uma skill própria só repetiria esses textos) e *manutenção da documentação* (o fluxo "documento mudou, revisar a skill" já está no `CLAUDE.md` e na seção 3.1). Reavaliar se o código revelar um fluxo repetido que nenhuma skill cubra.
+
+**Próximos passos sugeridos:** (1) quando o `openapi.yaml` existir, acrescentar o contrato à `unishop-backend`, à `unishop-frontend` e à `unishop-api` (e criar `unishop-openapi` só se o arquivo ficar grande); (2) instalar Python e rodar os casos de `evals/evals.json` das seis skills `unishop-*` e, depois, a otimização da descrição de acionamento (`run_loop`); (3) revisar as skills sempre que os documentos mudarem de versão, atualizando o campo `version` delas.
 
 ## 5. Instalar, atualizar e criar skills
 
@@ -144,4 +156,21 @@ Para criar uma skill nova, peça ao Claude para usar a `skill-creator` descreven
 
 ## 6. Como o `CLAUDE.md` usa as skills
 
-O `CLAUDE.md` traz um quadro "Skills do projeto: quando usar" que liga cada tipo de tarefa à skill certa, para o Claude acioná-las no contexto correto. Se uma skill for adicionada, removida ou renomeada, atualize aquele quadro e a tabela da seção 3.
+O `CLAUDE.md` traz um quadro "Skills do projeto: quando usar" que liga cada tipo de tarefa à skill certa, para o Claude acioná-las no contexto correto, e o fluxo por etapa do trabalho (seção 7 deste documento). Se uma skill for adicionada, removida ou renomeada, atualize aquele quadro e a tabela da seção 3.
+
+## 7. Quando usar em cada etapa do projeto
+
+O projeto hoje está só em documentação; as etapas abaixo valem para quando o grupo liberar o código. Em cada uma, a skill da coluna "Começar por" dá o contexto do Unishop, e as "Combinar com" trazem a técnica geral.
+
+| Etapa | Começar por | Combinar com | Observação |
+|---|---|---|---|
+| 1. Entender o que construir | `unishop-rules` | Documento de regras (§4 a 5 e §8) | Confirme o escopo do MVP (§8), os limites de campos (§9) e os desvios do PDF (§10) antes de estimar tarefas |
+| 2. Preparar banco e esqueleto do backend | `unishop-database`, `unishop-backend` | `supabase-postgres-best-practices`, `neon-postgres`, `neon-postgres-branches` | Gerar `schema.prisma`, migração `0_init`, migração manual e seed; testar a migração em banco vazio |
+| 3. Contrato da API | `unishop-backend`, `unishop-api` | — | Escrever o `openapi.yaml` (pendência de Pedro) antes de o frontend consumir as rotas |
+| 4. Integrar serviços externos | `unishop-api` | `resend`, `email-best-practices`; `/security-review` | Comece pelo Pix de teste do Mercado Pago (prova de conceito) e pelo Google; domínio próprio para o Resend |
+| 5. Regras do servidor (auth, pedidos, pagamentos, admin) | `unishop-backend` | `unishop-rules`, `unishop-database` | Cada rota cita `RN-XXX-nn`; testes de concorrência de estoque e de webhook |
+| 6. Telas do frontend | `unishop-frontend` | `vercel-composition-patterns`, depois `web-design-guidelines` e `vercel-react-best-practices` | Trate todos os estados de tela; sessão, imagem de 4 MB e aviso de demonstração |
+| 7. Verificar rodando | `webapp-testing` | `unishop-frontend` | Screenshots, console e fluxos de ponta a ponta (cadastro, compra por Pix de teste, anúncio) |
+| 8. Publicar | `unishop-deploy` | `vercel-cli-with-tokens`, `neon-postgres`, `unishop-api` | Só executar deploy, troca de variável ou restauração quando o usuário pedir, confirmando o alvo |
+| 9. Antes do PR | `/code-review` | `/security-review` em auth, pagamento, admin ou segredo | Conferir se algum documento ou skill precisa mudar |
+| 10. Manter | `skill-creator` | — | Documento mudou? Revisar a skill correspondente, atualizar `version` e os casos em `evals/` |

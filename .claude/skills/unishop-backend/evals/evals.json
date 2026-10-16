@@ -1,0 +1,29 @@
+{
+  "skill_name": "unishop-backend",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "vou fazer o POST /orders. o aluno clicou duas vezes em 'seguir para o pagamento' no mesmo produto, e tambem quero reservar o estoque ate ele pagar. como fica?",
+      "expected_output": "Não reserva estoque (RN-PAG-08); um pedido aberto por comprador, anúncio e forma, e o novo clique reaproveita o pedido atualizando a quantidade (RN-PED-10, uq_pedido_aberto); valor e preço congelados calculados no backend; dono não pede o próprio anúncio (OWN_LISTING); admin 403.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "como implemento o login com google? o aluno que entra pela primeira vez ja pode usar o site?",
+      "expected_output": "POST /auth/google no MVP: confere domínio @edu.unifor.br e e-mail verificado no servidor; conta nasce ativa, sem senha e verificada; primeiro acesso passa por POST /users/me/complete-profile (aceite dos Termos, TERMS_NOT_ACCEPTED); pendência do email_verified do Google; Apple fora.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "o admin chamou DELETE /admin/listings/42 e o produto tem um pedido pago aguardando retirada. o que o backend responde? e eu preciso gravar log?",
+      "expected_output": "409 HAS_OPEN_PAID_ORDERS (exclusão lógica bloqueada com pedido Pago ou Retirada combinada em aberto, RN-ADM-09); quando a ação ocorre, grava log_admin na mesma transação e notifica o vendedor por e-mail (waitUntil); pedidos Pendentes e Em negociação são cancelados.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "configurei o job expire-pix-payments pra rodar a cada minuto no vercel cron e a rota GET /api/v1/internal/jobs/expire-pix-payments confere o Bearer com ===",
+      "expected_output": "Vercel Cron Hobby é diário (expressão frequente quebra o deploy); jobs frequentes a cada 30 min no cron-job.org externo; comparar com Secret e timingSafeEqual, testar Bearer undefined = 401; job idempotente; cancelamento também sob demanda ao ler ou pagar o pedido.",
+      "files": []
+    }
+  ]
+}

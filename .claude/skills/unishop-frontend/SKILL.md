@@ -1,14 +1,14 @@
 ---
 name: unishop-frontend
-description: Regras e fluxo de trabalho do frontend do Unishop (React + TypeScript + Vite + Tailwind). Use SEMPRE que o usuário criar, editar ou revisar telas, rotas, guards, componentes, hooks, services, formulários Zod, áreas (public/user/admin), estados de tela ou PR do frontend do Unishop, mesmo que não diga "Unishop" ou "frontend" explicitamente.
+description: Regras e fluxo de trabalho do frontend do Unishop (React + TypeScript + Vite + Tailwind). Use SEMPRE que o usuário criar, editar ou revisar telas, rotas, guards, componentes, hooks, services, formulários Zod, áreas (public/user/admin), estados de tela (carregando, vazio, erro, 403, sessão expirada, Pix expirado), fluxos de login, cadastro, pagamento, pedidos e anúncios, upload de imagem ou PR do frontend do Unishop, mesmo que não diga "Unishop" ou "frontend" explicitamente.
 metadata:
   author: unishop-team
-  version: "0.6.0"
+  version: "0.7.0"
 ---
 
 # Frontend do Unishop
 
-Guia operacional para trabalhar no frontend do Unishop. Fonte completa e autoritativa: [`docs/frontend/frontend.md`](../../../docs/frontend/frontend.md). Em caso de dúvida ou conflito, releia esse arquivo — este SKILL.MD é um resumo prático, não substitui a doc.
+Guia operacional para trabalhar no frontend do Unishop. Fonte completa e autoritativa: [`docs/frontend/frontend.md`](../../../docs/frontend/frontend.md) (v0.4, de 16/10/2026, alinhada às Regras v0.4, Backend v0.3 e API v0.3). A tabela de rotas e telas está na seção de rotas do doc. Regras de negócio e limites de campos: skill `unishop-rules`. Em caso de dúvida ou conflito, releia esse arquivo — este SKILL.MD é um resumo prático, não substitui a doc.
 
 Ordem de prioridade entre fontes (do `CLAUDE.md` do projeto): PDF do trabalho (RF/RNF) > decisões do grupo > docs em `docs/` > protótipos no Figma. Itens marcados "sugestão" não são definitivos.
 
@@ -22,8 +22,8 @@ Três áreas, uma por ator, nunca acopladas entre si (`admin/` não importa de `
 
 ```
 src/areas/
-├─ public/   # visitante: landing, auth (login, cadastro, recuperação)
-├─ user/     # aluno logado: categories, listings, orders, checkout, profile
+├─ public/   # visitante: landing, auth (login, cadastro, recuperação de senha), termos e privacidade
+├─ user/     # aluno logado: categories, listings, orders, checkout, profile (editar, trocar senha, completar cadastro)
 └─ admin/    # administrador: users, products
 src/shared/  # components/ui, hooks, lib (api.ts, queryClient), utils, constants, types
 ```
@@ -64,17 +64,20 @@ Código, pastas e arquivos em inglês. Interface e documentação em português 
 
 - Prefixo `/api/v1`, autenticação `Authorization: Bearer <jwt>`, paginação `?page=&limit=`.
 - `api.ts` (em `shared/lib`) aplica o token; se a API responder 401, encerra a sessão e leva ao login.
+- **Sessão:** JWT de 2 h guardado em memória, com cópia em `sessionStorage`; ao recarregar, restaurado por `GET /auth/me`. Sem refresh token: token vencido (401) volta ao login guardando o destino (RN-ACE-11). Primeiro acesso por Google: todas as rotas privadas levam a `/completar-cadastro` até o aceite dos Termos (`TERMS_NOT_ACCEPTED`).
 - Estado do servidor sempre via TanStack Query (uma chave por recurso); nada de store global para isso.
 - Estado de tela (modal aberto, aba ativa) fica local ao componente.
 - Busca, categoria, preço, ordenação e página vão na query string (estado compartilhável via URL).
 - Pagamento: cartão nunca passa pelo backend do Unishop — token gerado pelo SDK do Mercado Pago no navegador (RNF006). WhatsApp só é exibido/renderizado para usuário logado.
 - **Variáveis públicas (`VITE_*`, lidas no build):** `VITE_API_URL` (em produção, o endereço completo da API, que fica em outro domínio da Vercel), `VITE_MP_PUBLIC_KEY`, `VITE_GOOGLE_CLIENT_ID` e `VITE_TURNSTILE_SITE_KEY` (depois do MVP). Nenhuma recebe segredo. Trocar uma exige novo deploy do site.
-- **Imagens:** o `ImageUploader` envia **uma imagem por requisição, até 4 MB** (limite da Vercel). Anúncio: a primeira em `POST /listings`, as demais em `POST /listings/:id/images`, com progresso e nova tentativa se uma falhar. Confira o tamanho antes e trate o 413 como `FILE_TOO_LARGE`. A regra fala em 5 MB (pendência 15 do Backend, a perguntar ao professor).
+- **Imagens:** o `ImageUploader` envia **uma imagem por requisição, até 4 MB**, de 1 a 5 por anúncio (limite da Vercel; desvio do PDF confirmado pelo grupo em 16/10/2026). Anúncio: a primeira em `POST /listings`, as demais em `POST /listings/:id/images` (remover: `DELETE /listings/:id/images/:imageId`, sempre sobrando 1), com progresso e nova tentativa se uma falhar. Confira o tamanho antes e trate o 413 como `FILE_TOO_LARGE`. Se o enunciado exigir 5 MB, o frontend comprime antes de enviar.
+- **Demonstração:** a tela de pagamento e o rodapé avisam que o ambiente é de demonstração e que nenhum valor é cobrado de verdade (RN-PAG-15).
+- **Pedidos:** "Cancelar pedido" só em Pendente e Em negociação; "Confirmar recebimento" em Retirada combinada; vendedor tem "Combinar retirada", "Concluir venda" e "Encerrar negociação". Pix expirado não gera novo código: o pedido vira Cancelado e o aluno faz outro (RN-PAG-04).
 - `frontend/vercel.json` faz as rotas do React Router abrirem o `index.html` (F5 em `/categorias` não pode dar 404). Segredos e domínios: `unishop-deploy` e `unishop-api`.
 
 ## Estados obrigatórios em toda tela que busca dados
 
-Carregando (skeleton), vazio, erro de rede/servidor (com "Tentar de novo", sem detalhe técnico), sem permissão (403 → "Acesso negado"), não encontrado (404), sessão expirada (volta ao login guardando destino), Pix expirado, pagamento recusado, sem estoque.
+Carregando (skeleton), vazio, erro de rede/servidor (com "Tentar de novo", sem detalhe técnico; inclui 502), sem permissão (403 → "Acesso negado"), não encontrado (404), sessão expirada (volta ao login guardando destino), conta suspensa, e-mail não confirmado (só com a chave ligada), limite de requisições (429), arquivo grande (413), Pix expirado (pedido cancelado), pagamento recusado, sem estoque (inclusive o aviso de que o item acabou após o pagamento, com estorno) e ação bloqueada por pedido em aberto (`HAS_OPEN_PAID_ORDERS`, `HAS_OPEN_ORDERS`, `ADMIN_PROTECTED`). A lista de códigos de erro e o que mostrar em cada um está no doc de frontend.
 
 ## Qualidade — checklist antes de considerar uma tela pronta
 
@@ -102,6 +105,7 @@ Esta skill dá o contexto do Unishop; as outras cobrem a técnica geral. Use em 
 | Revisar UI, acessibilidade (WCAG 2.1 AA), foco, contraste, formulários | `web-design-guidelines` |
 | Testar no navegador, capturar screenshot/console, fluxos Playwright | `webapp-testing` |
 | Telas que dependem de rota/campo da API | `unishop-backend` (contrato e regras do servidor) |
+| Qual é a regra, o limite de campo ou o texto por lado (comprador/vendedor) | `unishop-rules` |
 | SDK do Mercado Pago ou do Google, chaves públicas, CSP, upload | `unishop-api` |
 | Build, variáveis por ambiente, `vercel.json`, preview e produção | `unishop-deploy` |
 

@@ -1,22 +1,24 @@
 ---
 title: Documentação Técnica — API (APIs externas e segurança)
 project: Unishop
-version: 0.2
-date: 2026-10-15
-status: definitivo (fechado pelo grupo em 15/10/2026); pendências abertas na seção 12
-owners: Pedro Cândido (engenheiro de API), Felipe Bessa (backend), Francisco Magno (integração front-back)
-context: README.md
-based_on: Regras de Negócio v0.3 (docs/regras-de-negócio/regras-de-negócio.md), Backend v0.2, Deploy v0.2
-related: docs/backend/, docs/frontend/, docs/banco-de-dados/, docs/deploy/
+version: 0.3
+date: 2026-10-16
+status: vigente com pendências
+owners: Pedro Cândido (engenheiro de API)
+reviewers: Felipe Bessa (backend), Francisco Magno (integração front-back)
+based_on: Regras de Negócio v0.4, Backend v0.3, Banco de Dados v0.2, Deploy v0.3
+related: docs/regras-de-negocio/regras-de-negocio.md, docs/banco-de-dados/banco-de-dados.md, docs/backend/backend.md, docs/frontend/frontend.md, docs/deploy/deploy.md
+context: README.md, docs/README.md
+pendencias: seção 12
 language: pt-BR (código e pastas em inglês; interface em português)
 ---
 
 # Documentação Técnica — API (APIs externas e segurança)
 
-- Versão 0.2 · 15/10/2026
-- Base: Regras de Negócio v0.3, requisitos RF001–RF024 e RNF001–RNF016, Backend v0.2, Deploy v0.2
-- Responsáveis: Pedro Cândido (engenheiro de API) · Felipe Bessa (backend) · Francisco Magno (integração front-back)
-- Documentos relacionados: Backend (docs/backend/) · Frontend (docs/frontend/) · Banco de Dados (docs/banco-de-dados/, a publicar) · Deploy (docs/deploy/deploy.md) · Regras de Negócio (docs/regras-de-negócio/regras-de-negócio.md)
+- Versão 0.3 · 16/10/2026
+- Base: Regras de Negócio v0.4, requisitos RF001–RF024 e RNF001–RNF016, Backend v0.3, Banco de Dados v0.2, Deploy v0.3
+- Responsável: Pedro Cândido (engenheiro de API) · Revisores: Felipe Bessa (backend), Francisco Magno (integração front-back)
+- Documentos relacionados: Backend (`docs/backend/backend.md`) · Frontend (`docs/frontend/frontend.md`) · Banco de Dados (`docs/banco-de-dados/banco-de-dados.md`) · Deploy (`docs/deploy/deploy.md`) · Regras de Negócio (`docs/regras-de-negocio/regras-de-negocio.md`)
 
 ### Histórico de versões
 
@@ -24,6 +26,7 @@ language: pt-BR (código e pastas em inglês; interface em português)
 |---|---|---|
 | 0.1 | 14/10/2026 | Primeira versão: catálogo das APIs externas e arquitetura de segurança "backend-cofre". |
 | 0.2 | 15/10/2026 | Alinhada às decisões fechadas: Mercado Pago como gateway (ADR-002, resta escolher a Payments API ou a Orders API), hospedagem Vercel + Neon (ADR-005), jobs como endpoints, upload de uma imagem por requisição (até 4 MB) e `waitUntil`. Travas de produção passam a usar `APP_ENV` e não exigem mais credencial real de pagamento (RN-PAG-10). `FRONTEND_URL` aceita lista. Variáveis unificadas com o Deploy. ADR-008 (backend-cofre) e ADR-009 (e-mail) renumerados. |
+| 0.3 | 16/10/2026 | Alinhada às Regras de Negócio v0.4, ao Banco v0.2 e ao Backend v0.3. Login com Google passa a **MVP**. Limite do Neon corrigido para **1 GB** (e demais limites conferidos em 16/10/2026). `/health` leve e `/health/db`. Três papéis de banco (migração, aplicação e backup somente leitura). PostgreSQL 18 na CI e no Docker. Estorno e liquidação cobrem pagamento tardio e anúncio inativo (RN-PAG-13, 14). Imagem de 4 MB confirmada pelo grupo. Variável `EMAIL_VERIFICATION_REQUIRED`. Metas de 500 usuários e 99% tratadas como metas de produto. Pendências renumeradas (seção 12). |
 
 ## Sumário
 
@@ -39,7 +42,7 @@ language: pt-BR (código e pastas em inglês; interface em português)
 
 ## 1. Objetivo e escopo
 
-Este documento descreve as **APIs que o Unishop usa** e **como elas são protegidas**: o papel de cada uma, como entram na arquitetura, como são implementadas e como guardamos as chaves (credenciais) sem expor o projeto. Ele segue as **Regras de Negócio v0.3**, os requisitos RF001–RF024 e RNF001–RNF016 e o documento de **Backend v0.2**.
+Este documento descreve as **APIs que o Unishop usa** e **como elas são protegidas**: o papel de cada uma, como entram na arquitetura, como são implementadas e como guardamos as chaves (credenciais) sem expor o projeto. Ele segue as **Regras de Negócio v0.4**, os requisitos RF001–RF024 e RNF001–RNF016 e o documento de **Backend v0.3**.
 
 Existem dois tipos de API no projeto, e é importante não confundir:
 
@@ -59,10 +62,10 @@ Existem dois tipos de API no projeto, e é importante não confundir:
 ### O que fica fora
 
 - **Hospedagem e deploy** (Vercel + Neon): estão em `docs/deploy/deploy.md`.
-- O contrato campo a campo da API do Unishop: `openapi.yaml`, que **ainda não existe** (pendência 13).
+- O contrato campo a campo da API do Unishop: `openapi.yaml`, que **ainda não existe** (pendência 5 da seção 12).
 - Tabelas e relações do banco: documento de Banco de Dados.
 
-> **Como ler os custos.** Os limites gratuitos citados foram conferidos em pesquisa feita em 14/10/2026 e **mudam com frequência**. Antes de depender de um limite, confirme na página oficial do provedor. Onde a informação não foi conferida, o texto diz "conferir".
+> **Como ler os custos.** Os limites gratuitos citados foram conferidos em pesquisa feita em 14/10/2026 (o do Neon, reconferido em 16/10/2026) e **mudam com frequência**. Antes de depender de um limite, confirme na página oficial do provedor. Onde a informação não foi conferida, o texto diz "conferir".
 
 
 ## 2. Arquitetura das APIs no projeto
@@ -89,7 +92,7 @@ A regra central é simples: **o backend é o único lugar que guarda segredos e 
 
 | Papel | Quem exerce | O que faz |
 |---|---|---|
-| Identidade | Google Identity (Apple depois) | Prova que o aluno é dono de uma conta com e-mail institucional |
+| Identidade | Google Identity (Apple fica fora) | Prova que o aluno é dono de uma conta com e-mail institucional |
 | Dinheiro | Mercado Pago | Cobra cartão e Pix, avisa por webhook e estorna |
 | Comunicação | Resend, Mailtrap (dev), link `wa.me` | E-mails transacionais; contato direto entre aluno e vendedor |
 | Mídia | Cloudinary (ou R2) | Guarda e entrega as imagens já comprimidas |
@@ -116,7 +119,7 @@ Etapa: **MVP** entra na primeira entrega; **Depois** entra quando o MVP estiver 
 
 | API | Papel | Quem chama | Credencial | Etapa |
 |---|---|---|---|---|
-| Google Identity | Login com Google | Front + Back | Client ID (pública) | MVP (desejável) |
+| Google Identity | Login com Google | Front + Back | Client ID (pública) | MVP |
 | Apple Sign In | Login com Apple | Front + Back | Conta paga (US$ 99/ano) | Fora do MVP |
 | Mercado Pago | Cartão, Pix, estorno, webhook | Front (token) + Back | Public Key; Access Token e Webhook secret (privadas) | MVP |
 | PicPay, PagBank, Asaas, EFI | Gateways alternativos | — | — | Alternativa |
@@ -130,7 +133,7 @@ Etapa: **MVP** entra na primeira entrega; **Depois** entra quando o MVP estiver 
 | Vercel Cron e agendador externo (cron-job.org) | Chamam os endpoints de jobs | Agendador | `CRON_SECRET` (privada) | MVP |
 | ngrok ou Cloudflare Tunnel | Webhook na máquina local | Dev | Authtoken (privada, dev) | Dev |
 | Sentry | Monitoramento de erros | Back | DSN | Depois |
-| UptimeRobot | Monitor de disponibilidade | Externo chama `/health` | Conta | Depois |
+| UptimeRobot | Monitor de disponibilidade | Externo chama `/health` (leve) | Conta | MVP |
 | GitHub Actions | Integração contínua | Repositório | Só credenciais de teste | MVP |
 
 > **Não são APIs:** a biblioteca `qrcode` (desenha o QR Code a partir do texto do Pix) e o Swagger UI (lê o `openapi.yaml`) são bibliotecas locais, sem chave e sem custo.
@@ -146,7 +149,7 @@ Cada ficha traz: para que serve, requisitos e regras atendidos, quem chama, cred
 | Item | Detalhe |
 |---|---|
 | Papel | Cadastro e login com a conta Google, por um botão "Entrar com Google" |
-| Etapa | MVP, **desejável** (só entra se houver tempo) |
+| Etapa | **MVP** (decisão do grupo em 16/10/2026) |
 | Origem | RN-ACE-14, RF002.6, RF003.3, RNF002 |
 | Quem chama | Frontend (SDK Google Identity Services) e Backend (valida o ID token) |
 | Credencial | **Client ID**, que é público. Nesse fluxo não é preciso o Client Secret |
@@ -162,8 +165,12 @@ Cada ficha traz: para que serve, requisitos e regras atendidos, quem chama, cred
  3. Frontend ▶ API     POST /auth/google {idToken}
  4. API                valida assinatura, audiência (Client ID) e expiração do token
  5. API                exige email_verified = true e domínio @edu.unifor.br
- 6. API ▶ Banco        busca o usuário pelo e-mail (cria a conta ativa, sem senha, no 1º acesso)
- 7. API ▶ Frontend     200 {token JWT, usuário}  ·  403 EMAIL_DOMAIN_NOT_ALLOWED se não for da Unifor
+ 6. API ▶ Banco        busca o usuário pelo google_sub e, se não achar, pelo e-mail
+                       (vincula a uma conta existente ou cria: ativa, sem senha, verificada)
+ 7. API ▶ Frontend     200 {token JWT, usuário, needsTermsAcceptance}
+                       ·  403 EMAIL_DOMAIN_NOT_ALLOWED se não for da Unifor
+ 8. Frontend           no primeiro acesso ▶ tela "completar cadastro" (aceite dos Termos;
+                       curso e WhatsApp opcionais) ▶ POST /users/me/complete-profile
 ```
 
 
@@ -173,7 +180,7 @@ Cada ficha traz: para que serve, requisitos e regras atendidos, quem chama, cred
 2. Criar a credencial **ID do cliente OAuth** do tipo "Aplicativo da Web" e cadastrar as **origens JavaScript autorizadas** (`http://localhost:5173` em desenvolvimento e o domínio real em produção). Use um cliente para desenvolvimento e outro para produção.
 3. Guardar o Client ID em `VITE_GOOGLE_CLIENT_ID` (frontend) e `GOOGLE_CLIENT_ID` (backend).
 4. Frontend: carregar o script do Google Identity Services, desenhar o botão e, ao receber o `credential` (o ID token), enviar a `POST /auth/google`.
-5. Backend: verificar o token com `google-auth-library` e emitir o **JWT do Unishop**. Do Google guardamos apenas o e-mail e o identificador `sub`.
+5. Backend: verificar o token com `google-auth-library` e emitir o **JWT do Unishop**. Do Google guardamos apenas o e-mail e o identificador `sub` (coluna `usuario.google_sub`).
 
 ```ts
 // shared/providers/oauth/google.provider.ts
@@ -207,7 +214,7 @@ export async function verifyGoogleIdToken(idToken: string) {
 - Limitar as origens autorizadas no Google Cloud; um cliente OAuth por ambiente.
 - Erros: `EMAIL_NOT_VERIFIED` e `EMAIL_DOMAIN_NOT_ALLOWED` (403) e `TOKEN_INVALID` (401).
 
-> **Risco conhecido.** Em um endereço `vercel.app` o Google pode recusar a origem JavaScript autorizada (pendência 7 do Deploy); com domínio próprio o risco cai. O login só funciona se o e-mail `@edu.unifor.br` estiver vinculado a uma conta Google. Teste com um e-mail real antes de fechar o RF002.6 (pendência 3 da seção 12). No primeiro acesso por Google, falta registrar o aceite dos Termos (RN-ACE-06), conforme a pendência 1 do Backend.
+> **Risco conhecido.** Em um endereço `vercel.app` o Google pode recusar a origem JavaScript autorizada (pendência 7 do Deploy); com domínio próprio o risco cai. O login só funciona se o e-mail `@edu.unifor.br` estiver vinculado a uma conta Google. Teste com um e-mail real antes de fechar o RF002.6 (pendência 3 da seção 12). Se o Google não entregar `email_verified`, o plano B é manter o login por e-mail e senha. O aceite dos Termos do primeiro acesso é registrado na tela "completar cadastro" (RN-ACE-06, RN-ACE-14).
 
 
 ### 4.2 Apple Sign In
@@ -230,7 +237,7 @@ export async function verifyGoogleIdToken(idToken: string) {
 |---|---|
 | Papel | Cobrar cartão e Pix, avisar pagamentos por webhook, cancelar cobranças e estornar |
 | Etapa | MVP |
-| Origem | RN-PAG-01 a 11, RN-PED-02, RNF006, RF010 |
+| Origem | RN-PAG-01 a 14, RN-PED-02, RNF006, RF010 |
 | Quem chama | Frontend (SDK MercadoPago.js: só gera o token do cartão) e Backend (cobranças, consulta, cancelamento e estorno) |
 | Credenciais | **Public Key** (frontend, pública); **Access Token** e **Webhook secret** (backend, privadas) |
 | Custo | Sem mensalidade. Há **tarifa por transação em produção** (conferir). O ambiente de testes é gratuito |
@@ -249,10 +256,10 @@ Exemplos na Payments API. Os nomes exatos dos campos devem ser conferidos na doc
 | Gerar Pix | `POST /v1/payments` com Pix, valor e `date_of_expiration` (30 min) e `X-Idempotency-Key` | `POST /payments/pix` |
 | Consultar pagamento | `GET /v1/payments/{id}` | Webhook e job de conferência |
 | Cancelar Pix pendente | `PUT /v1/payments/{id}` com status `cancelled` | Job `expire-pix-payments` |
-| Estornar | `POST /v1/payments/{id}/refunds` (com `X-Idempotency-Key`) | Estoque acabou na liquidação (RN-PAG-08) |
+| Estornar | `POST /v1/payments/{id}/refunds` (com `X-Idempotency-Key`) | Pedido não pôde ser honrado: sem estoque, anúncio inativo ou pagamento tardio (RN-PAG-08, 13, 14) |
 
 - **Estorno de Pix pode ficar "em processo"** (por exemplo, por falha na comunicação com o Banco Central). O Mercado Pago permite pedir uma resposta mais clara com o cabeçalho `X-Render-In-Process-Refunds: true`. Por isso o job `reconcile-pending-payments` refaz estornos pendentes (Backend, seção 14).
-- **Chave de idempotência:** gerada de forma determinística por operação (por exemplo, `pedido:42:pix:1`) e gravada junto do pagamento. Repetir a mesma chamada não cria cobrança duplicada.
+- **Chave de idempotência:** gerada de forma determinística por operação e **por tentativa** (por exemplo, `pedido:42:pix:1`, `pedido:42:pix:2`) e gravada junto do pagamento (`pagamento.chave_idempotencia`). Repetir a mesma chamada não cria cobrança duplicada, e uma nova tentativa após recusa usa outro número.
 - **Valor:** em centavos no código; o gateway recebe o valor total já calculado pelo backend (RN-PED-02). Taxa de serviço = R$ 0,00.
 - **Repasse (RN-PAG-10):** tudo é cobrado em uma conta única de teste; o repasse ao vendedor é simulado. **Não usamos divisão de pagamento (split).**
 
@@ -263,7 +270,8 @@ Exemplos na Payments API. Os nomes exatos dos campos devem ser conferidos na doc
  1. Frontend ▶ API      POST /orders {anúncio, quantidade}
  2. API                 valida: anúncio ativo, comprador diferente do dono, quantidade ≤ disponível
                         (sem reservar)
- 3. API ▶ Banco         cria o pedido "Pendente" com preço unitário e total congelados
+ 3. API ▶ Banco         cria o pedido "Pendente" com vendedor, produto, imagem, preço unitário e total
+                        congelados, ou reaproveita o pedido pendente do comprador (RN-PED-10)
  4. API ▶ Frontend      201 {pedido, subtotal, taxa R$ 0,00, total}
  5. Frontend ▶ API      POST /payments/pix {pedido}
  6. API ▶ Gateway       cria a cobrança Pix (total, expira em 30 min, referência = pedido)
@@ -282,11 +290,11 @@ Exemplos na Payments API. Os nomes exatos dos campos devem ser conferidos na doc
 12. API ▶ Gateway       consulta o pagamento (não confia só no aviso) ▶ status: aprovado
 13. API ▶ Banco         transação: trava o pedido (idempotente) e desconta o estoque (atômico)
     ├─ HAVIA ESTOQUE
-    │   14. API ▶ Banco       pedido "Pago" e pagamento "Aprovado"; se quantity = 0, anúncio "Vendido"
+    │   14. API ▶ Banco       pedido "Pago" e pagamento "Aprovado"; se quantidade = 0, anúncio "Vendido"
     │   15. API               notifica o vendedor sobre a venda
-    └─ O ESTOQUE ACABOU ANTES DA CONFIRMAÇÃO (RN-PAG-08)
-        14. API ▶ Banco       pedido "Cancelado"
-        15. API ▶ Gateway     estorna o valor; o pagamento vira "Estornado"
+    └─ NÃO PODE SER HONRADO: estoque acabou, anúncio inativo ou pedido já cancelado (RN-PAG-08, 13, 14)
+        14. API ▶ Banco       pedido "Cancelado" e pagamento "estorno_pendente"
+        15. API ▶ Gateway     estorna o valor; o pagamento vira "Estornado"; e-mail ao comprador
 16. API ▶ Gateway       200 OK
 ```
 
@@ -298,10 +306,13 @@ Exemplos na Payments API. Os nomes exatos dos campos devem ser conferidos na doc
     │   4. API ▶ Banco       pagamento "Recusado"; o pedido continua "Pendente"
     │   5. API ▶ Frontend    402 PAYMENT_DECLINED ▶ o aluno pode tentar de novo (RN-PAG-07)
     └─ APROVADO ▶ mesma liquidação do Pix
-        4. API ▶ Banco       transação: desconta o estoque (atômico)
+        4. API ▶ Banco       transação: confere anúncio ativo e desconta o estoque (atômico)
         ├─ havia estoque ▶ pedido "Pago"; notifica o vendedor; API ▶ Frontend 200 {status: pago}
-        └─ estoque acabou ▶ pedido "Cancelado"; estorna o valor; API ▶ Frontend 409 OUT_OF_STOCK
+        ├─ estoque acabou ▶ pedido "Cancelado"; estorna o valor; API ▶ Frontend 409 OUT_OF_STOCK
+        └─ anúncio inativo ▶ pedido "Cancelado"; estorna o valor; API ▶ Frontend 409 LISTING_UNAVAILABLE
 ```
+
+Cada tentativa de cobrança é uma linha em `pagamento` (só uma pode estar em andamento). O Pix expirado cancela o pedido e o aluno faz um novo (RN-PAG-04).
 
 
 ### Como o status do Mercado Pago vira status do Unishop
@@ -312,7 +323,8 @@ Exemplos na Payments API. Os nomes exatos dos campos devem ser conferidos na doc
 | `pending`, `in_process` | Pendente | Nenhum |
 | `rejected` | Recusado | Segue "Pendente"; o aluno tenta de novo |
 | `cancelled` ou Pix vencido | Expirado | "Cancelado" (RN-PAG-04) |
-| `refunded` | Estornado | Já estava "Cancelado" (sem estoque) |
+| `approved`, mas o pedido não pode ser honrado | Estorno pendente | "Cancelado"; o job refaz o estorno até dar certo (RN-PAG-08, 13, 14) |
+| `refunded` | Estornado | Já estava "Cancelado" (sem estoque, anúncio inativo ou pagamento tardio) |
 
 
 ### Como implementar
@@ -341,9 +353,9 @@ Exemplos na Payments API. Os nomes exatos dos campos devem ser conferidos na doc
 
 | Item | Detalhe |
 |---|---|
-| Papel | Enviar e-mails de confirmação de conta, redefinição de senha, troca de e-mail, venda realizada e anúncio excluído |
+| Papel | Enviar e-mails de redefinição de senha, troca de e-mail, venda realizada, anúncio excluído e pedido cancelado com estorno (e de confirmação de conta, quando a chave RN-ACE-07 estiver ligada) |
 | Etapa | MVP (Mailtrap só em desenvolvimento) |
-| Origem | RN-ACE-07, RN-ACE-10, RN-PER-02, RN-NOT-01, RN-NOT-02 |
+| Origem | RN-ACE-07, RN-ACE-10, RN-PER-02, RN-NOT-01, RN-NOT-02, RN-NOT-03 |
 | Quem chama | Backend |
 | Credencial | **API key** do Resend (privada) e um **domínio verificado** (registros DNS SPF e DKIM) |
 | Custo | Plano gratuito do Resend: **3.000 e-mails por mês, limite de 100 por dia e 1 domínio**. Mailtrap: plano gratuito (conferir limites) |
@@ -404,13 +416,13 @@ Exemplos na Payments API. Os nomes exatos dos campos devem ser conferidos na doc
     Se o banco falhar no passo 5, a imagem já enviada é removida do storage.
 ```
 
-> **Uma imagem por requisição, até 4 MB.** Na Vercel uma requisição aceita no máximo 4,5 MB no total, então cada imagem sobe em uma chamada própria (Backend, seção 9.4; Deploy, seção 5.3). O RNF005 e as regras RN-ANU-03 e RN-PER-05 falam em 5 MB: o conflito está na pendência 14.
+> **Uma imagem por requisição, até 4 MB.** Na Vercel uma requisição aceita no máximo 4,5 MB no total, então cada imagem sobe em uma chamada própria (Backend, seção 9.4; Deploy, seção 5.3). O PDF do trabalho (RNF005) fala em 5 MB; o grupo adotou 4 MB, e o desvio está registrado em Regras de Negócio, seção 10.
 
 
 ### Como implementar
 
 1. Criar a conta e anotar `cloud name`, API key e API secret. Guardar em `CLOUDINARY_URL`.
-2. Validar o arquivo **antes** de enviar: tipo real (JPEG ou PNG) e 4 MB por imagem (Backend, seção 16; pendência 14).
+2. Validar o arquivo **antes** de enviar: tipo real (JPEG ou PNG) e 4 MB por imagem (Backend, seção 16).
 3. Enviar pelo **backend** (upload do servidor para a Cloudinary), com nome gerado e pasta por ambiente, por exemplo `unishop/prod/listings/{id}/`.
 4. Gravar no banco o `public_id` e a URL. Excluir a imagem da Cloudinary quando o anúncio for excluído ou quando a transação falhar.
 5. Entregar sempre com transformação na URL (formato e qualidade automáticos e largura limitada).
@@ -499,7 +511,7 @@ export async function verifyTurnstile(token: string, ip?: string) {
 - Cada widget tem seu par de chaves; use **um widget por ambiente** e restrinja os **domínios permitidos** (hostnames) de cada um.
 - Para desenvolvimento, a Cloudflare publica **chaves de teste** (por exemplo, uma site key que sempre passa); use só em `development` e `test`.
 - O token é de **uso único** e expira em poucos minutos: o backend nunca reaproveita.
-- **Política se o Turnstile cair (proposta):** em `/auth/register` e `/auth/forgot-password`, falha fechada (503). Em `/auth/login`, falha aberta com limite de 3 tentativas por minuto por IP, para não trancar todos os alunos por uma queda do provedor. Pendência 10.
+- **Política se o Turnstile cair (decidida):** em `/auth/register` e `/auth/forgot-password`, falha fechada (503). Em `/auth/login`, falha aberta com limite de 3 tentativas por minuto por IP, para não trancar todos os alunos por uma queda do provedor.
 
 
 ### 4.8 PostgreSQL gerenciado (Neon)
@@ -513,13 +525,14 @@ export async function verifyTurnstile(token: string, ip?: string) {
 | Origem | RNF015, RNF011 |
 | Quem chama | Backend, pelo ORM |
 | Credenciais | `DATABASE_URL` (com *pooler*, usada pela API) e `DATABASE_URL_UNPOOLED` (conexão direta, usada pela migração e pelo backup). Privadas: usuário e senha dentro da URL |
-| Custo | Neon, plano Free: **100 CU-horas por projeto, 0,5 GB de armazenamento**, com o banco "dormindo" após 5 minutos sem uso. Supabase fica como alternativa mapeada (conferir) |
+| Custo | Neon, plano Free (conferido em 16/10/2026): **100 CU-horas por projeto por mês, 1 GB de armazenamento por projeto, 10 branches, janela de restauração de 6 horas e 5 GB de transferência de saída**. O banco "dorme" após 5 minutos sem uso e isso não pode ser desligado. PostgreSQL 14 a 18, escolhido na criação do projeto. Supabase fica como alternativa mapeada (conferir) |
 
-- **Limite de 0,5 GB:** basta para o MVP porque as imagens ficam na Cloudinary, não no banco.
+- **Limite de 1 GB:** basta para o MVP porque as imagens ficam na Cloudinary, não no banco. Crie o projeto com **PostgreSQL 18**, a versão do restante da documentação (Banco de Dados e Deploy).
 - **Risco para a disponibilidade (RNF011):** no plano gratuito do Neon, o processamento é suspenso quando o limite mensal acaba, e o banco "acorda" devagar depois de dormir. Planeje isso antes da demonstração.
 - **TLS obrigatório:** `sslmode=require` na URL de conexão.
-- **Duas conexões, um usuário no MVP:** a migração (`prisma migrate deploy`, `directUrl`) usa `DATABASE_URL_UNPOOLED`, e a API usa `DATABASE_URL` com *pooler* (`?pgbouncer=true&connection_limit=1`). A integração do Neon entrega um só usuário, então no MVP os dois têm o mesmo poder. Separar um usuário da aplicação **sem** permissão de alterar a estrutura é desejável (pendência 15).
-- **Um branch por ambiente** (produção e um por preview), não um por pessoa. **Dados reais de produção nunca vão para desenvolvimento** (LGPD); o branch de preview nasce com uma cópia dos dados (Deploy, seção 7.2).
+- **Duas conexões e três papéis:** a migração (`prisma migrate deploy`, `directUrl`) usa `DATABASE_URL_UNPOOLED` com o papel `unishop_migrator`; a API usa `DATABASE_URL` com *pooler* (`?pgbouncer=true&connection_limit=1`) e o papel `unishop_app`, **sem permissão de alterar a estrutura**; o backup usa `DATABASE_URL_BACKUP`, com o papel `unishop_backup`, **somente leitura** (Banco de Dados, seção 10). A integração do Neon entrega um usuário só; os três papéis são criados à parte (Deploy, seção 7), e é preciso conferir no painel como criá-los no plano gratuito (pendência 6).
+- **Não há lista de IPs permitidos** (*IP Allow*) no plano gratuito: a proteção do banco é a senha forte, o TLS e os papéis com pouca permissão.
+- **Um branch por ambiente** (produção e um por preview), não um por pessoa. **Dados reais de produção nunca vão para desenvolvimento** (LGPD); o branch de preview **não** pode nascer de uma cópia da produção: o branch pai dos previews é o de desenvolvimento, só com dados fictícios (Deploy, seção 7.2).
 - Backup diário (workflow do GitHub Actions) e restauração testada seguem o RNF011 (Deploy, seção 11).
 
 
@@ -554,7 +567,7 @@ cloudflared tunnel --url http://localhost:3000
 | Credencial | **DSN** do projeto. Não é um segredo forte, mas não deve ser publicado à toa |
 | Custo | Plano Developer gratuito: **1 usuário e 5.000 erros por mês** (conferir) |
 
-- **Atenção:** o plano gratuito tem **1 usuário**, e o grupo tem 4 pessoas. Veja a pendência 4.
+- **Atenção:** o plano gratuito tem **1 usuário**, e o grupo tem 4 pessoas. Decisão do grupo: adiar o Sentry (ou usar uma conta compartilhada).
 - **Privacidade (RNF007):** configurar para **não enviar dados pessoais** e remover antes do envio: e-mail, WhatsApp, cabeçalho `Authorization`, corpo de `/auth` e `/payments`.
 - Cada evento leva o `requestId` e o ambiente como *tags*, para ligar o erro ao log da aplicação.
 - Erros esperados (400, 401, 403, 404) **não** vão para o Sentry; só os 5xx e as exceções.
@@ -564,13 +577,13 @@ cloudflared tunnel --url http://localhost:3000
 
 | Item | Detalhe |
 |---|---|
-| Papel | Chamar `GET /api/v1/health` a cada poucos minutos e avisar por e-mail se a API ou o banco cair |
-| Etapa | Depois do MVP |
+| Papel | Chamar `GET /api/v1/health` (leve) a cada 5 minutos e avisar por e-mail se a API cair. A meta de 99% é de produto e não é medida no MVP (Regras de Negócio, seção 6) |
+| Etapa | MVP |
 | Origem | RNF011 |
 | Credencial | Só a conta no serviço. **Nenhuma chave no código** |
 | Custo | Plano gratuito: **50 monitores com checagem a cada 5 minutos**. Os termos do plano gratuito já mudaram (uso não comercial): **conferir**. Alternativa: StatusCake (plano gratuito com 10 monitores) |
 
-- O `/health` responde 200 (tudo certo) ou 503 (banco fora) e **não revela versão, caminho ou erro detalhado**.
+- O `/health` responde 200 **sem consultar o banco**, para o monitor não acordar o Neon a cada checagem (o plano gratuito conta o tempo de computação). A rota `/health/db` faz `SELECT 1` e responde 200 ou 503; é para conferir o deploy, não para o monitor. Nenhuma das duas **revela versão, caminho ou erro detalhado**.
 - A rota não exige login, por isso não retorna nenhum dado do sistema.
 
 
@@ -597,7 +610,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env: { POSTGRES_PASSWORD: test, POSTGRES_DB: unishop_test }
         ports: ['5432:5432']
     steps:
@@ -683,8 +696,9 @@ Inventário (um item por credencial; este quadro é a fonte de verdade e deve se
 | `RESEND_API_KEY` | Privada | Env do backend | `resend.provider` | Semestral e se vazar |
 | `CLOUDINARY_URL` (API secret) | Privada | Env do backend | `cloudinary.provider` | Semestral e se vazar |
 | `TURNSTILE_SECRET_KEY` | Privada | Env do backend | `turnstile.provider` | Se vazar |
-| `DATABASE_URL` (com *pooler*) | Privada | Env do backend | ORM | Semestral e se vazar |
-| `DATABASE_URL_UNPOOLED` (direta) | Privada | Env do backend (build da migração), segredo do GitHub (backup) e terminal de quem faz o seed | Migrações e backup | Semestral e se vazar |
+| `DATABASE_URL` (com *pooler*, papel `unishop_app`) | Privada | Env do backend | ORM | Semestral e se vazar |
+| `DATABASE_URL_UNPOOLED` (direta, papel `unishop_migrator`) | Privada | Env do build da migração e terminal de quem faz o seed. **Fora** do GitHub | Migrações | Semestral e se vazar |
+| `DATABASE_URL_BACKUP` (direta, papel `unishop_backup`, somente leitura) | Privada | Só segredo do GitHub, usado pelo workflow de backup | Backup | Semestral e se vazar |
 | `CRON_SECRET` | Privada | Env do backend e agendador externo (cron-job.org) | Endpoints de jobs | Semestral e se vazar |
 | `JWT_SECRET` | Privada | Env do backend | `authenticate`, `auth` | Semestral e se vazar |
 | `ADMIN_PASSWORD` | Privada (uso único) | Só ao rodar o `seed` | `prisma/seed.ts` | Trocar no 1º login do admin |
@@ -753,7 +767,7 @@ Inventário (um item por credencial; este quadro é a fonte de verdade e deve se
 5. Registrar o incidente: data, o que vazou, o que foi feito e quem fez.
 6. Descobrir o motivo e corrigir o controle que falhou (por exemplo, instalar o `gitleaks` no commit).
 
-> **Rotação do `JWT_SECRET`.** Trocar o segredo derruba todas as sessões. Para fazer sem aviso, o backend aceita o segredo anterior por 2 horas (a validade do token). Pendência 9.
+> **Rotação do `JWT_SECRET`.** Trocar o segredo derruba todas as sessões. Para fazer sem aviso, o backend aceita o segredo anterior por 2 horas (a validade do token). Decisão do grupo.
 
 
 ### 5.6 Proteção da entrada: webhooks
@@ -851,7 +865,7 @@ export function verifyMpSignature(o: {
 
 - **Impedir o segredo antes do commit:** `gitleaks` como verificação local no commit e na CI. Se o plano do repositório oferecer a varredura de segredos do GitHub, ative também (conferir).
 - **Dependências:** `package-lock.json` versionado, `npm ci` na CI, `npm audit` e Dependabot. SDKs de provedores (Mercado Pago, Google, Resend, Cloudinary) com **versão fixa** e atualização revisada em *pull request*.
-- **Permissão mínima em todo lugar:** chaves dedicadas ao Unishop (nunca a chave pessoal de alguém), com o menor poder possível; `GITHUB_TOKEN` só de leitura; usuário do banco da aplicação sem poder de alterar estrutura.
+- **Permissão mínima em todo lugar:** chaves dedicadas ao Unishop (nunca a chave pessoal de alguém), com o menor poder possível; `GITHUB_TOKEN` só de leitura; três papéis de banco: aplicação sem poder de alterar estrutura e backup somente leitura.
 - **Alertas dos provedores:** ligar os avisos de uso e de erro no painel de cada um.
 
 
@@ -965,6 +979,7 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),                  // com pooler
   DATABASE_URL_UNPOOLED: z.string().optional(),     // só no build da migração e no backup
   CRON_SECRET: z.string().min(32),
+  EMAIL_VERIFICATION_REQUIRED: z.enum(['true', 'false']).default('false'),  // RN-ACE-07
   JWT_SECRET: z.string().min(32),
   GOOGLE_CLIENT_ID: z.string().min(1),
   MP_ACCESS_TOKEN: z.string().min(1),
@@ -1000,7 +1015,9 @@ export const env = Object.freeze({
   nodeEnv: e.NODE_ENV,
   cronSecret: new Secret(e.CRON_SECRET),
   frontendUrls: e.FRONTEND_URL,
+  port: e.PORT,
   allowedEmailDomain: e.ALLOWED_EMAIL_DOMAIN,
+  emailVerificationRequired: e.EMAIL_VERIFICATION_REQUIRED === 'true',
   jwtSecret: new Secret(e.JWT_SECRET),
   google: { clientId: e.GOOGLE_CLIENT_ID },
   mp: {
@@ -1100,7 +1117,8 @@ export const logger = pino({
 | Situação no provedor | Erro do Unishop | Status |
 |---|---|---|
 | Cartão ou Pix recusado pelo Mercado Pago | `PAYMENT_DECLINED` | 402 |
-| Pix vencido | `PIX_EXPIRED` | 409 |
+| Pix vencido (o pedido foi cancelado) | `PIX_EXPIRED` | 409 |
+| Anúncio saiu do ar durante o pagamento | `LISTING_UNAVAILABLE` | 409 |
 | Token do Google inválido ou expirado | `TOKEN_INVALID` | 401 |
 | E-mail do Google não verificado ou fora do domínio | `EMAIL_NOT_VERIFIED` / `EMAIL_DOMAIN_NOT_ALLOWED` | 403 |
 | Desafio anti-bot reprovado | `BOT_CHECK_FAILED` | 403 |
@@ -1121,7 +1139,7 @@ Cada ambiente usa **credenciais próprias**. Credencial de teste nunca vai para 
 | Resend / Mailtrap | Mailtrap (caixa de teste) | `console` | Resend, domínio verificado (Preview: Mailtrap) |
 | Cloudinary | Pasta `unishop/dev/` (ou conta separada) | `local` | Pasta `unishop/prod/` (`CLOUDINARY_UPLOAD_FOLDER`) |
 | Turnstile | Chaves de teste da Cloudflare | `noop` | `noop` até o Turnstile entrar; depois, widget de produção com hostname restrito |
-| PostgreSQL | Docker local (`docker-compose.yml`) | Docker local de testes (`docker-compose.test.yml`), em memória | Branch `production` do Neon; um branch por preview |
+| PostgreSQL | Docker local (`docker-compose.yml`, imagem `postgres:18`) | Docker local de testes (`docker-compose.test.yml`), em memória | Branch `production` do Neon (PostgreSQL 18); um branch por preview, derivado do branch de desenvolvimento |
 | Sentry | Desligado ou `environment=development` | Desligado | `environment=production` |
 
 
@@ -1137,7 +1155,7 @@ ALLOWED_EMAIL_DOMAIN=edu.unifor.br
 
 # Banco
 DATABASE_URL=               # em produção: endereço com pooler (?pgbouncer=true&connection_limit=1)
-DATABASE_URL_UNPOOLED=      # conexão direta; só migração e backup
+DATABASE_URL_UNPOOLED=      # conexão direta (papel de migração); só migração e seed. O backup usa DATABASE_URL_BACKUP (só no GitHub)
 
 # Sessão (própria)
 JWT_SECRET=                 # mínimo de 32 caracteres aleatórios
@@ -1145,6 +1163,9 @@ JWT_EXPIRES_IN=2h
 
 # Jobs agendados (produção)
 CRON_SECRET=                # mínimo de 32 caracteres; protege /api/v1/internal/jobs/*
+
+# Confirmação de e-mail por link (RN-ACE-07): desligada no MVP
+EMAIL_VERIFICATION_REQUIRED=false
 
 # Google
 GOOGLE_CLIENT_ID=
@@ -1205,7 +1226,7 @@ Se um provedor cair, só a função dele para. Esta tabela define o comportament
 | Resend | E-mails chegam atrasados ou não chegam | Tenta de novo (3 vezes), registra em log e segue; reenvio manual por `resend-verification` e `forgot-password` |
 | Cloudinary | "Não foi possível enviar a imagem. Tente de novo" | Falha o upload (502); **nada** é gravado no banco |
 | Turnstile | Conforme a política da seção 4.7 | Falha fechada em cadastro e recuperação; aberta com limite no login |
-| PostgreSQL | "Sistema indisponível" | `/health` responde 503; a API responde 503 |
+| PostgreSQL | "Sistema indisponível" | `/health/db` responde 503; a API responde 503 |
 | Sentry ou UptimeRobot | Nada | Nada: são só de apoio |
 
 
@@ -1237,8 +1258,8 @@ Se um provedor cair, só a função dele para. Esta tabela define o comportament
 | `APP_ENV` diferente de `production` com `PAYMENT_MODE=production` (credencial real fora da produção) | O servidor **não sobe** |
 | `APP_ENV=production` com `PAYMENT_MODE=sandbox` | O servidor **sobe** (RN-PAG-10: produção usa conta de teste) |
 | `APP_ENV=production` com driver `mock`, `console` ou `local` (e `noop`, depois que o Turnstile entrar) | O servidor **não sobe** |
-| `FRONTEND_URL` com mais de uma origem, `*` ou `http://` em `preview` ou `production` | O servidor **não sobe** |
-| Chamar `/api/v1/internal/jobs/<nome>` sem o `CRON_SECRET` | 401, e o job não roda |
+| `FRONTEND_URL` com `*` ou `http://` em `preview` ou `production` (uma lista de origens `https` é válida) | O servidor **não sobe** com `*` ou `http://`; sobe com a lista |
+| Chamar `/api/v1/internal/jobs/<nome>` sem o `CRON_SECRET`, com `Bearer undefined` ou com `Bearer [REDACTED]` | 401, e o job não roda |
 | Varrer a pasta `dist/` do frontend depois do `build` | Nenhum nome ou formato de credencial privada |
 | Logger com objeto contendo `accessToken`, `apiKey` e `Authorization` | Todos aparecem como `[REDACTED]` |
 | Webhook sem assinatura, com assinatura errada ou com `ts` de 10 minutos atrás | 401 ou 400, e nenhum efeito no pedido |
@@ -1252,13 +1273,13 @@ Se um provedor cair, só a função dele para. Esta tabela define o comportament
 
 | API | Limite gratuito | Risco para o projeto | Plano B |
 |---|---|---|---|
-| Google Identity | Gratuito | Depende de o e-mail da Unifor ser conta Google | Login com e-mail e senha |
+| Google Identity | Gratuito | Depende de o e-mail da Unifor ser conta Google | Login com e-mail e senha (continua no MVP) |
 | Apple Sign In | **US$ 99/ano** | Custo e e-mail de retransmissão | Fora do MVP |
 | Mercado Pago | Sem mensalidade; **tarifa por transação com credenciais reais** (conferir). Com a RN-PAG-10 só se usa o modo de teste | Taxa sobre cada venda, se o grupo mudar a RN-PAG-10 | PicPay, PagBank, Asaas, EFI |
 | Resend | **3.000 e-mails/mês, 100/dia, 1 domínio** | Estourar 100 por dia | Mailtrap só em dev; outro provedor |
 | Cloudinary | **25 créditos/mês** (1 crédito = 1 GB de armazenamento, ou 1 GB de banda, ou 1.000 transformações) | Imagens muito acessadas | Cloudflare R2 |
 | Cloudflare Turnstile | Gratuito; **até 20 widgets**; sem SLA no gratuito | Queda do provedor | Política de falha (4.7) |
-| Neon | **100 CU-horas e 0,5 GB** por projeto; dorme em 5 min | Suspender ao atingir o limite; arranque lento (soma-se à partida a frio da função, RNF008). Cada branch de preview também consome o limite | Supabase (conferir) |
+| Neon | **100 CU-horas e 1 GB** por projeto por mês; 10 branches; restauração de 6 h; dorme em 5 min (conferido em 16/10/2026) | Suspender ao atingir o limite; arranque lento (soma-se à partida a frio da função, RNF008). Jobs e monitor que acordam o banco gastam CU-horas, por isso os jobs rodam de 30 em 30 minutos e o `/health` não consulta o banco. Cada branch de preview também consome o limite | Supabase (conferir) |
 | Vercel (Hobby) | Gratuito, de uso não comercial; sem equipe; cron só diário; logs de cerca de 1 h; 100 deploys/dia | Ver Deploy, seção 6 e pendência 1 | Plano Pro, se necessário |
 | Sentry | **1 usuário, 5.000 erros/mês** | Só 1 pessoa no gratuito | Adiar, ou conta compartilhada |
 | UptimeRobot | **50 monitores, checagem a cada 5 min** (termos de uso: conferir) | Restrição de uso comercial (conferir) | StatusCake (10 monitores) |
@@ -1270,14 +1291,14 @@ Se um provedor cair, só a função dele para. Esta tabela define o comportament
 
 | API | Regras de Negócio | Requisitos |
 |---|---|---|
-| Google Identity | RN-ACE-02, RN-ACE-14 | RF002.6, RF003.3, RNF002 |
-| Mercado Pago | RN-PAG-01 a 11, RN-PED-01, RN-PED-02, RN-EST-03, RN-EST-04 | RF010, RF011, RNF006 |
-| Resend (e Mailtrap) | RN-ACE-07, RN-ACE-10, RN-PER-02, RN-NOT-01, RN-NOT-02 | RF002.5, RF004.2, RF013.4, RF011.2, RF023.7 |
-| Cloudinary (e R2) | RN-ANU-03, RN-PER-05 | RF015.2, RF008.1, RNF005, RNF009 |
+| Google Identity | RN-ACE-02, RN-ACE-06, RN-ACE-14 | RF002.6, RF003.3, RNF002 |
+| Mercado Pago | RN-PAG-01 a 14, RN-PED-01, RN-PED-02, RN-EST-03, RN-EST-04 | RF010, RF011, RNF006 |
+| Resend (e Mailtrap) | RN-ACE-07, RN-ACE-10, RN-PER-02, RN-NOT-01 a 04 | RF002.5, RF004.2, RF013.4, RF011.2, RF023.7 |
+| Cloudinary (e R2) | RN-ANU-03, RN-PER-05 | RF015.2, RF008.1, RNF005 (desvio de 4 MB), RNF009 |
 | WhatsApp `wa.me` | RN-PED-05, RN-PER-04 | RF009.4, RF014.5, RF017.5, RNF007 |
 | Cloudflare Turnstile | RN-ACE-09 | RNF003 |
 | PostgreSQL gerenciado (Neon) | RN-EST-05 (CHECK), RN-PED-03 | RNF011, RNF015 |
-| Vercel Cron e agendador externo | RN-PAG-04, RN-PAG-05, RN-PAG-08, RN-ACE-10 | RNF011 |
+| Vercel Cron e agendador externo | RN-PAG-04, RN-PAG-05, RN-PAG-08, RN-PAG-12, RN-PAG-13, RN-ACE-10 | RNF011 |
 | Sentry, UptimeRobot, GitHub Actions | — | RNF011, RNF016 |
 | Arquitetura de segurança (seção 5) | RN-ADM-01, RN-PAG-02, RN-PAG-05, RN-PAG-06 | RNF001, RNF003, RNF004, RNF005, RNF006, RNF007 |
 
@@ -1294,12 +1315,14 @@ Se um provedor cair, só a função dele para. Esta tabela define o comportament
 | Chaves públicas e privadas | Só `VITE_*` no frontend, todas públicas; teste que varre o `dist/` |
 | Webhook | Assinatura HMAC, janela de 5 minutos, idempotência e consulta de volta |
 | Pagamento | **Mercado Pago (ADR-002, decidido)**; cartão por token; Pix com webhook; repasse simulado; produção usa credenciais de teste (RN-PAG-10) |
-| Login social | Só Google no MVP (desejável); Apple fora |
-| Upload de imagem | Pelo backend, para a Cloudinary; uma imagem por requisição, até 4 MB (limite da Vercel); sem upload assinado direto do navegador |
+| Login social | **Google no MVP** (domínio conferido no servidor); Apple fora |
+| Upload de imagem | Pelo backend, para a Cloudinary; uma imagem por requisição, até 4 MB (confirmado pelo grupo em 16/10/2026); sem upload assinado direto do navegador |
 | WhatsApp | Link `wa.me`, sem API |
 | Ambientes | Credenciais separadas por ambiente; `APP_ENV` define o ambiente; drivers `mock`, `console` e `local` proibidos em produção; credencial real de pagamento só em produção |
 | Hospedagem e banco | **Vercel + Neon (ADR-005, decidido)**; documentado em `docs/deploy/deploy.md` |
-| Jobs agendados | Endpoints `/api/v1/internal/jobs/:name` com `CRON_SECRET`; Vercel Cron nos diários e agendador externo nos frequentes (Backend, seção 14) |
+| Jobs agendados | Endpoints `/api/v1/internal/jobs/:name` com `CRON_SECRET`; Vercel Cron no diário e agendador externo a cada 30 minutos (Backend, seção 14) |
+| Banco | Neon, PostgreSQL 18, três papéis (migração, aplicação, backup somente leitura); previews derivados do branch de desenvolvimento |
+| Monitoramento | UptimeRobot no MVP, chamando o `/health` leve |
 
 
 ### Registros de decisão (ADRs) ligados a este documento
@@ -1310,7 +1333,7 @@ Numeração única para todos os documentos (a mesma do Backend e do Deploy):
 |---|---|---|
 | ADR-001 | ORM (Prisma) | **Decidido** |
 | ADR-002 | Gateway de pagamento (Mercado Pago) e forma de integração (Payments API ou Orders API) | **Gateway decidido: Mercado Pago.** Falta escolher a Payments API ou a Orders API |
-| ADR-003 | Login só com Google, sem Apple | Decidido |
+| ADR-003 | Login social só com Google (MVP), sem Apple; e-mail e senha continuam | Decidido |
 | ADR-004 | Armazenamento de imagens: Cloudinary no MVP (R2 fica como alternativa) | **Decidido** |
 | ADR-005 | Hospedagem e banco: Vercel + Neon (`docs/deploy/deploy.md`) | **Decidido** |
 | ADR-006 | Anti-bot (Turnstile) depois do MVP, com a política de falha da seção 4.7 | **Decidido** |
@@ -1321,23 +1344,13 @@ Numeração única para todos os documentos (a mesma do Backend e do Deploy):
 
 ### Pendências em aberto
 
-**Fechamento em 15/10/2026.** O grupo fechou este documento: as propostas das pendências 4, 5, 8, 9, 10, 11, 12 e 15 passam a valer como decisão (Sentry adiado, Turnstile depois do MVP, Cloudinary, segredo anterior do JWT aceito por 2 horas, política de falha do Turnstile, priorização dos e-mails de segurança, sem *staging*, mesmo usuário do banco no MVP). Continuam abertas as que dependem de uma ação ou resposta externa: **1** (prova de conceito do Mercado Pago), **2** (domínio próprio), **3** (teste do e-mail com o Google), **7** (conferir os termos do UptimeRobot), **13** (`openapi.yaml`, Pedro) e **14** (limite de imagem, pergunta ao professor).
+As propostas que o grupo fechou em 15/10/2026 (Sentry adiado, Turnstile depois do MVP, Cloudinary, segredo anterior do JWT aceito por 2 horas, política de falha do Turnstile, priorização dos e-mails de segurança, sem *staging*) viraram decisão e estão nas tabelas acima. Fecharam-se também a pergunta do limite de imagem (4 MB, confirmado pelo grupo em 16/10/2026) e a separação dos papéis do banco (Banco de Dados, seção 10). Continuam abertas as que dependem de uma ação ou resposta externa:
 
 | # | Pendência | Proposta |
 |---|---|---|
-| 1 | Escolher a Payments API ou a Orders API do Mercado Pago (ADR-002; o gateway já está decidido) | Decidir depois de ler a documentação vigente e testar no sandbox, junto da prova de conceito do Pix de teste (Deploy, pendência 10) |
+| 1 | Escolher a Payments API ou a Orders API do Mercado Pago (ADR-002; o gateway já está decidido) | Decidir depois de ler a documentação vigente e testar no sandbox, junto da prova de conceito do Pix de teste (Deploy, seção 17) |
 | 2 | Domínio próprio para o Resend verificar (SPF e DKIM). Quem controla o DNS? | Registrar um domínio do projeto; sem ele, só testes com Mailtrap |
-| 3 | O e-mail `@edu.unifor.br` está vinculado a uma conta Google? | Testar com um e-mail real antes de fechar o RF002.6 |
-| 4 | Sentry gratuito permite 1 usuário e o grupo tem 4 | Adiar o Sentry, ou usar uma conta compartilhada do grupo |
-| 5 | Turnstile entra no MVP ou depois? | Depois, mas antes de abrir o sistema a todos os alunos |
-| 6 | Onde guardar os segredos em produção | **Resolvida:** *Environment Variables* da Vercel, marcadas como *Sensitive*, mais os *Secrets* do GitHub para o backup (Deploy, seção 4) |
-| 7 | Termos do plano gratuito do UptimeRobot (uso não comercial) | Conferir; se for barrado, usar StatusCake |
-| 8 | Cloudinary ou R2 (ADR-004) | Cloudinary no MVP, pela compressão pronta |
-| 9 | Rotação do `JWT_SECRET` sem derrubar sessões | Aceitar o segredo anterior por 2 horas |
-| 10 | Política se o Turnstile cair | Falha fechada em cadastro e recuperação; aberta com limite no login |
-| 11 | O limite de 100 e-mails por dia do Resend comporta o uso esperado? | Priorizar e-mails de segurança e monitorar a cota |
-| 12 | Haverá ambiente de homologação (*staging*) com credenciais próprias? | Não no MVP; o sandbox dos provedores faz esse papel |
-| 13 | **O `openapi.yaml` (contrato da API do Unishop) não existe**, e o frontend, o backend e as skills dependem dele | Pedro escreve a partir do Backend §9, antes de o frontend consumir as rotas; definir prazo |
-| 14 | **Limite de imagem: 4 MB na API (Vercel) contra 5 MB no RNF005, RN-ANU-03 e RN-PER-05.** O PDF tem prioridade | Confirmar com o professor; se não aceitar, o frontend comprime a imagem antes de enviar (Backend, pendência 15) |
-| 15 | Usuário do banco da aplicação sem permissão de alterar a estrutura (a integração do Neon entrega um só usuário) | Aceitar o mesmo usuário no MVP; separar depois, se o plano permitir |
-
+| 3 | O e-mail `@edu.unifor.br` está vinculado a uma conta Google e entrega `email_verified`? | Testar com um e-mail real antes de fechar o RF002.6 |
+| 4 | Termos do plano gratuito do UptimeRobot (uso não comercial) | Conferir; se for barrado, usar StatusCake |
+| 5 | **O `openapi.yaml` (contrato da API do Unishop) não existe**, e o frontend, o backend e as skills dependem dele | Pedro escreve a partir do Backend §9 e deste documento, antes de o frontend consumir as rotas; definir prazo |
+| 6 | Criar os três papéis do banco no Neon gratuito: confirmar no painel como criar papéis com senha | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |

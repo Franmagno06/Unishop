@@ -46,7 +46,7 @@ O sistema tem três atores: **visitante**, **usuário (aluno logado)** e **admin
 ### Visitante
 - Tela inicial com apresentação da plataforma, carrossel de anúncios recentes, seção "Como funciona", categorias, FAQ e seção de segurança.
 - Cadastro restrito a e-mails institucionais (`@edu.unifor.br`), com aceite dos Termos de uso e confirmação de e-mail por link.
-- Login por e-mail e senha ou, no MVP, pelo Google (Apple fica de fora).
+- Login por e-mail e senha ou pelo Google (entra no MVP; no primeiro acesso, tela "completar cadastro" com aceite dos Termos). Apple fica de fora.
 - Recuperação de senha por e-mail, com link de validade de 30 minutos e uso único.
 
 ### Usuário (aluno)
@@ -54,8 +54,9 @@ O sistema tem três atores: **visitante**, **usuário (aluno logado)** e **admin
 - Página de produto com galeria de imagens, dados do vendedor e botão "Fazer pedido", em que escolhe a quantidade (limitada ao estoque).
 - Dois caminhos de compra: **pagamento pelo site** (cartão ou Pix, via gateway externo) ou **contato por WhatsApp** (pedido "Em negociação").
 - Retirada presencial: no pedido pago, o vendedor marca "retirada combinada" e o comprador confirma o recebimento.
-- Perfil com edição de dados, troca de e-mail institucional, exclusão de perfil (a conta é anonimizada) e histórico de pedidos.
-- Publicação e gerenciamento de anúncios: nome, categoria, descrição, preço, quantidade, pelo menos uma imagem e WhatsApp; editar, pausar, reativar, marcar como vendido ou excluir; indicadores de visualizações, contatos e pedidos.
+- Perfil com edição de dados, troca de senha, troca de e-mail institucional, exclusão de perfil (a conta é anonimizada) e histórico de pedidos.
+- Cancelamento do próprio pedido Pendente ou Em negociação; o vendedor pode encerrar a negociação.
+- Publicação e gerenciamento de anúncios: nome, categoria, descrição, preço, quantidade, de 1 a 5 imagens e WhatsApp; editar, pausar, reativar, marcar como vendido ou excluir; indicadores de visualizações, contatos e pedidos.
 
 ### Administrador
 - Painel restrito com seções de **Usuários** e **Produtos**, acessado pela mesma tela de login do aluno, em rota separada (`/admin/login`).
@@ -68,7 +69,7 @@ O sistema tem três atores: **visitante**, **usuário (aluno logado)** e **admin
 1. O visitante conhece a plataforma na tela inicial e vai para cadastro ou login (e-mail `@edu.unifor.br` obrigatório).
 2. Logado, o aluno acessa **Categorias**, escolhe uma categoria, vê a listagem e abre a página do produto.
 3. Em "Fazer pedido", escolhe a quantidade e segue por um de dois caminhos:
-   - **Pagamento pelo site:** o pedido nasce "Pendente"; quando o gateway confirma o pagamento, vira "Pago" e o estoque é descontado.
+   - **Pagamento pelo site:** o pedido nasce "Pendente"; quando o gateway confirma o pagamento, vira "Pago" e o estoque é descontado. Sem pagamento em 30 minutos, o pedido é cancelado.
    - **WhatsApp:** o pedido nasce "Em negociação"; o estoque só é descontado quando o vendedor confirma a venda.
 4. O aluno acompanha as compras em **Meus pedidos**.
 5. Para vender, usa "+ Anunciar item", publica e gerencia o anúncio e os pedidos recebidos.
@@ -80,8 +81,10 @@ O sistema tem três atores: **visitante**, **usuário (aluno logado)** e **admin
 |---|---|
 | Anúncio | `Ativo`, `Pausado`, `Vendido`, `Excluído` (definitivo) |
 | Pedido | `Pendente`, `Pago`, `Retirada combinada`, `Concluído`, `Em negociação`, `Cancelado` |
-| Pagamento | `Pendente`, `Aprovado`, `Recusado`, `Expirado`, `Estornado` |
-| Conta | `Ativa`, `Bloqueada` (5 senhas erradas, 15 minutos), `Suspensa` (pelo admin) |
+| Pagamento | `Pendente`, `Aprovado`, `Recusado`, `Expirado`, `Estorno pendente`, `Estornado` (um pedido pode ter várias tentativas, mas só uma em andamento) |
+| Conta | `Ativa`, `Suspensa` (pelo admin), `Excluída` (anonimizada). O bloqueio de 15 minutos após 5 senhas erradas é temporário e não é um estado da conta |
+
+No banco, os estados são gravados em português, minúsculos e sem acento (`pago`, `em_negociacao`, `retirada_combinada`...). O anúncio "Excluído" não é um status: é exclusão lógica.
 
 ## Regras centrais do sistema
 
@@ -90,38 +93,42 @@ Resumo das regras que nunca podem ser violadas. O detalhe está em [Regras de Ne
 - **Segurança no backend.** O frontend só valida para responder rápido; papel, dono do recurso, dinheiro e estoque são sempre decididos no servidor.
 - **Domínio institucional.** Cadastro, login e troca de e-mail aceitam apenas `@edu.unifor.br` (exceção: a conta admin criada por seed).
 - **Pagamento externo.** Dados de cartão nunca passam pelos servidores do Unishop; o navegador gera um token com o SDK do gateway. A confirmação vem por webhook assinado.
-- **Sessão JWT** no cabeçalho `Authorization: Bearer`, com expiração.
-- **Estoque sem reserva.** Pix pendente não reserva a unidade: vale o primeiro pagamento confirmado. O desconto é atômico (`UPDATE ... WHERE quantity >= n`) e a quantidade nunca fica negativa. Se o estoque acabar antes da confirmação, o pedido é cancelado e o valor, estornado.
+- **Sessão JWT** de 2 horas no cabeçalho `Authorization: Bearer`, sem refresh token.
+- **Estoque sem reserva.** Pix pendente não reserva a unidade: vale o primeiro pagamento confirmado. O desconto é atômico (`UPDATE ... WHERE quantidade >= n`) e a quantidade nunca fica negativa. Se o estoque acabar antes da confirmação, ou o anúncio deixar de estar ativo, ou o pagamento chegar com o pedido já cancelado, o pedido é cancelado e o valor, estornado.
 - **Pedido via WhatsApp não desconta estoque** até o vendedor confirmar a conclusão.
-- **Preço congelado.** O pedido guarda preço unitário e total do momento da compra.
+- **Pedido congelado.** O pedido guarda vendedor, nome do produto, imagem, quantidade, preço unitário e taxa do momento da compra. Cada comprador tem um pedido aberto por anúncio e forma de negociação.
 - **Cada usuário altera só o que é seu**; rotas de admin exigem perfil próprio.
-- **Ações irreversíveis** (excluir perfil, excluir anúncio/produto, marcar como vendido) exigem confirmação explícita.
-- **Anúncio** tem pelo menos uma imagem (JPG/PNG até 5 MB) e preço maior que zero.
+- **Ações irreversíveis** (excluir perfil, excluir anúncio/produto, marcar como vendido) exigem confirmação explícita. Excluir é lógico (anúncio) ou por anonimização (usuário), e fica bloqueado enquanto houver pedido Pago ou em Retirada combinada em aberto.
+- **Anúncio** tem de 1 a 5 imagens (JPG/PNG), preço de R$ 0,01 a R$ 99.999,99 e quantidade de 1 a 999. A imagem tem até **4 MB** (o PDF cita 5 MB; desvio confirmado pelo grupo em 16/10/2026 por causa do limite de 4,5 MB por requisição na Vercel), enviada uma por requisição.
+- **Produção em modo de demonstração.** O Mercado Pago roda com credenciais de teste e a tela avisa que nenhum valor é cobrado de verdade.
 - **WhatsApp** do vendedor só aparece para usuários logados.
 - **Taxa de serviço** de R$ 0,00 por enquanto; o repasse ao vendedor é simulado, via conta única de teste.
 
 ## Arquitetura
 
-SPA em React que consome uma API REST em Node.js/Express (`/api/v1`), sem sessão guardada no servidor. Um único processo Node.js atende a API e executa os jobs agendados.
+SPA em React que consome uma API REST em Node.js/Express (`/api/v1`), sem sessão guardada no servidor. Em produção, o frontend é um site estático na Vercel e a API roda como função serverless (o `app.ts` é exportado, sem `listen`). Em desenvolvimento, o `dev-server.ts` liga a porta e os jobs com `node-cron`.
 
 ```text
  Navegador (SPA React)
         │   HTTPS · JSON · JWT
         ▼
  ┌─────────────────────────────────────────────────┐
- │  Servidor Unishop  (um único processo Node.js)  │
- │   ├─ API REST ........ Express + TypeScript     │
- │   └─ Jobs agendados .. node-cron                │
+ │  Vercel                                         │
+ │   ├─ Frontend ........ site estático (Vite)     │
+ │   └─ API REST ........ Express + TypeScript     │
+ │                        (função serverless)      │
  └───┬───────────┬────────────┬───────────┬────────┘
      ▼           ▼            ▼           ▼
  PostgreSQL   Google      Mercado      Resend e Cloudinary
- (dados)      (login)     Pago         (e-mails e imagens)
+ (Neon)       (login)     Pago         (e-mails e imagens)
                           (cartão e Pix)
                             ▲
                             └── webhook: o gateway avisa quando o pagamento é aprovado
+
+ Agendadores (Vercel Cron e cron-job.org) ──▶ GET /api/v1/internal/jobs/:name  (com CRON_SECRET)
 ```
 
-> O gateway de pagamento é o **Mercado Pago** (decidido pelo grupo). Os demais serviços externos (Google, Resend, Cloudinary) são **propostas em avaliação**. O código acessa todos por interfaces (providers), o que permite trocá-los sem mexer nas regras de negócio.
+> Decididos pelo grupo: **Mercado Pago** (pagamento), **Vercel + Neon** (hospedagem e banco), **Resend** (e-mail; Mailtrap em desenvolvimento), **Cloudinary** (imagens) e **Google** (login social). Os segredos ficam só no backend ("backend-cofre"). O código acessa todos os serviços por interfaces (providers), o que permite trocá-los sem mexer nas regras de negócio.
 
 ### Camadas do backend
 
@@ -144,24 +151,27 @@ Requisição HTTP ▶ Route ▶ Controller ▶ Service ▶ Repository ▶ Postgr
 |---|---|
 | Frontend | TypeScript com React, Tailwind CSS e HTML |
 | Backend | Node.js com Express |
-| Banco de dados | PostgreSQL |
+| Banco de dados | PostgreSQL 18 |
 | Prototipação | Figma |
 | Versionamento | Git, código organizado em camadas |
 | Gestão | Trello (Kanban) |
 
 ### Serviços e bibliotecas decididos
 
-Os documentos técnicos foram fechados pelo grupo em 15/10/2026. As escolhas abaixo valem; as pendências restantes estão no [CLAUDE.md](CLAUDE.md) e nos documentos de [API](docs/api/api.md), [backend](docs/backend/backend.md) e [deploy](docs/deploy/deploy.md).
+Os documentos técnicos foram alinhados em conjunto pelo grupo em 16/10/2026. As escolhas abaixo valem; as pendências restantes estão no [CLAUDE.md](CLAUDE.md) e nos documentos de [Regras de Negócio](docs/regras-de-negócio/regras-de-negócio.md), [banco de dados](docs/BancoDeDados/bd.md), [API](docs/api/api.md), [backend](docs/backend/backend.md) e [deploy](docs/deploy/deploy.md).
 
 | Área | Decisão |
 |---|---|
 | Frontend | Vite, React Router, TanStack Query, React Hook Form + Zod, Vitest, Testing Library e Playwright |
 | Backend | Estrutura route/controller/service/repository, Prisma (ORM), Zod, bcrypt, jsonwebtoken, node-cron (só em desenvolvimento), pino, helmet, Vitest + Supertest |
+| Hospedagem e banco | Vercel (frontend e API) e Neon (PostgreSQL 18, plano gratuito de 1 GB) |
+| Pagamento | Mercado Pago (cartão por token e Pix com webhook), em modo de teste |
 | E-mail | Resend (produção, com domínio próprio) e Mailtrap (desenvolvimento) |
 | Imagens | Cloudinary (Cloudflare R2 fica como alternativa) |
 | Ambiente local | Docker Compose para o PostgreSQL de desenvolvimento e o de testes |
-| Login social | Somente Google no MVP (desejável) |
-| Depois do MVP | Cloudflare Turnstile (anti-bot) e Sentry |
+| Login social | Google, no MVP; Apple fora |
+| Monitoramento | UptimeRobot no `/health` |
+| Depois do MVP | Cloudflare Turnstile (anti-bot), Sentry e confirmação de e-mail por link |
 
 ## Estrutura do repositório
 
@@ -173,13 +183,16 @@ Unishop/
 ├─ README.md
 ├─ skills-lock.json          # origem das skills externas instaladas
 ├─ .claude/skills/           # skills do Claude Code: unishop-frontend, unishop-backend, unishop-api, unishop-deploy,
-│                            # vercel-cli-with-tokens, neon-postgres, neon-postgres-branches, resend, email-best-practices,
+│                            # unishop-database, unishop-rules, vercel-cli-with-tokens, neon-postgres, neon-postgres-branches, resend, email-best-practices,
 │                            # vercel-react-best-practices,
 │                            # vercel-composition-patterns, web-design-guidelines, supabase-postgres-best-practices,
 │                            # webapp-testing, skill-creator
 ├─ docs/
 │  ├─ frontend/frontend.md
 │  ├─ backend/backend.md
+│  ├─ api/api.md
+│  ├─ deploy/deploy.md
+│  ├─ BancoDeDados/bd.md
 │  ├─ regras-de-negócio/regras-de-negócio.md
 │  └─ skills/skills.md
 ├─ frontend/                 # (a criar) SPA React, organizada por área
@@ -188,15 +201,15 @@ Unishop/
 
 ## Backend em resumo
 
-Detalhes completos em [Documentação do Backend](docs/backend/backend.md) (v0.2, baseada nas Regras de Negócio v0.3).
+Detalhes completos em [Documentação do Backend](docs/backend/backend.md) (v0.3, baseada nas Regras de Negócio v0.4 e no Banco de Dados v0.2).
 
 ### Estrutura planejada
 
 ```text
 backend/
-├─ prisma/                   # schema, migrações e seed (6 categorias + conta admin)
+├─ prisma/                   # schema, migrações (0_init + manual) e seed (6 categorias + conta admin)
 ├─ src/
-│  ├─ server.ts · app.ts · config/ · routes/index.ts
+│  ├─ app.ts · dev-server.ts · config/ · routes/index.ts
 │  ├─ modules/               # ALUNO: auth, users, categories, listings, orders, payments, notifications
 │  ├─ admin/                 # ADMINISTRADOR: users, listings, audit-logs (proteção aplicada uma vez)
 │  ├─ shared/                # middlewares, providers, errors, utils, types
@@ -210,30 +223,36 @@ Cada módulo segue o mesmo molde: `routes`, `controller`, `service`, `rules`, `r
 
 | Módulo | Rotas principais | Acesso |
 |---|---|---|
-| auth | `/auth/register`, `/auth/login`, `/auth/google`, `/auth/verify-email`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/me` | Público (exceto `me`) |
-| users | `/users/me` (perfil, avatar, troca de e-mail, exclusão) | Aluno ou admin |
+| auth | `/auth/register`, `/auth/login`, `/auth/google`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/me` (e `/auth/verify-email` e `/auth/resend-verification`, só com a chave `EMAIL_VERIFICATION_REQUIRED`) | Público (exceto `me`) |
+| users | `/users/me` (perfil), `/users/me/password`, `/users/me/complete-profile` (Google), `/users/me/avatar`, `/users/me/email-change` e `/confirm`, exclusão (`DELETE`) | Aluno ou admin |
 | categories | `GET /categories` (seis categorias fixas, sem escrita) | Aluno |
-| listings | `/listings`, `/listings/recent` (carrossel público), `/listings/mine`, `/listings/:id` e ações pause, reactivate, mark-sold | Aluno; dono nas escritas |
-| orders | `/orders`, `/orders/contact`, `/orders/mine`, `/orders/received`, `/orders/:id/arrange-pickup`, `confirm-receipt`, `complete`, `cancel` | Aluno (comprador ou vendedor) |
+| listings | `/listings`, `/listings/recent` (carrossel público), `/listings/mine`, `/listings/:id` (e `/management`), imagens (`POST` e `DELETE /listings/:id/images`) e ações pause, reactivate, mark-sold | Aluno; dono nas escritas |
+| orders | `/orders`, `/orders/contact`, `/orders/mine`, `/orders/received`, `/orders/:id`, `/orders/:id/arrange-pickup`, `confirm-receipt`, `complete`, `cancel` | Aluno (comprador ou vendedor) |
 | payments | `/payments/card`, `/payments/pix`, `/payments/webhook` | Comprador; webhook só do gateway |
-| admin | `/admin/users`, `/admin/listings`, `/admin/audit-logs` | Somente admin |
-| técnica | `GET /health` | Público |
+| admin | `/admin/users` (e `/stats`), `/admin/listings` (e `/stats`), `/admin/audit-logs` | Somente admin |
+| técnica | `GET /health` (leve, para o monitor) e `GET /health/db` (consulta o banco) | Público |
+| jobs | `GET /internal/jobs/:name`, protegido por `CRON_SECRET` | Só os agendadores |
 
 O contrato final (campos, exemplos e códigos de resposta) ficará no `openapi.yaml`, que ainda não existe (pendência do [documento de API](docs/api/api.md)).
 
 ### Pagamentos
 
 - Cartão: o navegador envia os dados direto ao gateway e recebe um token; o backend só recebe o token.
-- Pix: a cobrança expira em 30 minutos; o webhook confirma, o backend consulta o gateway antes de confiar no aviso e a liquidação é idempotente.
-- Pix e cartão passam pela mesma rotina de liquidação, em transação, que é a única a mudar o pedido para "Pago".
+- Pix: a cobrança expira em 30 minutos; o webhook confirma, o backend consulta o gateway antes de confiar no aviso e a liquidação é idempotente. Pix expirado cancela o pedido.
+- Pix e cartão passam pela mesma rotina de liquidação, em transação, que é a única a mudar o pedido para "Pago". Ela só conclui se o anúncio estiver ativo, o vendedor não estiver suspenso e houver estoque; caso contrário, cancela o pedido e estorna.
+- Pagamento aprovado depois de o pedido já estar cancelado também é estornado, e o comprador é avisado por e-mail.
 
 ### Jobs agendados
 
-| Job | Frequência | Função |
-|---|---|---|
-| `expire-pix-payments` | A cada minuto | Cancela pedidos pendentes vencidos (não há estoque a devolver) |
-| `cleanup-expired-tokens` | Diário | Apaga tokens de confirmação e de senha vencidos ou usados |
-| `reconcile-pending-payments` | A cada 5 minutos | Corrige pagamentos que perderam o webhook e refaz estornos que falharam |
+Em desenvolvimento rodam com `node-cron`; em produção cada job é um endpoint chamado por um agendador, e todos são idempotentes.
+
+| Job | Frequência | Quem chama | Função |
+|---|---|---|---|
+| `expire-pix-payments` | A cada 30 minutos | cron-job.org | Cancela pedidos pendentes há mais de 30 minutos (Pix vencido ou cartão abandonado); não há estoque a devolver |
+| `reconcile-pending-payments` | A cada 30 minutos | cron-job.org | Corrige pagamentos que perderam o webhook e refaz estornos que falharam |
+| `cleanup-expired-tokens` | Diário | Vercel Cron | Apaga tokens de confirmação e de senha vencidos ou usados |
+
+O pedido vencido também é cancelado sob demanda, quando alguém o lê ou paga.
 
 ### Padrões de resposta
 
@@ -243,17 +262,20 @@ O contrato final (campos, exemplos e códigos de resposta) ficará no `openapi.y
 
 ### Segurança
 
-HTTPS e HSTS, senha com hash bcrypt, JWT com validade (proposta de 2 horas, sem refresh token no MVP), bloqueio após 5 erros de senha por 15 minutos, validação Zod em toda entrada, consultas parametrizadas (o RNF005 cita "NoSQL Injection", mas o banco é PostgreSQL: o risco real é SQL Injection), limite de requisições por IP, upload conferido pelo conteúdo real do arquivo, logs sem dados sensíveis e anonimização de dados pessoais na exclusão de perfil (LGPD).
+HTTPS e HSTS, senha com hash bcrypt, JWT de 2 horas (sem refresh token no MVP), bloqueio após 5 erros de senha por 15 minutos, validação Zod em toda entrada, consultas parametrizadas (o RNF005 cita "NoSQL Injection", mas o banco é PostgreSQL: o risco real é SQL Injection), limite de requisições por IP, upload conferido pelo conteúdo real do arquivo, logs sem dados sensíveis e anonimização de dados pessoais na exclusão de perfil (LGPD).
 
 ## Frontend em resumo
 
-Detalhes completos em [Documentação do Frontend](docs/frontend/frontend.md).
+Detalhes completos em [Documentação do Frontend](docs/frontend/frontend.md) (v0.4).
 
 - SPA React + TypeScript, organizada por **área** (um ator por área): `public` (visitante), `user` (aluno logado) e `admin` (administrador), mais `shared/` para o que é comum.
 - As áreas não se importam entre si; o `routes.tsx` de cada uma é carregado sob demanda (lazy loading).
 - Guards de rota: `GuestRoute`, `PrivateRoute` e `AdminRoute`. O guard só melhora a experiência; a barreira real de segurança é o backend.
-- Fluxo de dados: componente → hook → `services/` → API. Estado do servidor com TanStack Query (proposta); filtros e paginação na URL.
-- Toda tela que busca dados trata os estados: carregando, vazio, erro, 403, 404, sessão expirada, Pix expirado, pagamento recusado e sem estoque.
+- Sessão: JWT em memória com cópia em `sessionStorage`, restaurada por `GET /auth/me`.
+- Telas além do fluxo principal: completar cadastro (Google), trocar senha, confirmar troca de e-mail, Termos e Privacidade e 404.
+- Fluxo de dados: componente → hook → `services/` → API. Estado do servidor com TanStack Query; filtros e paginação na URL.
+- Toda tela que busca dados trata os estados: carregando, vazio, erro, 403, 404, sessão expirada, conta suspensa, Pix expirado (vira pedido cancelado), pagamento recusado, sem estoque e limite de requisições (429).
+- A tela de pagamento e o rodapé avisam que o ambiente é de demonstração.
 - Qualidade: responsivo (mobile-first), acessibilidade WCAG 2.1 AA, páginas principais em até 3 s e testes de componente e de fluxo completo.
 
 ## Requisitos
@@ -265,57 +287,79 @@ As regras de negócio derivadas dos requisitos são identificadas como `RN-XXX-n
 ## Modelagem e prototipação
 
 - **Diagrama de Caso de Uso:** mapeia as funcionalidades dos três atores (visitante, usuário e administrador).
-- **DER/MER:** define as entidades `USUARIO`, `ANUNCIO`, `CATEGORIA` e `PEDIDO`, seus atributos, chaves e relacionamentos.
+- **DER/MER:** modelo conceitual do banco, mantido em `mer_unishop.drawio` (ainda a atualizar com as divergências da seção 12 do [documento de Banco de Dados](docs/BancoDeDados/bd.md)).
 - **Prototipação:** wireframes no Figma, com base nos requisitos, nos diagramas e no padrão visual da Unifor, cobrindo as telas do usuário e do administrador em versão desktop. As telas de celular e tablet são derivadas delas.
 
-### Lacunas conhecidas entre o DER original e as decisões do grupo
+### Banco de dados em resumo
 
-O modelo de dados ainda precisa evoluir (responsável: Ana Clara Macêdo):
+Detalhes completos em [Documentação do Banco de Dados](docs/BancoDeDados/bd.md) (v0.2, responsável: Ana Clara Macêdo). O documento descreve o **estado final** do banco, que já incorpora as lacunas do DER original (quantidade e galeria de imagens no anúncio, tokens, dados de pagamento, auditoria, aceite dos Termos, tentativas de login e chave própria do pedido).
 
-- Coluna de quantidade no anúncio (decisão de várias unidades).
-- Galeria de imagens por anúncio (o DER original guarda uma imagem só, mas a página do produto exige galeria).
-- Tabelas ou colunas para tokens de confirmação/recuperação/troca de e-mail, dados de pagamento, log de auditoria, notificações, tentativas de login e último acesso, e aceite dos Termos.
-- O pedido precisa de `id_pedido` próprio e exclusão lógica do anúncio, pois a chave composta atual conflita com a regra de que pedido pago sobrevive à exclusão do anúncio (RF017.12).
+| Tabela | Papel |
+|---|---|
+| `usuario` | Aluno ou administrador; e-mail único sem diferenciar maiúsculas; senha anulável (conta Google) |
+| `categoria` | As 6 categorias fixas (seed) |
+| `anuncio` | Produto à venda, com preço, quantidade, WhatsApp, status e exclusão lógica |
+| `imagem_anuncio` | De 1 a 5 fotos por anúncio (URL, `public_id` na Cloudinary e ordem) |
+| `pedido` | Compra ou contato; guarda comprador, vendedor, produto, preço e taxa congelados |
+| `pagamento` | Cobrança (Pix ou cartão); várias tentativas por pedido, uma em andamento |
+| `log_admin` | Auditoria das ações do administrador |
+| `token_usuario` | Links de uso único (recuperação de senha, troca de e-mail, confirmação de e-mail) |
+
+- PostgreSQL 18, chaves `GENERATED ALWAYS AS IDENTITY`, dinheiro em `numeric(10,2)` e datas em `timestamptz` (UTC). Nomes de tabela, coluna e estado em português; o backend mapeia para inglês com `@map` do Prisma.
+- Estrutura criada e evoluída **só pelo Prisma**: migração `0_init` mais uma migração manual (`CHECK`, índices parciais, view `anuncio_visivel` e papéis). O dump de 07/10/2026 não é restaurado.
+- Três papéis de banco: `unishop_migrator`, `unishop_app` e `unishop_backup` (somente leitura).
+- Nenhuma FK apaga em cascata: anúncio tem exclusão lógica e usuário é anonimizado (LGPD), de modo que o pedido pago sobrevive.
 
 ## Documentação
 
 | Documento | Conteúdo |
 |---|---|
 | [Protótipo no Figma](https://www.figma.com/design/20vFP1b3Ra6UZbJjVssgxD/Unishop-%E2%80%94-Prot%C3%B3tipo?node-id=0-1&t=aaGA4eqvMXvN19lh-0) | Wireframes de alta fidelidade das telas do usuário e do administrador |
-| [docs/frontend/frontend.md](docs/frontend/frontend.md) | Estrutura, rotas, componentes, estado e padrões de qualidade do frontend |
-| [docs/backend/backend.md](docs/backend/backend.md) | Arquitetura, camadas, autenticação, módulos e rotas, pagamentos, estados, jobs, erros, segurança e mapa das regras de negócio no backend |
-| [docs/regras-de-negócio/regras-de-negócio.md](docs/regras-de-negócio/regras-de-negócio.md) | Regras de negócio (RN-XXX-nn), estados, permissões e cenários de teste |
+| [docs/frontend/frontend.md](docs/frontend/frontend.md) | Estrutura, rotas, componentes, estado, sessão e padrões de qualidade do frontend (v0.4) |
+| [docs/backend/backend.md](docs/backend/backend.md) | Arquitetura, camadas, autenticação, módulos e rotas, pagamentos, estados, jobs, erros, segurança e mapa das regras de negócio no backend (v0.3) |
+| [docs/regras-de-negócio/regras-de-negócio.md](docs/regras-de-negócio/regras-de-negócio.md) | Regras de negócio (RN-XXX-nn), estados, permissões, escopo do MVP, limites de campos, desvios do PDF e cenários de teste (v0.4) |
+| [docs/BancoDeDados/bd.md](docs/BancoDeDados/bd.md) | Dicionário das 8 tabelas, valores dos estados, mapeamento banco × backend, consultas críticas, anonimização, migração pelo Prisma, papéis e SQL da migração manual (v0.2) |
 | [docs/skills/skills.md](docs/skills/skills.md) | O que são as skills do Claude Code, as instaladas no projeto e como usá-las |
 | [CLAUDE.md](CLAUDE.md) | Contexto, regras de idioma e prioridades de fontes para o Claude Code |
-| [docs/api/api.md](docs/api/api.md) | APIs externas (Google, Mercado Pago, Resend, Cloudinary, Turnstile e outras), arquitetura de segurança "backend-cofre", providers, variáveis e ADRs. O contrato `openapi.yaml` ainda não existe |
-| [docs/deploy/deploy.md](docs/deploy/deploy.md) | Deploy na Vercel + Neon: ambientes, segredos, CORS, jobs, backup, atualização e reversão |
-| `docs/banco-de-dados/` | DER, MER e modelagem do banco *(a publicar)* |
+| [docs/api/api.md](docs/api/api.md) | APIs externas (Google, Mercado Pago, Resend, Cloudinary, Turnstile e outras), arquitetura de segurança "backend-cofre", providers, variáveis e ADRs 001 a 009 (v0.3). O contrato `openapi.yaml` ainda não existe |
+| [docs/deploy/deploy.md](docs/deploy/deploy.md) | Deploy na Vercel + Neon: ambientes, segredos, CORS, jobs, backup, atualização e reversão (v0.3) |
 
-Em caso de conflito entre fontes, vale esta ordem: (1) PDF do trabalho, (2) decisões do grupo, (3) documentos técnicos em `docs/`, (4) protótipos no Figma.
+Precedência entre os documentos técnicos (quando dois discordam, corrige-se o de menor precedência): Regras de Negócio, Banco de Dados, Backend e Frontend, API e Deploy. Em caso de conflito entre fontes em geral, vale esta ordem: (1) PDF do trabalho, (2) decisões do grupo, (3) documentos técnicos em `docs/`, (4) protótipos no Figma.
+
+> Os documentos técnicos citam as pastas `regras-de-negocio` e `banco-de-dados` sem acento e mencionam um `docs/README.md` (índice). No repositório, as pastas atuais são `docs/regras-de-negócio/` e `docs/BancoDeDados/`, e o índice ainda não existe.
 
 ## Decisões do grupo e pendências
 
 ### Decisões já fechadas
 
 - Domínio institucional oficial: `@edu.unifor.br`.
-- Anúncio é item único, mas pode ter várias unidades.
+- Anúncio é item único, mas pode ter várias unidades (de 1 a 999) e de 1 a 5 imagens.
 - Taxa de serviço de R$ 0,00 por enquanto; repasse ao vendedor simulado, via conta única de teste.
 - Login do admin: mesma tela do aluno, rota separada, redirecionamento ao painel admin.
-- Login social: só Google entra no MVP; Apple fica de fora (custo anual e possível e-mail de retransmissão fora do domínio institucional).
-- Gateway de pagamento: Mercado Pago.
-- Hospedagem: Vercel (frontend e API) com banco PostgreSQL no Neon; guia em [Deploy](docs/deploy/deploy.md).
-- Termos de uso e Política de privacidade: conteúdo definido durante o desenvolvimento.
+- Login social: Google entra no MVP; Apple fica de fora (custo anual e possível e-mail de retransmissão fora do domínio institucional).
+- Gateway de pagamento: Mercado Pago, com credenciais de teste também em produção.
+- Hospedagem: Vercel (frontend e API) com banco PostgreSQL 18 no Neon; guia em [Deploy](docs/deploy/deploy.md).
+- ORM: Prisma. Imagens: Cloudinary. E-mail: Resend (Mailtrap em desenvolvimento), que também é o canal de notificação.
+- JWT de 2 horas, sem refresh token.
+- Imagem de até 4 MB, uma por requisição (desvio do PDF confirmado em 16/10/2026).
+- Jobs a cada 30 minutos (agendador externo) e um diário (Vercel Cron).
+- Termos de uso e Política de privacidade: versão mínima no MVP, conteúdo definido durante o desenvolvimento.
+
+### Fora do MVP (decidido)
+
+Confirmação de e-mail por link (atrás da chave `EMAIL_VERIFICATION_REQUIRED`), Turnstile, Sentry, tela de notificações, prazo para negociação por WhatsApp, refresh token, cancelamento de pedido Pago pelo sistema, deduplicação de visualizações, limite de requisições compartilhado (Redis) e teste de carga de 500 usuários.
 
 ### Pendências relevantes
 
-- Escolha definitiva de ORM, gateway, storage de imagens e provedor de e-mail.
-- Máximo de imagens por anúncio (proposta: 5).
-- Canal de notificação ao vendedor e ao comprador (proposta: e-mail).
-- Validade do JWT (proposta: 2 horas, sem refresh token).
-- Aceite dos Termos e dados faltantes no primeiro acesso por Google.
-- Nomes de tabelas e colunas (as regras misturam português e inglês), a definir no documento de Banco de Dados.
+- `openapi.yaml`: não existe e depende do Pedro (a partir da seção 9 do Backend).
+- Domínio próprio, necessário para o Resend verificar o envio de e-mail (e, se preciso, para o login do Google).
+- Testar se o e-mail `@edu.unifor.br` entrega `email_verified` no login com Google.
+- Prova de conceito do Pix de teste do Mercado Pago e escolha entre Payments API e Orders API.
+- Confirmar no painel do Neon como criar os três papéis do banco; testar a migração em um banco vazio; atualizar o MER.
+- Conferir no PDF os RNF012 a RNF016 e se commits de outros autores são bloqueados no plano Hobby da Vercel.
+- Escrever os Termos de uso e a Política de privacidade; o grupo confirmar os limites de campos e a lista de itens proibidos (Regras de Negócio, seção 9).
 
-A lista completa está na seção 21 de [docs/backend/backend.md](docs/backend/backend.md).
+A lista completa está em [Regras de Negócio](docs/regras-de-negócio/regras-de-negócio.md) (seção 11), [Banco de Dados](docs/BancoDeDados/bd.md) (seção 15), [API](docs/api/api.md) (seção 12), [Backend](docs/backend/backend.md) (seção 21) e [Deploy](docs/deploy/deploy.md) (seção 17.3).
 
 ## Organização do projeto
 

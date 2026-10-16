@@ -1,0 +1,23 @@
+{
+  "skill_name": "unishop-frontend",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "vou criar a tela de pagamento do pix. o qr code vence e eu queria gerar um novo codigo no mesmo pedido, ta ok? e onde guardo o jwt?",
+      "expected_output": "Pix expirado cancela o pedido e o aluno faz um novo (RN-PAG-04); aviso de ambiente de demonstração na tela (RN-PAG-15); 'pago' só depois que o pedido está Pago no backend (RN-PAG-11); JWT em memória com cópia em sessionStorage restaurada por GET /auth/me; guard de rota é só UX.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "o ImageUploader do anunciar: deixo o aluno mandar 10 fotos de ate 5MB de uma vez no mesmo POST?",
+      "expected_output": "De 1 a 5 imagens, até 4 MB, uma por requisição: a primeira em POST /listings e as demais em POST /listings/:id/images, com progresso e nova tentativa; confere o tamanho antes e trata 413 como FILE_TOO_LARGE; desvio do PDF confirmado em 16/10/2026.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "aluno entrou pelo google pela primeira vez e ja caiu em /categorias. ta certo?",
+      "expected_output": "Não: todas as rotas privadas levam a /completar-cadastro até o aceite dos Termos (TERMS_NOT_ACCEPTED, RN-ACE-14); depois cai em Categorias; Google define senha pela recuperação (RN-ACE-15).",
+      "files": []
+    }
+  ]
+}
