@@ -1,11 +1,53 @@
 {
   "version": 1,
   "skills": {
+    "animate": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animate/SKILL.md",
+      "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+      "computedHash": "6e7a0d28864bd9cb658913049df6944ce320a3646ac0e339ba8c7d99a9e764e5"
+    },
+    "animation-performance": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animation-performance/SKILL.md",
+      "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+      "computedHash": "15220ebda30a5db60f14331769ef28b756f10924463791fb096d2f396a8d1571"
+    },
+    "break-ui": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/break-ui/SKILL.md",
+      "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+      "computedHash": "c162e1a2f0ce720cc774b336089c7c4af01bb141bdca8dd7491b8727193ad11c"
+    },
     "email-best-practices": {
       "source": "resend/resend-skills",
       "sourceType": "github",
       "skillPath": "skills/email-best-practices/SKILL.md",
       "computedHash": "6a73e98be9b3618405de0d0457f59eea77e5c5fa89377e6f0d76d51c192221bd"
+    },
+    "emil-design-eng": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/emil-design-eng/SKILL.md",
+      "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+      "computedHash": "a2ee9da0840c23b509a27e742edbc8f8fdb4416ca7d6ffde67d79023bfb8a5bf"
+    },
+    "find-animation-opportunities": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-animation-opportunities/SKILL.md",
+      "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+      "computedHash": "59646cf5cde38dd146334ae791501d335d049a57c436c0eb8b895b68db96fb70"
+    },
+    "mobile-native": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/mobile-native/SKILL.md",
+      "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+      "computedHash": "0952ba031c849ba11dcefa4755f178457b9bca6a794e9bb6fc725aa1c1cc0dea"
     },
     "neon-postgres": {
       "source": "neondatabase/agent-skills",
@@ -24,6 +66,13 @@
       "sourceType": "github",
       "skillPath": "skills/resend/SKILL.md",
       "computedHash": "d7d2472dd944103a3daefd7cdf33abd254a69036d20b50263c2ba652b26f72ea"
+    },
+    "review-animations": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-animations/SKILL.md",
+      "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+      "computedHash": "5b2a8f5986d19514abef830d178ead49f21d254fee137b45aa0ca7cad4f80efd"
     },
     "skill-creator": {
       "source": "anthropics/skills",

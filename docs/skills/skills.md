@@ -1,8 +1,8 @@
 ---
 title: Documentação — Skills do Claude Code
 project: Unishop
-version: 0.4
-date: 2026-10-16
+version: 0.5
+date: 2026-10-20
 status: rascunho para revisão da equipe
 context: CLAUDE.md
 related: docs/regras-de-negócio/regras-de-negócio.md, docs/BancoDeDados/bd.md, docs/frontend/frontend.md, docs/backend/backend.md, docs/api/api.md, docs/deploy/deploy.md
@@ -14,6 +14,7 @@ related: docs/regras-de-negócio/regras-de-negócio.md, docs/BancoDeDados/bd.md,
 |---|---|---|
 | 0.3 | 15/10/2026 | Skills `unishop-api` e `unishop-deploy`, análise de cobertura e skills externas de deploy, banco e e-mail. |
 | 0.4 | 16/10/2026 | Revisão das quatro skills `unishop-*` contra o conjunto de documentos de 16/10 (Regras v0.4, Banco v0.2, Backend v0.3, Frontend v0.4, API v0.3, Deploy v0.3). Duas skills novas: `unishop-database` e `unishop-rules`. Quadro "Quando usar em cada etapa do projeto" (seção 7). Análise de cobertura atualizada. |
+| 0.5 | 20/10/2026 | Sete skills de Emil Kowalski (UX/UI e animação) instaladas. Roteiro de ideação, implementação e revisão de cada tela do frontend (seção 8), com a lista das próximas telas e seus quadros no Figma. |
 
 # Skills do Claude Code
 
@@ -59,6 +60,15 @@ Todas ficam em `.claude/skills/`, cada uma com seu conteúdo real (sem symlinks 
 | `supabase-postgres-best-practices` | Supabase (MIT) | Boas práticas de PostgreSQL: schema, índices, transações, locks, conexões | Modelagem, migrações, consultas e concorrência de estoque |
 | `webapp-testing` | Anthropic | Testar a aplicação local com Playwright (Python): screenshots, logs do console, fluxos | Verificar telas rodando e depurar a interface |
 | `skill-creator` | Anthropic | Criar, testar e melhorar skills; otimizar a descrição de acionamento | Criar ou refinar skills do Unishop |
+| `emil-design-eng` | Emil Kowalski (MIT) | Polimento de UI, detalhes de componente e decisões de animação | Acabamento visual das telas (início, login, cadastro) |
+| `animate` | Emil Kowalski (MIT) | Construir animação escolhendo curva, duração e propriedades; só anima o que faz sentido | Transições, feedback de botão, aparecer e sumir de elementos |
+| `animation-performance` | Emil Kowalski (MIT) | Animação sem perder quadros (propriedades baratas, CSS × JS, `will-change`) | Animação travando ou escolha entre CSS e JS |
+| `review-animations` | Emil Kowalski (MIT) | Revisão rigorosa do código de animação (só roda quando chamada) | Depois de escrever animação, antes do PR |
+| `find-animation-opportunities` | Emil Kowalski (MIT) | Aponta onde animar e onde não animar (só leitura) | Revisar uma tela pronta |
+| `break-ui` | Emil Kowalski (MIT) | Testa a tela com dados extremos (nome e e-mail longos, listas vazias, números enormes) | Formulários de login e cadastro, cartões de anúncio |
+| `mobile-native` | Emil Kowalski (MIT) | Ajustes para o site parecer app no celular (zoom em campo, `100vh`, toque, área segura) | Telas pensadas para celular |
+
+> As skills de Emil Kowalski vêm de `github.com/emilkowalski/skills` (commit `2d22863`, 11/10/2026). Foram lidas por inteiro (só Markdown, sem scripts) antes de entrar. Ficaram de fora `animate-expo`, `write-swift` (não se aplicam), `ask-sonner` e `pick-ui-library` (a stack do projeto está fechada, sem Sonner), `apple-design`, `prototype`, `improve-animations` e `animation-vocabulary` (podem entrar depois). A regra de cada skill é sugestão de acabamento: **não** muda regra de negócio nem a stack, e em conflito valem os documentos do projeto.
 
 ### 3.1 `unishop-frontend`, `unishop-backend`, `unishop-api`, `unishop-deploy`, `unishop-database` e `unishop-rules` (próprias)
 
@@ -169,8 +179,65 @@ O projeto hoje está só em documentação; as etapas abaixo valem para quando o
 | 3. Contrato da API | `unishop-backend`, `unishop-api` | — | Escrever o `openapi.yaml` (pendência de Pedro) antes de o frontend consumir as rotas |
 | 4. Integrar serviços externos | `unishop-api` | `resend`, `email-best-practices`; `/security-review` | Comece pelo Pix de teste do Mercado Pago (prova de conceito) e pelo Google; domínio próprio para o Resend |
 | 5. Regras do servidor (auth, pedidos, pagamentos, admin) | `unishop-backend` | `unishop-rules`, `unishop-database` | Cada rota cita `RN-XXX-nn`; testes de concorrência de estoque e de webhook |
-| 6. Telas do frontend | `unishop-frontend` | `vercel-composition-patterns`, depois `web-design-guidelines` e `vercel-react-best-practices` | Trate todos os estados de tela; sessão, imagem de 4 MB e aviso de demonstração |
+| 6. Telas do frontend | `unishop-frontend` | Roteiro da seção 8: ideação com `unishop-rules`, `emil-design-eng`, `vercel-composition-patterns`, `mobile-native` e `break-ui`; revisão com `web-design-guidelines`, `vercel-react-best-practices`, `review-animations` e `break-ui` | Trate todos os estados de tela; sessão, imagem de 4 MB e aviso de demonstração |
 | 7. Verificar rodando | `webapp-testing` | `unishop-frontend` | Screenshots, console e fluxos de ponta a ponta (cadastro, compra por Pix de teste, anúncio) |
 | 8. Publicar | `unishop-deploy` | `vercel-cli-with-tokens`, `neon-postgres`, `unishop-api` | Só executar deploy, troca de variável ou restauração quando o usuário pedir, confirmando o alvo |
 | 9. Antes do PR | `/code-review` | `/security-review` em auth, pagamento, admin ou segredo | Conferir se algum documento ou skill precisa mudar |
 | 10. Manter | `skill-creator` | — | Documento mudou? Revisar a skill correspondente, atualizar `version` e os casos em `evals/` |
+
+## 8. Roteiro de cada tela do frontend: ideação, implementação e revisão
+
+> **Em 20/10/2026 o gestor pausou o uso das skills de Emil Kowalski** (`emil-design-eng`, `animate`, `animation-performance`, `review-animations`, `find-animation-opportunities`, `break-ui`, `mobile-native`): ficam instaladas, mas o roteiro abaixo roda sem elas até novo aviso. Valem normalmente `unishop-rules`, `unishop-frontend`, `vercel-composition-patterns`, `web-design-guidelines`, `vercel-react-best-practices` e o Playwright. Toda tarefa termina com revisão, bateria de testes e indicação de estudo no roadmap (CLAUDE.md, "Fluxo de trabalho com o gestor").
+
+Toda tela nova passa pelas três fases abaixo, nesta ordem. As skills só sugerem acabamento e padrões: **não mudam regra de negócio, stack nem rota**, e em conflito valem os documentos (ordem do `CLAUDE.md`). Só entram aqui skills que estão em `.claude/skills/`.
+
+### 8.1 Ideação (antes de escrever código)
+
+Resultado: uma nota curta (no cartão do Trello ou na descrição do PR) com as decisões abaixo. Sem nota, a tela não começa.
+
+| Passo | Skill ou fonte | O que decidir e registrar |
+|---|---|---|
+| 1. Regras | `unishop-rules` | Códigos `RN-XXX-nn` e `RF` da tela, limites de campo (Regras §9), o que é MVP (§8) e o que o Figma mostra que o documento não permite (ex.: botão da Apple) |
+| 2. Contexto técnico | `unishop-frontend` (e `unishop-backend` se usar a API) | Rota, área, guard, endpoints e códigos de erro; lista dos estados obrigatórios da tela (frontend.md §12) |
+| 3. Design | Figma (quadro da tabela 8.3) | Ler o quadro e a captura; anotar o que o protótipo não mostra (carregando, vazio, erro, 403, 429) |
+| 4. Componentes | `vercel-composition-patterns` | O que já existe em `shared/components/ui` e o que falta criar; sem props booleanas em excesso |
+| 5. Movimento e acabamento | `emil-design-eng`, `find-animation-opportunities` | O que anima e por quê (frequência de uso, propósito, curva, duração abaixo de 300 ms); o que **não** anima; comportamento com `prefers-reduced-motion`. A `find-animation-opportunities` só lê e propõe |
+| 6. Celular | `mobile-native` | Teclado e `inputmode` dos campos, zoom em campo, `100dvh`, área segura, alvos de toque, `hover` só com ponteiro fino |
+| 7. Casos extremos | `break-ui` (só a lista) | Nome e e-mail longos, lista vazia, números enormes, texto sem espaço, emoji; decidir truncar, quebrar ou limitar |
+
+### 8.2 Implementação
+
+1. Seguir a nota da ideação e o checklist da `unishop-frontend` (tokens do Figma, estados, teclado, console limpo, teste).
+2. Animação nova: `animate` (decide a curva, a duração e as propriedades; só `transform` e `opacity`).
+3. Texto de interface em português, código em inglês; citar `RF` e `RN-XXX-nn` nos comentários onde a regra mora.
+
+### 8.3 Revisão (antes do PR)
+
+| Passo | Skill ou ferramenta | O que conferir |
+|---|---|---|
+| 1. Acessibilidade e UX | `web-design-guidelines` (precisa de internet) | WCAG 2.1 AA: rótulos, foco, contraste, erros anunciados, navegação por teclado |
+| 2. Performance | `vercel-react-best-practices` | Só as regras `async-`, `bundle-`, `client-`, `rerender-`, `rendering-` e `js-`; ignorar `server-*` e Next.js |
+| 3. Movimento | `review-animations` (só roda quando chamada de propósito); `animation-performance` se travar | Curva, duração, `transition: all`, `scale(0)`, hover sem media query. A saída é uma tabela Antes / Depois / Por quê |
+| 4. Dados extremos | `break-ui` | Renderizar a tela com o pior caso realista. A skill cria um alternador "Demo / Pior caso": **remover antes do PR** |
+| 5. Rodando | `webapp-testing` ou o Playwright do projeto | Capturas em 1440 px e 390 px, console sem erro, fluxo principal. A `webapp-testing` precisa de Python, que ainda não está instalado; enquanto isso, usar o `@playwright/test` do frontend |
+| 6. Fidelidade | Figma | Comparar a captura da tela com o quadro; divergência só se vier de regra ou decisão do grupo, e registrada na nota |
+| 7. Código | `/code-review`; `/security-review` em login, pagamento, admin ou segredo | Outro membro revisa, com lint e testes verdes |
+
+### 8.4 Próximas telas (ordem sugerida, ainda não decidida pelo grupo)
+
+Tela inicial, login e cadastro já existem (20/10/2026). Os quadros são do Figma "Unishop — Protótipo", página "Fluxo — Telas — Usuário". Os estados obrigatórios (frontend.md §12) valem para todas.
+
+| Ordem | Tela | Rota | Quadro no Figma |
+|---|---|---|---|
+| 1 | Esqueci a senha; e-mail enviado; nova senha; senha redefinida | `/recuperar-senha`, `/recuperar-senha/enviado`, `/redefinir-senha/:token`, `/senha-redefinida` | 03b, 03c, 03d, 03e |
+| 2 | Categorias | `/categorias` | 04 |
+| 3 | Anúncios da categoria | `/categorias/:id` | 07 |
+| 4 | Produto e pop-up "Fazer pedido" | `/produtos/:id` | 08a, 08d |
+| 5 | Pagamento (cartão e Pix) e pedido confirmado | `/pagamento/:pedidoId`, `/pedido-confirmado/:pedidoId` | 09a, 09b, 10 |
+| 6 | Perfil, editar perfil e excluir | `/perfil`, `/perfil/editar` | 05, 05b |
+| 7 | Anunciar e anúncio publicado | `/anunciar` | 06, 06b |
+| 8 | Meus pedidos | `/meus-pedidos` | 05c |
+| 9 | Gerenciar anúncio (e pausado) | `/anuncios/:id/gerenciar` | 05d, 05e |
+| 10 | Painel do administrador | `/admin/*` | página "Administrador" |
+
+Sem quadro identificado no Figma: "Completar cadastro", "Trocar senha", "Confirmar troca de e-mail" e as telas de erro (403, 404 e sessão expirada). Conferir com quem desenhou antes de criar.

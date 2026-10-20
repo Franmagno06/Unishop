@@ -35,6 +35,7 @@ As skills ficam em `.claude/skills/` (detalhes e análise de cobertura em [`docs
 | Performance de React: waterfalls, bundle, re-renders, lazy loading (SPA Vite: ignorar regras `server-*` e de Next.js) | `vercel-react-best-practices` |
 | Projetar `shared/components/ui`, compound components, contexto, excesso de props booleanas | `vercel-composition-patterns` |
 | Revisar UI, acessibilidade (WCAG 2.1 AA), formulários, foco e contraste | `web-design-guidelines` |
+| Acabamento e UX das telas: polimento, animação, tela com dados extremos, comportamento no celular (sugestão de estilo; não muda regra nem stack) | `emil-design-eng`, `animate`, `animation-performance`, `review-animations`, `find-animation-opportunities`, `break-ui`, `mobile-native` |
 | Schema, migração, índice, transação, lock, consulta lenta, concorrência de estoque no PostgreSQL | `supabase-postgres-best-practices` |
 | Rodar a aplicação local no navegador, screenshots, console, fluxos Playwright | `webapp-testing` |
 | Criar, testar ou melhorar skills do projeto | `skill-creator` |
@@ -50,8 +51,9 @@ Fluxo sugerido por momento do trabalho (quando o código existir):
 | Regras do servidor | `unishop-backend` junto de `unishop-rules` e `unishop-database`; cada rota cita `RN-XXX-nn` |
 | Integração com serviço externo | `unishop-api` (e `resend` / `email-best-practices` no e-mail); `/security-review` em mudança de pagamento, webhook ou segredo |
 | Publicar ou configurar produção | `unishop-deploy`; só executar deploy, troca de variável ou restauração de banco se o usuário pedir, confirmando o alvo (preview ou produção) |
-| Ao escrever tela ou componente | `unishop-frontend` + `vercel-composition-patterns` (componentes de `shared/components/ui`) |
-| Depois de escrever a tela | `web-design-guidelines` (acessibilidade e UX), `vercel-react-best-practices` (performance) |
+| Ideação de cada tela nova (antes de codar, com nota curta das decisões) | `unishop-rules`, `unishop-frontend`, `vercel-composition-patterns`, `emil-design-eng`, `find-animation-opportunities`, `mobile-native`, `break-ui` (só a lista de casos extremos); roteiro em `docs/skills/skills.md` §8.1 |
+| Ao escrever tela ou componente | `unishop-frontend` + `vercel-composition-patterns` (componentes de `shared/components/ui`); `animate` para movimento |
+| Depois de escrever a tela (revisão) | `web-design-guidelines` (acessibilidade e UX), `vercel-react-best-practices` (performance), `review-animations`, `break-ui` (remover o alternador antes do PR); roteiro em `docs/skills/skills.md` §8.3 |
 | Verificar rodando | `webapp-testing` (screenshots, console, fluxo) |
 | Antes do PR | `/code-review` e, em mudança sensível (auth, pagamento, admin), `/security-review` |
 | Documentação mudou | Revisar a skill `unishop-*` correspondente |
@@ -83,6 +85,14 @@ Quando houver conflito, vale nesta ordem:
 Os desvios do PDF aceitos pelo grupo estão listados em `docs/regras-de-negócio/regras-de-negócio.md`, seção 10 (imagem de 4 MB, produção com credenciais de teste, exclusão lógica e anonimização, Apple fora, confirmação de e-mail fora do MVP, metas de 500 usuários e 99% como metas de produto). O que não está nessa lista segue o PDF.
 
 Itens marcados como "sugestão" nesta ou em outras docs **não** foram decididos pelo grupo — não tratar como definitivo.
+
+## Fluxo de trabalho com o gestor
+
+Combinado com Francisco em 20/10/2026:
+
+- **Ao concluir cada tarefa:** (1) revisar o código feito; (2) rodar uma bateria de testes (lint, tipos, build e testes unitários, de componente e de fluxo) e relatar o resultado, inclusive o que não foi testado; (3) indicar o que estudar no [Roadmap de Estudo Unishop](https://claude.ai/artifact/8ZMbqd3vKb2QLVbsADSjeN), citando os módulos (ex.: B3, E2) e por que cada um serve àquela tarefa. O roadmap é do gestor: apenas ler, não editar.
+- **Ordem do desenvolvimento:** primeiro todas as telas do frontend, seguindo o Figma e com dados de exemplo; a API só começa depois de as telas estarem prontas. Até lá, `openapi.yaml` e backend ficam parados.
+- **Skills de Emil Kowalski** (`emil-design-eng`, `animate` e as outras cinco): instaladas, mas fora do fluxo por enquanto. Usar só se o gestor pedir.
 
 ## Regras de idioma e nomenclatura
 

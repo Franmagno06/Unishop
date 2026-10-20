@@ -3,7 +3,7 @@ name: unishop-frontend
 description: Regras e fluxo de trabalho do frontend do Unishop (React + TypeScript + Vite + Tailwind). Use SEMPRE que o usuário criar, editar ou revisar telas, rotas, guards, componentes, hooks, services, formulários Zod, áreas (public/user/admin), estados de tela (carregando, vazio, erro, 403, sessão expirada, Pix expirado), fluxos de login, cadastro, pagamento, pedidos e anúncios, upload de imagem ou PR do frontend do Unishop, mesmo que não diga "Unishop" ou "frontend" explicitamente.
 metadata:
   author: unishop-team
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Frontend do Unishop
@@ -104,6 +104,9 @@ Esta skill dá o contexto do Unishop; as outras cobrem a técnica geral. Use em 
 | Projetar `shared/components/ui` (Button, Modal, Table...), muitas props booleanas, compound components, contexto | `vercel-composition-patterns` |
 | Revisar UI, acessibilidade (WCAG 2.1 AA), foco, contraste, formulários | `web-design-guidelines` |
 | Testar no navegador, capturar screenshot/console, fluxos Playwright | `webapp-testing` |
+| Ideação de tela nova: movimento, detalhes de acabamento, celular, casos extremos | `emil-design-eng`, `find-animation-opportunities`, `mobile-native`, `break-ui` (só a lista) |
+| Animação nova (curva, duração, propriedades) | `animate` |
+| Revisão da tela antes do PR: movimento e dados extremos | `review-animations`, `animation-performance`, `break-ui` (remover o alternador antes do PR) |
 | Telas que dependem de rota/campo da API | `unishop-backend` (contrato e regras do servidor) |
 | Qual é a regra, o limite de campo ou o texto por lado (comprador/vendedor) | `unishop-rules` |
 | SDK do Mercado Pago ou do Google, chaves públicas, CSP, upload | `unishop-api` |
@@ -111,4 +114,4 @@ Esta skill dá o contexto do Unishop; as outras cobrem a técnica geral. Use em 
 
 Atenção: o frontend é uma SPA Vite, não Next.js. Em `vercel-react-best-practices`, aplique as regras `async-`, `bundle-`, `client-`, `rerender-`, `rendering-` e `js-`; ignore as `server-*` e o que for específico de Next.js/SSR (hidratação, Server Components, Server Actions).
 
-Mais contexto sobre as skills do projeto e como usá-las: [`docs/skills/skills.md`](../../../docs/skills/skills.md).
+Toda tela nova segue o roteiro de ideação, implementação e revisão da seção 8 de [`docs/skills/skills.md`](../../../docs/skills/skills.md); as skills de acabamento só sugerem e não mudam regra, stack nem rota. Mais contexto sobre as skills do projeto e como usá-las: [`docs/skills/skills.md`](../../../docs/skills/skills.md).

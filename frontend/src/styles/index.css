@@ -1,1 +1,61 @@
 @import "tailwindcss";
+
+/* Tokens do Figma (Unishop — Protótipo). Os nomes seguem o design: bg-navy, text-text-muted etc. */
+@theme {
+  --color-background: #f6f7fb;
+  --color-surface: #ffffff;
+  --color-border: #e2e5ea;
+  --color-text: #1b2430;
+  --color-text-muted: #6b7280;
+  --color-primary: #2f6fb0;
+  --color-primary-soft: #eaf2fb;
+  --color-navy: #14315c;
+  --color-on-navy-muted: #b7c4da;
+  --color-whatsapp: #1d7a4c;
+
+  /* Não vêm do Figma: estado de hover e de erro (contraste conferido sobre branco) */
+  --color-primary-hover: #285f97;
+  --color-whatsapp-hover: #186540;
+  --color-danger: #b42318;
+  --color-danger-soft: #fef3f2;
+
+  --font-sans: "Work Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Spectral", Georgia, serif;
+
+  /* Curvas fortes: as do CSS são fracas demais para dar a sensação de resposta imediata */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@layer base {
+  html {
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  a,
+  button,
+  input,
+  label {
+    touch-action: manipulation;
+  }
+
+  /* Campos com menos de 16px fazem o iOS dar zoom na página ao focar */
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}

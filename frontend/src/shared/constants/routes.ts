@@ -1,0 +1,11 @@
+export const ROUTES = {
+  home: '/',
+  login: '/login',
+  adminLogin: '/admin/login',
+  register: '/cadastro',
+  forgotPassword: '/recuperar-senha',
+  terms: '/termos',
+  privacy: '/privacidade',
+  categories: '/categorias',
+  adminUsers: '/admin/usuarios',
+} as const
