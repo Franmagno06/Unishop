@@ -18,7 +18,7 @@ export function ResetSuccessPage() {
           Sua senha foi alterada com sucesso. Use a nova senha para entrar no Unishop.
         </p>
       </div>
-      <ButtonLink to={ROUTES.login} fullWidth>
+       <ButtonLink to={ROUTES.login} state={{ afterReset: true }} fullWidth>
         Ir para o login
       </ButtonLink>
     </div>

@@ -14,7 +14,9 @@ type BackLinkProps = {
 export function BackLink({ fallbackTo, children = 'Voltar' }: BackLinkProps) {
   const location = useLocation()
   const navigate = useNavigate()
-  const hasPreviousScreen = location.key !== 'default'
+  const afterReset = (location.state as { afterReset?: boolean } | null)?.afterReset === true
+  const hasPreviousScreen = location.key !== 'default' && !afterReset
+
 
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
     const plainLeftClick =
