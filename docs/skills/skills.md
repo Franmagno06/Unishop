@@ -225,6 +225,8 @@ Resultado: uma nota curta (no cartão do Trello ou na descrição do PR) com as 
 
 ### 8.4 Próximas telas (ordem sugerida, ainda não decidida pelo grupo)
 
+> A ordem completa, o ciclo de cada tela e as fichas por tela estão em [`docs/frontend/roteiro-telas.md`](../frontend/roteiro-telas.md). A tabela abaixo é o resumo.
+
 Tela inicial, login e cadastro já existem (20/10/2026). Os quadros são do Figma "Unishop — Protótipo", página "Fluxo — Telas — Usuário". Os estados obrigatórios (frontend.md §12) valem para todas.
 
 | Ordem | Tela | Rota | Quadro no Figma |
