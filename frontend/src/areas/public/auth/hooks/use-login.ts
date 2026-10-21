@@ -15,7 +15,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: login,
     onSuccess: ({ data }) => {
-      setToken(data.token)
+      setToken(data.token, data.user.role)
       const destination =
         data.user.role === 'admin' ? ROUTES.adminUsers : (from ?? ROUTES.categories)
       navigate(destination, { replace: true })

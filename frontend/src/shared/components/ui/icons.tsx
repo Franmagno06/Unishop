@@ -76,3 +76,33 @@ export function CheckIcon(props: IconProps) {
     </Icon>
   )
 }
+
+export function UserIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-6 8-6s8 2 8 6" />
+    </Icon>
+  )
+}
+
+export function LogoutIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" />
+      <path d="M16 8l4 4-4 4" />
+      <path d="M20 12H9" />
+    </Icon>
+  )
+}
+
+export function DashboardIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="3" width="7" height="9" rx="1" />
+      <rect x="14" y="3" width="7" height="5" rx="1" />
+      <rect x="14" y="12" width="7" height="9" rx="1" />
+      <rect x="3" y="16" width="7" height="5" rx="1" />
+    </Icon>
+  )
+}

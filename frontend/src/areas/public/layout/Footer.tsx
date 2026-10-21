@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 import { ButtonLink } from '../../../shared/components/ui/Button'
 import { Logo } from '../../../shared/components/ui/Logo'
 import { ROUTES } from '../../../shared/constants/routes'
+import { useSession } from '../../../shared/hooks/use-session'
 
 const SUPPORT_EMAIL = 'suporte@unishop.unifor.br'
 // O número do suporte não está definido nos documentos: o botão só aparece se a variável existir.
@@ -11,6 +12,8 @@ const footerLink =
   'rounded text-sm text-text transition-colors duration-150 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
 export function Footer() {
+  const { isLoggedIn } = useSession()
+
   return (
     <footer className="border-t border-border bg-surface">
       <div className="mx-auto flex max-w-[1440px] flex-col gap-10 px-5 pb-8 pt-14 md:px-12 lg:px-[100px]">
@@ -33,9 +36,11 @@ export function Footer() {
             <a href="/#duvidas" className={footerLink}>
               Dúvidas frequentes
             </a>
-            <Link to={ROUTES.register} className={footerLink}>
-              Criar conta
-            </Link>
+            {!isLoggedIn ? (
+              <Link to={ROUTES.register} className={footerLink}>
+                Criar conta
+              </Link>
+            ) : null}
           </nav>
 
           <section
