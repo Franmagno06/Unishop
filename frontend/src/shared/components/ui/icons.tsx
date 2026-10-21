@@ -1,0 +1,59 @@
+import type { ComponentProps } from 'react'
+
+// Ícones simples de estado (o Figma ainda não desenha ícones de erro, sucesso ou aviso).
+// Sempre decorativos: o significado vai no texto ao lado.
+type IconProps = Omit<ComponentProps<'svg'>, 'children'>
+
+function Icon({ className = 'size-5', ...props }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      className={`shrink-0 ${className}`}
+      {...props}
+    />
+  )
+}
+
+export function ErrorIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 7v6" />
+      <path d="M12 17h.01" />
+    </Icon>
+  )
+}
+
+export function CheckCircleIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="m8 12.5 2.8 2.8L16 9.5" />
+    </Icon>
+  )
+}
+
+export function InfoIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 11v6" />
+      <path d="M12 7h.01" />
+    </Icon>
+  )
+}
+
+export function CircleIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="9" />
+    </Icon>
+  )
+}

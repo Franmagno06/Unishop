@@ -3,6 +3,14 @@ import { z } from 'zod'
 // Regras de campo: RN-ACE-01 a 04 e limites de Regras §9. O erro final sempre vem do backend.
 export const ALLOWED_EMAIL_DOMAIN = '@edu.unifor.br'
 
+// Requisitos da senha (RN-ACE-04), usados também pela lista "PasswordRequirements" na tela de
+// cadastro. Os testes conferem que a lista e o esquema Zod concordam.
+export const PASSWORD_RULES = [
+  { id: 'length', label: '8 a 72 caracteres', test: (value: string) => value.length >= 8 && value.length <= 72 },
+  { id: 'number', label: 'Pelo menos 1 número', test: (value: string) => /\d/.test(value) },
+  { id: 'uppercase', label: 'Pelo menos 1 letra maiúscula', test: (value: string) => /[A-Z]/.test(value) },
+] as const
+
 // No login só se confere o formato: a conta admin criada por seed tem e-mail fora do domínio.
 export const loginSchema = z.object({
   email: z.string().trim().min(1, 'Informe seu e-mail.').pipe(z.email('Informe um e-mail válido.')),

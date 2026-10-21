@@ -3,7 +3,9 @@
 export function inputClasses(hasError = false): string {
   return (
     'w-full rounded-lg border bg-surface px-4 py-3.5 text-base text-text placeholder:text-text-muted ' +
-    'transition-[border-color,box-shadow] duration-150 ease-out-strong focus:outline-none focus:ring-2 focus:ring-primary/30 ' +
-    (hasError ? 'border-danger' : 'border-border focus:border-primary')
+    'transition-[border-color,box-shadow] duration-150 ease-out-strong focus:outline-none focus:ring-2 ' +
+    (hasError
+      ? 'border-danger focus:ring-danger/25'
+      : 'border-border focus:border-primary focus:ring-primary/30')
   )
 }

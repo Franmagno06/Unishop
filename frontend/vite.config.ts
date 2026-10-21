@@ -9,5 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
+    // Os testes de página simulam o fetch: o modo de demonstração fica desligado neles.
+    env: { VITE_USE_MOCKS: 'false' },
   },
 })

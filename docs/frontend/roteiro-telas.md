@@ -134,6 +134,24 @@ Pontos ainda **sem decisão** (adotado um padrão provisório, a confirmar):
 
 `PrivateRoute` e `AdminRoute` (validando que o destino `from` começa com `/` e nunca com `//`), `AuthProvider` com `GET /auth/me`, tratamento de 401, 403 e 429 em todas as telas, troca dos dados de exemplo pelos serviços reais e o `openapi.yaml`.
 
+### 5.4 Modo de demonstração e conta de teste (21/10/2026)
+
+Enquanto a API não existe, o login e o cadastro respondem com dados de exemplo. Liga com `VITE_USE_MOCKS=true` no `.env` (já vem assim no `.env.example`) e **só em desenvolvimento** (`npm run dev`): no build de produção o código de exemplo e as contas **não entram** (conferido com `grep` no `dist/`, com a flag desligada e ligada).
+
+| Entrada | Resultado na tela |
+|---|---|
+| `aluno.teste@edu.unifor.br` + `Senha1234` | Entra e vai para `/categorias` |
+| `admin.teste@unishop.local` + `Admin1234` | Entra pela `/admin/login` e vai para `/admin/usuarios` (tela ainda não existe) |
+| Outro e-mail ou senha | Alerta "Não foi possível entrar. E-mail ou senha incorretos." (a senha é limpa e recebe o foco) |
+| 5 senhas erradas seguidas; depois a tentativa seguinte | Alerta "Conta bloqueada. Tente de novo em 15 minutos." (RN-ACE-09) |
+| `suspenso@edu.unifor.br` | Alerta "Conta suspensa" (RN-ACE-12) |
+| Cadastro com `aluno.teste@edu.unifor.br` | Erro no campo do e-mail: "já tem cadastro" (409) |
+| Cadastro com outro e-mail `@edu.unifor.br` | Cria a conta e leva ao login com "Conta criada!" |
+
+**Componentes de erro** (em `shared/components/ui`): `ErrorAlert`, `SuccessAlert` e `InfoAlert` (caixa com faixa colorida, ícone, título e mensagem), `FieldError` (ícone e texto abaixo do campo) e o estado de erro do `Field` e do `Checkbox`. Em `areas/public/auth`: `PasswordRequirements` (lista que marca cada requisito da senha) e `MockModeNotice`. A cor de erro é o `--danger` (`#c62828`) do botão "Perigo" do Figma; o Figma não desenha os estados de erro, então o visual segue o padrão dos grandes sites.
+
+**Quando a API chegar:** apagar `auth.mock.ts`, `auth.mock.test.ts`, `test-accounts.ts`, `mock-mode.ts`, o `MockModeNotice` e a flag `VITE_USE_MOCKS`; o `auth.service.ts` já chama a API real quando o modo está desligado.
+
 ## 6. Ordem das telas
 
 Status: **Feito**, **Em andamento**, **A fazer**.
@@ -143,6 +161,7 @@ Status: **Feito**, **Em andamento**, **A fazer**.
 | 0 | — | Início | `/` | 01 (`3:81`) | Feito (20/10) |
 | 0 | — | Cadastro | `/cadastro` | 02 (`3:176`) | Feito (20/10) |
 | 0 | — | Login (e `/admin/login`) | `/login` | 03 (`3:250`) | Feito (20/10) |
+| 0 | — | Estados de erro do login e do cadastro, com conta de teste | `/login`, `/cadastro` | sem quadro (padrão de alerta dos grandes sites) | Feito (21/10), ver §5.4 |
 | 1 | 1 | Esqueci a senha | `/recuperar-senha` | 03b (`10:325`) | A fazer |
 | 1 | 2 | E-mail enviado | `/recuperar-senha/enviado` | 03c (`10:363`) | A fazer |
 | 1 | 3 | Nova senha | `/redefinir-senha/:token` | 03d (`10:401`) | A fazer |
