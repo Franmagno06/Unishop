@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation } from 'react-router'
 import { ErrorAlert, SuccessAlert } from '../../../../shared/components/ui/Alert'
+import { BackLink } from '../../../../shared/components/ui/BackLink'
 import { Button } from '../../../../shared/components/ui/Button'
 import { Field } from '../../../../shared/components/ui/Field'
 import { ROUTES } from '../../../../shared/constants/routes'
@@ -44,6 +45,7 @@ export function LoginPage() {
 
   return (
     <div className="flex flex-col gap-5">
+      <BackLink fallbackTo={ROUTES.home} />
       <div className="flex flex-col gap-3">
         <h1 className="font-display text-4xl font-bold text-navy">Entrar</h1>
         <p className="text-[15px] text-text-muted">

@@ -92,6 +92,11 @@ describe('LoginPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Conta criada! Entre com seu e-mail e senha.')
   })
 
+  it('tem o botão Voltar, com a tela inicial como destino padrão', () => {
+    renderLogin()
+    expect(screen.getByRole('link', { name: 'Voltar' })).toHaveAttribute('href', '/')
+  })
+
   it('não mostra o aviso de demonstração fora do modo de demonstração', () => {
     renderLogin()
     expect(screen.queryByText('Modo de demonstração (sem servidor)')).not.toBeInTheDocument()

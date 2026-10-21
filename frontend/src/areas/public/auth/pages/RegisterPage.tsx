@@ -3,6 +3,7 @@ import { useId } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { Link } from 'react-router'
 import { ErrorAlert } from '../../../../shared/components/ui/Alert'
+import { BackLink } from '../../../../shared/components/ui/BackLink'
 import { Button } from '../../../../shared/components/ui/Button'
 import { Checkbox } from '../../../../shared/components/ui/Checkbox'
 import { Field } from '../../../../shared/components/ui/Field'
@@ -62,6 +63,7 @@ export function RegisterPage() {
 
   return (
     <div className="flex flex-col gap-5">
+      <BackLink fallbackTo={ROUTES.home} />
       <div className="flex flex-col gap-3">
         <h1 className="font-display text-4xl font-bold text-navy">Criar conta</h1>
         <p className="text-[15px] text-text-muted">

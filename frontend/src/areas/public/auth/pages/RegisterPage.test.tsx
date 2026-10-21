@@ -113,6 +113,11 @@ describe('RegisterPage · estrutura', () => {
     }
   })
 
+  it('tem o botão Voltar, com a tela inicial como destino padrão', () => {
+    renderRegister()
+    expect(screen.getByRole('link', { name: 'Voltar' })).toHaveAttribute('href', '/')
+  })
+
   it('tem o link para entrar e o botão do Google desabilitado sem Client ID', () => {
     renderRegister()
 
