@@ -253,6 +253,7 @@ README.md                                  # apresentação do projeto
 skills-lock.json                           # origem e hash das skills externas
 docs/
 ├─ frontend/frontend.md                    # estrutura, rotas, componentes, estado, qualidade (v0.4)
+├─ frontend/roteiro-telas.md               # ordem das telas, ciclo de cada tela e fichas (v0.1)
 ├─ regras-de-negócio/regras-de-negócio.md  # regras RN-XXX-nn, estados, permissões, MVP, testes (v0.4)
 ├─ BancoDeDados/bd.md                      # dicionário de dados, migração, papéis, LGPD (v0.2)
 ├─ backend/backend.md                      # arquitetura, rotas, pagamentos, segurança (v0.3)

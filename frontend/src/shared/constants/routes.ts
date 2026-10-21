@@ -7,5 +7,7 @@ export const ROUTES = {
   terms: '/termos',
   privacy: '/privacidade',
   categories: '/categorias',
+  profile: '/perfil',
+  createListing: '/anunciar',
   adminUsers: '/admin/usuarios',
 } as const

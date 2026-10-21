@@ -1,4 +1,5 @@
 import { useId, type ComponentProps } from 'react'
+import { inputClasses } from './field-styles'
 
 type FieldProps = ComponentProps<'input'> & {
   label: string
@@ -21,9 +22,7 @@ export function Field({ label, error, hint, className, ...props }: FieldProps) {
         id={id}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
-        className={`w-full rounded-lg border bg-surface px-4 py-3.5 text-base text-text placeholder:text-text-muted transition-[border-color,box-shadow] duration-150 ease-out-strong focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-          error ? 'border-danger' : 'border-border focus:border-primary'
-        } ${className ?? ''}`}
+        className={`${inputClasses(Boolean(error))} ${className ?? ''}`}
         {...props}
       />
       {hint && !error ? (
