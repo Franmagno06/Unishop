@@ -2,9 +2,11 @@ import type { ComponentProps } from 'react'
 
 // Ícones simples de estado (o Figma ainda não desenha ícones de erro, sucesso ou aviso).
 // Sempre decorativos: o significado vai no texto ao lado.
-type IconProps = Omit<ComponentProps<'svg'>, 'children'>
+type SvgProps = ComponentProps<'svg'>
+type IconProps = Omit<SvgProps, 'children'>
 
-function Icon({ className = 'size-5', ...props }: IconProps) {
+// Base: recebe o desenho (children) dos ícones abaixo; quem usa o ícone só passa tamanho e cor.
+function Icon({ className = 'size-5', ...props }: SvgProps) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -63,6 +65,14 @@ export function ArrowLeftIcon(props: IconProps) {
     <Icon {...props}>
       <path d="M19 12H5" />
       <path d="m11 6-6 6 6 6" />
+    </Icon>
+  )
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Icon strokeWidth="3" {...props}>
+      <path d="m5 12.5 4.5 4.5L19 7.5" />
     </Icon>
   )
 }

@@ -1,7 +1,13 @@
 import { ApiError } from '../../../../shared/lib/api'
-import type { LoginValues, RegisterValues } from '../schemas/auth.schemas'
+import type {
+  ForgotPasswordValues,
+  LoginValues,
+  RegisterValues,
+} from '../schemas/auth.schemas'
 import type { LoginResponse, RegisterResponse } from '../types/auth.types'
+import { DEMO_EXPIRED_TOKEN, emailFromDemoToken } from './demo-reset-token'
 import { TEST_ACCOUNTS } from './test-accounts'
+import type { ResetPasswordRequest } from './auth.service'
 
 type MockOptions = {
   latencyMs?: number
@@ -12,8 +18,9 @@ type MockOptions = {
 
 const normalize = (email: string) => email.trim().toLowerCase()
 
-// Imita as respostas do backend.md §9 (login e cadastro), inclusive o bloqueio de RN-ACE-09:
-// 5 senhas erradas seguidas bloqueiam a conta por 15 minutos; a tentativa seguinte já recebe 429.
+// Imita as respostas do backend.md §9 (login, cadastro e recuperação de senha), inclusive o
+// bloqueio de RN-ACE-09: 5 senhas erradas seguidas bloqueiam a conta por 15 minutos; a tentativa
+// seguinte já recebe 429. As senhas ficam só na memória: recarregar a página volta ao padrão.
 export function createMockAuth({
   latencyMs = 400,
   maxAttempts = 5,
@@ -21,6 +28,12 @@ export function createMockAuth({
   now = Date.now,
 }: MockOptions = {}) {
   const attempts = new Map<string, { count: number; lockedUntil: number }>()
+  const passwords = new Map<string, string>([
+    [TEST_ACCOUNTS.student.email, TEST_ACCOUNTS.student.password],
+    [TEST_ACCOUNTS.admin.email, TEST_ACCOUNTS.admin.password],
+  ])
+  const usedResetTokens = new Set<string>()
+  const sentEmails: string[] = [] // registro dos "e-mails enviados" (para os testes)
   const wait = () => new Promise<void>((resolve) => setTimeout(resolve, latencyMs))
 
   async function login({ email, password }: LoginValues): Promise<LoginResponse> {
@@ -40,9 +53,9 @@ export function createMockAuth({
     }
 
     const account = [TEST_ACCOUNTS.student, TEST_ACCOUNTS.admin].find(
-      (candidate) => candidate.email === key && candidate.password === password,
+      (candidate) => candidate.email === key,
     )
-    if (!account) {
+    if (!account || passwords.get(key) !== password) {
       state.count += 1
       if (state.count >= maxAttempts) state.lockedUntil = now() + lockMs
       attempts.set(key, state)
@@ -72,7 +85,29 @@ export function createMockAuth({
     return { data: { user: { id: 100, name: values.name.trim(), role: 'student' } } }
   }
 
-  return { login, register }
+  // 202 sempre, exista ou não a conta: não revela quem está cadastrado (RN-ACE-10).
+  async function forgotPassword({ email }: ForgotPasswordValues): Promise<void> {
+    await wait()
+    sentEmails.push(normalize(email))
+  }
+
+  // Link de uso único; "expirado" e qualquer token desconhecido simulam os erros do backend.md §9.
+  async function resetPassword({ token, password }: ResetPasswordRequest): Promise<void> {
+    await wait()
+    if (token === DEMO_EXPIRED_TOKEN) {
+      throw new ApiError(400, 'TOKEN_EXPIRED', 'Link expirado.')
+    }
+    const email = emailFromDemoToken(token)
+    if (!email || usedResetTokens.has(token)) {
+      throw new ApiError(400, 'TOKEN_INVALID', 'Link inválido ou já usado.')
+    }
+
+    usedResetTokens.add(token)
+    if (passwords.has(email)) passwords.set(email, password)
+    attempts.delete(email) // a redefinição zera o bloqueio de login (backend.md §9)
+  }
+
+  return { login, register, forgotPassword, resetPassword, sentEmails }
 }
 
 export const mockAuth = createMockAuth()

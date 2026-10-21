@@ -3,19 +3,45 @@ import { z } from 'zod'
 // Regras de campo: RN-ACE-01 a 04 e limites de Regras §9. O erro final sempre vem do backend.
 export const ALLOWED_EMAIL_DOMAIN = '@edu.unifor.br'
 
-// Requisitos da senha (RN-ACE-04), usados também pela lista "PasswordRequirements" na tela de
-// cadastro. Os testes conferem que a lista e o esquema Zod concordam.
+// Requisitos da senha (RN-ACE-04), usados também pela lista "PasswordRequirements" no cadastro e
+// na redefinição. Os testes conferem que a lista e o esquema Zod concordam.
 export const PASSWORD_RULES = [
   { id: 'length', label: '8 a 72 caracteres', test: (value: string) => value.length >= 8 && value.length <= 72 },
   { id: 'number', label: 'Pelo menos 1 número', test: (value: string) => /\d/.test(value) },
   { id: 'uppercase', label: 'Pelo menos 1 letra maiúscula', test: (value: string) => /[A-Z]/.test(value) },
 ] as const
 
-// No login só se confere o formato: a conta admin criada por seed tem e-mail fora do domínio.
+// Só o formato: a conta admin criada por seed tem e-mail fora do domínio (RN-ACE-13), e a
+// recuperação de senha vale para qualquer conta.
+const emailFormat = z.string().trim().min(1, 'Informe seu e-mail.').pipe(z.email('Informe um e-mail válido.'))
+
+// Senha nova: cadastro e redefinição seguem a mesma regra (RN-ACE-04, RN-ACE-10).
+const newPassword = z
+  .string()
+  .min(8, 'A senha precisa ter ao menos 8 caracteres.')
+  .max(72, 'A senha pode ter no máximo 72 caracteres.')
+  .regex(/[A-Z]/, 'Inclua ao menos uma letra maiúscula.')
+  .regex(/\d/, 'Inclua ao menos um número.')
+
+const passwordsMatch = {
+  check: (data: { password: string; passwordConfirmation: string }) =>
+    data.password === data.passwordConfirmation,
+  options: { path: ['passwordConfirmation'], message: 'As senhas não são iguais.' },
+}
+
 export const loginSchema = z.object({
-  email: z.string().trim().min(1, 'Informe seu e-mail.').pipe(z.email('Informe um e-mail válido.')),
+  email: emailFormat,
   password: z.string().min(1, 'Informe sua senha.'),
 })
+
+export const forgotPasswordSchema = z.object({ email: emailFormat })
+
+export const resetPasswordSchema = z
+  .object({
+    password: newPassword,
+    passwordConfirmation: z.string().min(1, 'Confirme a senha.'),
+  })
+  .refine(passwordsMatch.check, passwordsMatch.options)
 
 export const registerSchema = z
   .object({
@@ -34,21 +60,15 @@ export const registerSchema = z
         (value) => value.toLowerCase().endsWith(ALLOWED_EMAIL_DOMAIN),
         `Use seu e-mail institucional ${ALLOWED_EMAIL_DOMAIN}.`,
       ),
-    password: z
-      .string()
-      .min(8, 'A senha precisa ter ao menos 8 caracteres.')
-      .max(72, 'A senha pode ter no máximo 72 caracteres.')
-      .regex(/[A-Z]/, 'Inclua ao menos uma letra maiúscula.')
-      .regex(/\d/, 'Inclua ao menos um número.'),
+    password: newPassword,
     passwordConfirmation: z.string().min(1, 'Confirme a senha.'),
     acceptTerms: z
       .boolean()
       .refine((value) => value, 'Aceite os Termos e a Política para continuar.'),
   })
-  .refine((data) => data.password === data.passwordConfirmation, {
-    path: ['passwordConfirmation'],
-    message: 'As senhas não são iguais.',
-  })
+  .refine(passwordsMatch.check, passwordsMatch.options)
 
 export type LoginValues = z.infer<typeof loginSchema>
+export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>
+export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>
 export type RegisterValues = z.infer<typeof registerSchema>

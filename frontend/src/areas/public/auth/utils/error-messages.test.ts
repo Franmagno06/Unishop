@@ -52,6 +52,23 @@ describe('authErrorContent', () => {
     )
   })
 
+  it('link de redefinição vencido ou já usado (RN-ACE-10)', () => {
+    expect(authErrorContent(api(400, 'TOKEN_EXPIRED'), 'reset')).toEqual({
+      title: 'Link expirado',
+      message: 'Este link expirou (ele vale 30 minutos). Peça um novo link.',
+    })
+    expect(authErrorContent(api(400, 'TOKEN_INVALID'), 'reset')).toEqual({
+      title: 'Link inválido',
+      message: 'Este link já foi usado ou não é válido. Peça um novo link.',
+    })
+  })
+
+  it('os títulos de recuperação de senha', () => {
+    expect(authErrorContent(api(429, 'TOO_MANY_REQUESTS'), 'forgot').title).toBe('Muitas tentativas')
+    expect(authErrorContent(api(400, 'OUTRO'), 'forgot').title).toBe('Não foi possível enviar o link')
+    expect(authErrorContent(api(400, 'OUTRO'), 'reset').title).toBe('Não foi possível redefinir a senha')
+  })
+
   it('erro de rede e erro desconhecido têm mensagem própria', () => {
     expect(authErrorContent(new ApiError(0, 'NETWORK_ERROR', 'x')).title).toBe('Sem conexão')
     expect(authErrorContent(new Error('boom')).message).toBe('Algo deu errado. Tente de novo.')
