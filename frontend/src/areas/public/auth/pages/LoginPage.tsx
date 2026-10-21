@@ -1,17 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation } from 'react-router'
+import { ErrorAlert, SuccessAlert } from '../../../../shared/components/ui/Alert'
 import { Button } from '../../../../shared/components/ui/Button'
 import { Field } from '../../../../shared/components/ui/Field'
-import { FormError } from '../../../../shared/components/ui/FormError'
-import { FormNotice } from '../../../../shared/components/ui/FormNotice'
 import { ROUTES } from '../../../../shared/constants/routes'
 import { useDocumentTitle } from '../../../../shared/hooks/use-document-title'
 import { GoogleButton } from '../components/GoogleButton'
+import { MockModeNotice } from '../components/MockModeNotice'
 import { OrDivider } from '../components/OrDivider'
 import { useLogin } from '../hooks/use-login'
 import { loginSchema, type LoginValues } from '../schemas/auth.schemas'
-import { authErrorMessage } from '../utils/error-messages'
+import { authErrorContent } from '../utils/error-messages'
 
 const linkClass =
   'rounded text-sm font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
@@ -25,9 +25,22 @@ export function LoginPage() {
   const {
     register,
     handleSubmit,
+    resetField,
+    setFocus,
     formState: { errors },
   } = useForm<LoginValues>({ resolver: zodResolver(loginSchema), mode: 'onTouched' })
   const login = useLogin()
+  const failure = login.isError ? authErrorContent(login.error, 'login') : null
+
+  // Erro de login: mantém o e-mail, limpa a senha e leva o foco a ela para digitar de novo.
+  function onSubmit(values: LoginValues) {
+    login.mutate(values, {
+      onError: () => {
+        resetField('password')
+        setFocus('password')
+      },
+    })
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -38,13 +51,14 @@ export function LoginPage() {
         </p>
       </div>
 
-      {justRegistered ? <FormNotice>Conta criada! Entre com seu e-mail e senha.</FormNotice> : null}
+      {/* import.meta.env.DEV: o aviso (e as contas de teste) saem do build de produção */}
+      {import.meta.env.DEV ? <MockModeNotice page="login" /> : null}
+      {justRegistered ? (
+        <SuccessAlert>Conta criada! Entre com seu e-mail e senha.</SuccessAlert>
+      ) : null}
+      {failure ? <ErrorAlert title={failure.title}>{failure.message}</ErrorAlert> : null}
 
-      <form
-        noValidate
-        onSubmit={handleSubmit((values) => login.mutate(values))}
-        className="flex flex-col gap-5"
-      >
+      <form noValidate onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
         <Field
           label="E-mail institucional"
           type="email"
@@ -65,8 +79,6 @@ export function LoginPage() {
         <Link to={ROUTES.forgotPassword} className={`${linkClass} self-start`}>
           Esqueci minha senha
         </Link>
-
-        {login.isError ? <FormError>{authErrorMessage(login.error)}</FormError> : null}
 
         <Button type="submit" fullWidth disabled={login.isPending}>
           {login.isPending ? 'Entrando…' : 'Entrar'}

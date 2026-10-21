@@ -13,11 +13,14 @@
   --color-on-navy-muted: #b7c4da;
   --color-whatsapp: #1d7a4c;
 
-  /* Não vêm do Figma: estado de hover e de erro (contraste conferido sobre branco) */
+  /* Do Figma (botão "Perigo"): cor de erro. Contraste 5,6:1 sobre branco */
+  --color-danger: #c62828;
+
+  /* Derivados, não desenhados no Figma: hover e fundos suaves dos alertas */
   --color-primary-hover: #285f97;
   --color-whatsapp-hover: #186540;
-  --color-danger: #b42318;
-  --color-danger-soft: #fef3f2;
+  --color-danger-soft: #fdecec;
+  --color-success-soft: #e8f5ee;
 
   --font-sans: "Work Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Spectral", Georgia, serif;

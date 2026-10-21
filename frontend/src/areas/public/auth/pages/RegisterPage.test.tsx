@@ -82,11 +82,21 @@ describe('RegisterPage · estrutura', () => {
     expect(screen.getByLabelText('Confirmar senha')).toHaveAttribute('type', 'password')
   })
 
-  it('mostra a dica da senha (RN-ACE-04)', () => {
+  it('liga a lista de requisitos da senha ao campo (RN-ACE-04)', () => {
     renderRegister()
-    expect(screen.getByLabelText('Senha')).toHaveAccessibleDescription(
-      '8 a 72 caracteres, com 1 número e 1 letra maiúscula.',
-    )
+    expect(screen.getByLabelText('Senha')).toHaveAccessibleDescription(/8 a 72 caracteres/)
+    expect(screen.getByRole('list', { name: 'Requisitos da senha' })).toBeInTheDocument()
+  })
+
+  it('marca os requisitos enquanto a pessoa digita a senha', async () => {
+    renderRegister()
+    expect(screen.queryByText('(atendido)')).not.toBeInTheDocument()
+
+    await userEvent.type(screen.getByLabelText('Senha'), 'senha')
+    expect(screen.queryAllByText('(atendido)')).toHaveLength(0)
+
+    await userEvent.type(screen.getByLabelText('Senha'), 'S1234')
+    expect(screen.getAllByText('(atendido)')).toHaveLength(3)
   })
 
   it('abre os Termos e a Política em nova aba, de forma segura', () => {
@@ -227,6 +237,7 @@ describe('RegisterPage · envio e respostas da API', () => {
     expect(await screen.findByText('Este e-mail já tem cadastro. Tente entrar.')).toBeInTheDocument()
     expect(email).toHaveAttribute('aria-invalid', 'true')
     expect(email).toHaveAccessibleDescription('Este e-mail já tem cadastro. Tente entrar.')
+    expect(email).toHaveFocus()
     expect(screen.queryAllByRole('alert')).toHaveLength(0)
   })
 
@@ -251,6 +262,7 @@ describe('RegisterPage · envio e respostas da API', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'O servidor não conseguiu responder. Tente de novo em instantes.',
     )
+    expect(screen.getByRole('alert')).toHaveTextContent('Servidor indisponível')
     expect(screen.getByLabelText('E-mail institucional')).not.toHaveAttribute('aria-invalid')
   })
 

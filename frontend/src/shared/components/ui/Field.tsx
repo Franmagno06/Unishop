@@ -1,4 +1,5 @@
 import { useId, type ComponentProps } from 'react'
+import { FieldError } from './FieldError'
 import { inputClasses } from './field-styles'
 
 type FieldProps = ComponentProps<'input'> & {
@@ -7,11 +8,20 @@ type FieldProps = ComponentProps<'input'> & {
   hint?: string
 }
 
-export function Field({ label, error, hint, className, ...props }: FieldProps) {
+export function Field({
+  label,
+  error,
+  hint,
+  className,
+  'aria-describedby': extraDescribedBy,
+  ...props
+}: FieldProps) {
   const id = useId()
   const errorId = `${id}-error`
   const hintId = `${id}-hint`
-  const describedBy = [error ? errorId : null, hint ? hintId : null].filter(Boolean).join(' ')
+  const describedBy = [error ? errorId : null, hint ? hintId : null, extraDescribedBy]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <div className="flex flex-col gap-2">
@@ -30,11 +40,7 @@ export function Field({ label, error, hint, className, ...props }: FieldProps) {
           {hint}
         </p>
       ) : null}
-      {error ? (
-        <p id={errorId} aria-live="polite" className="text-sm text-danger">
-          {error}
-        </p>
-      ) : null}
+      {error ? <FieldError id={errorId}>{error}</FieldError> : null}
     </div>
   )
 }

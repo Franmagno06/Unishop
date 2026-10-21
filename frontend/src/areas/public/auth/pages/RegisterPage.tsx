@@ -1,46 +1,64 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
+import { useId } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 import { Link } from 'react-router'
+import { ErrorAlert } from '../../../../shared/components/ui/Alert'
 import { Button } from '../../../../shared/components/ui/Button'
 import { Checkbox } from '../../../../shared/components/ui/Checkbox'
 import { Field } from '../../../../shared/components/ui/Field'
-import { FormError } from '../../../../shared/components/ui/FormError'
 import { ROUTES } from '../../../../shared/constants/routes'
 import { useDocumentTitle } from '../../../../shared/hooks/use-document-title'
 import { ApiError } from '../../../../shared/lib/api'
 import { GoogleButton } from '../components/GoogleButton'
+import { MockModeNotice } from '../components/MockModeNotice'
 import { OrDivider } from '../components/OrDivider'
+import { PasswordRequirements } from '../components/PasswordRequirements'
 import { useRegister } from '../hooks/use-register'
 import { registerSchema, type RegisterValues } from '../schemas/auth.schemas'
-import { authErrorMessage } from '../utils/error-messages'
+import { authErrorContent } from '../utils/error-messages'
 
 const linkClass =
   'rounded text-sm font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 const inlineLink = 'font-semibold text-primary underline-offset-2 hover:underline'
 
+// Erros que aparecem no próprio campo do e-mail em vez de uma caixa de alerta.
+const EMAIL_FIELD_ERRORS = ['EMAIL_ALREADY_REGISTERED', 'EMAIL_DOMAIN_NOT_ALLOWED']
+
 // RF002 · RN-ACE-01 a 06 e 14. Curso e WhatsApp não são pedidos aqui: entram pelo perfil
 // (backend.md §9, cadastro). O Figma os mostra, mas o contrato do backend não os recebe.
 export function RegisterPage() {
   useDocumentTitle('Criar conta')
+  const requirementsId = useId()
 
   const {
     register,
     handleSubmit,
+    setFocus,
+    control,
     formState: { errors },
   } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     mode: 'onTouched',
     defaultValues: { acceptTerms: false },
   })
+  const password = useWatch({ control, name: 'password', defaultValue: '' })
   const signUp = useRegister()
 
-  // E-mail repetido e domínio recusado aparecem no próprio campo.
+  const apiError = signUp.error instanceof ApiError ? signUp.error : null
   const emailApiError =
-    signUp.error instanceof ApiError &&
-    ['EMAIL_ALREADY_REGISTERED', 'EMAIL_DOMAIN_NOT_ALLOWED'].includes(signUp.error.code)
-      ? authErrorMessage(signUp.error)
+    apiError && EMAIL_FIELD_ERRORS.includes(apiError.code)
+      ? authErrorContent(apiError, 'register').message
       : undefined
-  const formError = signUp.isError && !emailApiError ? authErrorMessage(signUp.error) : undefined
+  const failure =
+    signUp.isError && !emailApiError ? authErrorContent(signUp.error, 'register') : null
+
+  function onSubmit(values: RegisterValues) {
+    signUp.mutate(values, {
+      onError: (error) => {
+        if (error instanceof ApiError && EMAIL_FIELD_ERRORS.includes(error.code)) setFocus('email')
+      },
+    })
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -51,11 +69,10 @@ export function RegisterPage() {
         </p>
       </div>
 
-      <form
-        noValidate
-        onSubmit={handleSubmit((values) => signUp.mutate(values))}
-        className="flex flex-col gap-5"
-      >
+      {import.meta.env.DEV ? <MockModeNotice page="register" /> : null}
+      {failure ? <ErrorAlert title={failure.title}>{failure.message}</ErrorAlert> : null}
+
+      <form noValidate onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
         <Field
           label="Nome completo"
           autoComplete="name"
@@ -78,7 +95,7 @@ export function RegisterPage() {
             label="Senha"
             type="password"
             autoComplete="new-password"
-            hint="8 a 72 caracteres, com 1 número e 1 letra maiúscula."
+            aria-describedby={requirementsId}
             error={errors.password?.message}
             {...register('password')}
           />
@@ -90,6 +107,7 @@ export function RegisterPage() {
             {...register('passwordConfirmation')}
           />
         </div>
+        <PasswordRequirements id={requirementsId} password={password} />
 
         <Checkbox error={errors.acceptTerms?.message} {...register('acceptTerms')}>
           Li e aceito os{' '}
@@ -107,8 +125,6 @@ export function RegisterPage() {
           </Link>{' '}
           do Unishop, conforme a LGPD. *
         </Checkbox>
-
-        {formError ? <FormError>{formError}</FormError> : null}
 
         <Button type="submit" fullWidth disabled={signUp.isPending}>
           {signUp.isPending ? 'Criando conta…' : 'Criar conta'}
