@@ -60,6 +60,31 @@ export const publicRoutes: RouteObject[] = [
               Component: (await import('./auth/pages/RegisterPage')).RegisterPage,
             }),
           },
+          // Recuperação de senha (RF004): pedir o link, "verifique seu e-mail", nova senha, pronto
+          {
+            path: 'recuperar-senha',
+            lazy: async () => ({
+              Component: (await import('./auth/pages/ForgotPasswordPage')).ForgotPasswordPage,
+            }),
+          },
+          {
+            path: 'recuperar-senha/enviado',
+            lazy: async () => ({
+              Component: (await import('./auth/pages/CheckEmailPage')).CheckEmailPage,
+            }),
+          },
+          {
+            path: 'redefinir-senha/:token',
+            lazy: async () => ({
+              Component: (await import('./auth/pages/ResetPasswordPage')).ResetPasswordPage,
+            }),
+          },
+          {
+            path: 'senha-redefinida',
+            lazy: async () => ({
+              Component: (await import('./auth/pages/ResetSuccessPage')).ResetSuccessPage,
+            }),
+          },
         ],
       },
     ],

@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router'
-import { AppHeader } from './AppHeader'
+import { SiteHeader } from '../../../shared/components/layout/SiteHeader'
 
 // Layout do aluno logado (frontend.md §9). O rodapé traz o aviso de demonstração (RN-PAG-15).
 export function AppLayout() {
@@ -11,7 +11,7 @@ export function AppLayout() {
       >
         Ir para o conteúdo
       </a>
-      <AppHeader />
+      <SiteHeader />
       <main id="conteudo" tabIndex={-1} className="flex-1 focus:outline-none">
         <Outlet />
       </main>

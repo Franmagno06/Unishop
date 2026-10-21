@@ -1,6 +1,6 @@
 import { ApiError } from '../../../../shared/lib/api'
 
-export type AuthContext = 'login' | 'register'
+export type AuthContext = 'login' | 'register' | 'forgot' | 'reset'
 export type ErrorContent = { title: string; message: string }
 
 // "Tente de novo em 15 minutos" a partir dos segundos que a API manda em `retryAfter`.
@@ -12,7 +12,13 @@ export function formatRetryAfter(seconds: number): string {
 // Título e mensagem de tela por código de erro (frontend.md §12).
 // RN-ACE-08: nunca diz qual campo errou (e-mail ou senha).
 export function authErrorContent(error: unknown, context: AuthContext = 'login'): ErrorContent {
-  const title = context === 'login' ? 'Não foi possível entrar' : 'Não foi possível criar a conta'
+  const titles: Record<AuthContext, string> = {
+    login: 'Não foi possível entrar',
+    register: 'Não foi possível criar a conta',
+    forgot: 'Não foi possível enviar o link',
+    reset: 'Não foi possível redefinir a senha',
+  }
+  const title = titles[context]
 
   if (!(error instanceof ApiError)) {
     return { title, message: 'Algo deu errado. Tente de novo.' }
@@ -31,6 +37,16 @@ export function authErrorContent(error: unknown, context: AuthContext = 'login')
       }
     case 'ACCOUNT_SUSPENDED':
       return { title: 'Conta suspensa', message: 'Sua conta está suspensa. Fale com o suporte.' }
+    case 'TOKEN_EXPIRED':
+      return {
+        title: 'Link expirado',
+        message: 'Este link expirou (ele vale 30 minutos). Peça um novo link.',
+      }
+    case 'TOKEN_INVALID':
+      return {
+        title: 'Link inválido',
+        message: 'Este link já foi usado ou não é válido. Peça um novo link.',
+      }
     case 'EMAIL_NOT_VERIFIED':
       return { title, message: 'Confirme seu e-mail antes de entrar.' }
     case 'EMAIL_DOMAIN_NOT_ALLOWED':

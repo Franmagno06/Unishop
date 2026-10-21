@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router'
 import { Footer } from './Footer'
-import { PublicHeader } from './PublicHeader'
+import { SiteHeader } from '../../../shared/components/layout/SiteHeader'
 
 export function PublicLayout() {
   return (
@@ -11,7 +11,7 @@ export function PublicLayout() {
       >
         Ir para o conteúdo
       </a>
-      <PublicHeader />
+      <SiteHeader />
       <main id="conteudo" tabIndex={-1} className="flex-1 focus:outline-none">
         <Outlet />
       </main>

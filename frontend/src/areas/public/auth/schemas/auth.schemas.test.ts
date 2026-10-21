@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { loginSchema, registerSchema } from './auth.schemas'
+import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from './auth.schemas'
 
 const validRegister = {
   name: 'Ana Souza',
@@ -74,5 +74,43 @@ describe('loginSchema', () => {
 
   it('exige e-mail válido e senha', () => {
     expect(loginSchema.safeParse({ email: 'não-é-email', password: '' }).success).toBe(false)
+  })
+})
+
+describe('forgotPasswordSchema', () => {
+  it('aceita um e-mail válido, também de fora do domínio (qualquer conta pode recuperar)', () => {
+    expect(forgotPasswordSchema.safeParse({ email: 'ana@edu.unifor.br' }).success).toBe(true)
+    expect(forgotPasswordSchema.safeParse({ email: 'admin@unishop.local' }).success).toBe(true)
+  })
+
+  it('apara espaços ao redor do e-mail', () => {
+    const result = forgotPasswordSchema.safeParse({ email: '  ana@edu.unifor.br ' })
+    expect(result.success && result.data.email).toBe('ana@edu.unifor.br')
+  })
+
+  it('recusa vazio e formato inválido', () => {
+    expect(messages(forgotPasswordSchema.safeParse({ email: '' }))).toContain('Informe seu e-mail.')
+    expect(messages(forgotPasswordSchema.safeParse({ email: 'ana@' }))).toContain('Informe um e-mail válido.')
+  })
+})
+
+describe('resetPasswordSchema (RN-ACE-04, RN-ACE-10)', () => {
+  const ok = { password: 'Senha1234', passwordConfirmation: 'Senha1234' }
+
+  it('aceita uma senha forte com a confirmação igual', () => {
+    expect(resetPasswordSchema.safeParse(ok).success).toBe(true)
+  })
+
+  it.each([
+    ['curta', 'Ab1', 'A senha precisa ter ao menos 8 caracteres.'],
+    ['sem maiúscula', 'senha1234', 'Inclua ao menos uma letra maiúscula.'],
+    ['sem número', 'SenhaSenha', 'Inclua ao menos um número.'],
+  ])('recusa senha %s', (_label, password, message) => {
+    expect(messages(resetPasswordSchema.safeParse({ password, passwordConfirmation: password }))).toContain(message)
+  })
+
+  it('recusa confirmação diferente e confirmação vazia', () => {
+    expect(messages(resetPasswordSchema.safeParse({ ...ok, passwordConfirmation: 'Outra1234' }))).toContain('As senhas não são iguais.')
+    expect(messages(resetPasswordSchema.safeParse({ ...ok, passwordConfirmation: '' }))).toContain('Confirme a senha.')
   })
 })

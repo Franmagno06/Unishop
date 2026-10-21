@@ -1,9 +1,11 @@
 import { Navigate, Outlet } from 'react-router'
 import { ROUTES } from '../../../shared/constants/routes'
-import { hasToken } from '../../../shared/lib/session'
+import { useSession } from '../../../shared/hooks/use-session'
 
 // Só UX: a barreira de segurança de verdade é o backend (frontend.md §6).
 // Ainda não consulta GET /auth/me: isso entra com o AuthProvider.
 export function GuestRoute() {
-  return hasToken() ? <Navigate to={ROUTES.categories} replace /> : <Outlet />
+  const { isLoggedIn, role } = useSession()
+  if (!isLoggedIn) return <Outlet />
+  return <Navigate to={role === 'admin' ? ROUTES.adminUsers : ROUTES.categories} replace />
 }

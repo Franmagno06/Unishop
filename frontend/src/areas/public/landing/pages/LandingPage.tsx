@@ -1,6 +1,7 @@
 import { ButtonLink } from '../../../../shared/components/ui/Button'
 import { ROUTES } from '../../../../shared/constants/routes'
 import { useDocumentTitle } from '../../../../shared/hooks/use-document-title'
+import { useSession } from '../../../../shared/hooks/use-session'
 import { FaqAccordion } from '../components/FaqAccordion'
 import { RecentListingsCarousel } from '../components/RecentListingsCarousel'
 
@@ -36,6 +37,7 @@ const sectionX = 'px-5 md:px-12 lg:px-[100px]'
 // RF001 · tela inicial pública: hero, carrossel, como funciona, dúvidas, segurança (frontend.md §7).
 export function LandingPage() {
   useDocumentTitle('Unishop')
+  const { isLoggedIn } = useSession()
 
   return (
     <>
@@ -52,7 +54,11 @@ export function LandingPage() {
               Compre e venda livros, eletrônicos, alimentos e materiais direto com colegas de campus
               — sem depender de grupos dispersos que hoje alcançam menos de 5% dos alunos.
             </p>
-            <ButtonLink to={ROUTES.register}>Criar minha conta com e-mail Unifor</ButtonLink>
+            {isLoggedIn ? (
+              <ButtonLink to={ROUTES.categories}>Ver categorias</ButtonLink>
+            ) : (
+              <ButtonLink to={ROUTES.register}>Criar minha conta com e-mail Unifor</ButtonLink>
+            )}
           </div>
 
           <div className="w-full min-w-0 max-w-[608px] rounded-2xl border border-border bg-surface p-5 sm:p-6 lg:w-[608px] lg:shrink-0">

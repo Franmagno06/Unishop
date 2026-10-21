@@ -141,6 +141,7 @@ Enquanto a API não existe, o login e o cadastro respondem com dados de exemplo.
 | Entrada | Resultado na tela |
 |---|---|
 | `aluno.teste@edu.unifor.br` + `Senha1234` | Entra e vai para `/categorias` |
+| "Esqueci minha senha" com qualquer e-mail | Vai a "Verifique seu e-mail"; o botão "Abrir link do e-mail (simulação)" abre a tela de nova senha. Depois de redefinir, o login aceita a **senha nova** (e recusa a antiga) até recarregar a página. "Simular link expirado" e "Simular link inválido" mostram os alertas de erro. Redefinir zera o bloqueio de login |
 | `admin.teste@unishop.local` + `Admin1234` | Entra pela `/admin/login` e vai para `/admin/usuarios` (tela ainda não existe) |
 | Outro e-mail ou senha | Alerta "Não foi possível entrar. E-mail ou senha incorretos." (a senha é limpa e recebe o foco) |
 | 5 senhas erradas seguidas; depois a tentativa seguinte | Alerta "Conta bloqueada. Tente de novo em 15 minutos." (RN-ACE-09) |
@@ -150,7 +151,19 @@ Enquanto a API não existe, o login e o cadastro respondem com dados de exemplo.
 
 **Componentes de erro** (em `shared/components/ui`): `ErrorAlert`, `SuccessAlert` e `InfoAlert` (caixa com faixa colorida, ícone, título e mensagem), `FieldError` (ícone e texto abaixo do campo) e o estado de erro do `Field` e do `Checkbox`. Em `areas/public/auth`: `PasswordRequirements` (lista que marca cada requisito da senha) e `MockModeNotice`. A cor de erro é o `--danger` (`#c62828`) do botão "Perigo" do Figma; o Figma não desenha os estados de erro, então o visual segue o padrão dos grandes sites.
 
-**Quando a API chegar:** apagar `auth.mock.ts`, `auth.mock.test.ts`, `test-accounts.ts`, `mock-mode.ts`, o `MockModeNotice` e a flag `VITE_USE_MOCKS`; o `auth.service.ts` já chama a API real quando o modo está desligado.
+**Quando a API chegar:** apagar `auth.mock.ts`, `auth.mock.test.ts`, `test-accounts.ts`, `demo-reset-token.ts`, `mock-mode.ts`, o `MockModeNotice`, o `DemoResetLinks` e a flag `VITE_USE_MOCKS`; o `auth.service.ts` já chama a API real quando o modo está desligado.
+
+### 5.5 Botão "Voltar" (21/10/2026)
+
+`BackLink` (`shared/components/ui`): volta para **a tela anterior do site**; se a tela foi aberta direto (link, F5, e-mail), vai ao destino padrão. É um link de verdade (Ctrl+clique abre em outra aba). Destinos padrão: login e cadastro → tela inicial; "Esqueceu a senha?" e "Criar nova senha" → login; "Verifique seu e-mail" → "Esqueceu a senha?". "Senha redefinida!" não tem "Voltar" (tem "Ir para o login"). Fica no **topo** do formulário (o Figma põe o da 03b embaixo do botão).
+
+### 5.6 Sessão reativa, cabeçalho único e menu do perfil (21/10/2026)
+
+- `session.ts` avisa quando o token muda e guarda também o papel (aluno ou admin, só para a interface; o backend continua sendo a barreira). `useSession()` e `useLogout()` (apaga o token, limpa o cache do TanStack Query e volta à tela inicial, trocando a entrada do histórico).
+- `SiteHeader` (`shared/components/layout`) substitui `PublicHeader` e `AppHeader`: visitante (Entrar e Criar conta), aluno (Meus anúncios, "+ Anunciar item" e avatar) e admin (sem "Anunciar item"; o menu tem "Painel admin").
+- `ProfileMenu`: avatar "PF" fixo (decisão de 21/10) com cartão no canto: "Ver perfil" e **"Sair" em vermelho**. Abre ao passar o mouse, ao clicar ou tocar e por Enter ou Espaço; fecha com Esc (devolve o foco ao avatar), clique ou toque fora e Tab para fora.
+- Tela inicial logada: o botão do topo vira "Ver categorias" e o rodapé esconde "Criar conta". `GuestRoute`: aluno logado vai a Categorias e admin ao painel.
+- Ainda **sem** `PrivateRoute`/`AuthProvider`/`GET /auth/me` (entram com a API).
 
 ## 6. Ordem das telas
 
@@ -162,10 +175,12 @@ Status: **Feito**, **Em andamento**, **A fazer**.
 | 0 | — | Cadastro | `/cadastro` | 02 (`3:176`) | Feito (20/10) |
 | 0 | — | Login (e `/admin/login`) | `/login` | 03 (`3:250`) | Feito (20/10) |
 | 0 | — | Estados de erro do login e do cadastro, com conta de teste | `/login`, `/cadastro` | sem quadro (padrão de alerta dos grandes sites) | Feito (21/10), ver §5.4 |
-| 1 | 1 | Esqueci a senha | `/recuperar-senha` | 03b (`10:325`) | A fazer |
-| 1 | 2 | E-mail enviado | `/recuperar-senha/enviado` | 03c (`10:363`) | A fazer |
-| 1 | 3 | Nova senha | `/redefinir-senha/:token` | 03d (`10:401`) | A fazer |
-| 1 | 4 | Senha redefinida | `/senha-redefinida` | 03e (`10:440`) | A fazer |
+| 0 | — | Botão "← Voltar" nas telas de entrada | login, cadastro e recuperação | sem quadro (o Figma só tem na 03b) | Feito (21/10), ver §5.5 |
+| 0 | — | Cabeçalho que muda com a sessão e menu do perfil (Ver perfil, Sair) | todas | sem quadro (o Figma não desenha o menu) | Feito (21/10), ver §5.6 |
+| 1 | 1 | Esqueci a senha | `/recuperar-senha` | 03b (`10:325`) | Feito (21/10) |
+| 1 | 2 | E-mail enviado | `/recuperar-senha/enviado` | 03c (`10:363`) | Feito (21/10) |
+| 1 | 3 | Nova senha | `/redefinir-senha/:token` | 03d (`10:401`) | Feito (21/10) |
+| 1 | 4 | Senha redefinida | `/senha-redefinida` | 03e (`10:440`) | Feito (21/10) |
 | 2 | 5 | Categorias | `/categorias` | 04 (`3:292`) | Feito (21/10), com dados de exemplo e sem guard |
 | 2 | 6 | Anúncios da categoria | `/categorias/:id` | 07 (`8:140`) | A fazer |
 | 2 | 7 | Produto | `/produtos/:id` | 08a (`8:211`) | A fazer |

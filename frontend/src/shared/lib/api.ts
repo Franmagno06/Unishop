@@ -52,7 +52,9 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   }
 
   if (response.ok) {
-    return (response.status === 204 ? undefined : await response.json()) as T
+    // 202 e 204 podem vir sem corpo (ex.: envio do link de redefinição de senha)
+    const text = response.status === 204 ? '' : await response.text()
+    return (text ? JSON.parse(text) : undefined) as T
   }
 
   // 413 da Vercel chega sem o corpo do Unishop (frontend.md §11)

@@ -41,14 +41,20 @@ function mockFetch(status: number, body: unknown) {
   return fetchMock
 }
 
+// Colar é um evento só por campo: bem mais rápido e estável que digitar letra por letra.
+async function paste(label: string, value: string) {
+  await userEvent.click(screen.getByLabelText(label))
+  await userEvent.paste(value)
+}
+
 async function fillForm(
   values: Partial<typeof valid> & { acceptTerms?: boolean } = {},
 ) {
   const data = { ...valid, acceptTerms: true, ...values }
-  await userEvent.type(screen.getByLabelText('Nome completo'), data.name)
-  await userEvent.type(screen.getByLabelText('E-mail institucional'), data.email)
-  await userEvent.type(screen.getByLabelText('Senha'), data.password)
-  await userEvent.type(screen.getByLabelText('Confirmar senha'), data.passwordConfirmation)
+  await paste('Nome completo', data.name)
+  await paste('E-mail institucional', data.email)
+  await paste('Senha', data.password)
+  await paste('Confirmar senha', data.passwordConfirmation)
   if (data.acceptTerms) await userEvent.click(screen.getByRole('checkbox', { name: /Li e aceito/ }))
 }
 
@@ -111,6 +117,11 @@ describe('RegisterPage · estrutura', () => {
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     }
+  })
+
+  it('tem o botão Voltar, com a tela inicial como destino padrão', () => {
+    renderRegister()
+    expect(screen.getByRole('link', { name: 'Voltar' })).toHaveAttribute('href', '/')
   })
 
   it('tem o link para entrar e o botão do Google desabilitado sem Client ID', () => {

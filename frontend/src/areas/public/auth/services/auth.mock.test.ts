@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '../../../../shared/lib/api'
 import { createMockAuth } from './auth.mock'
+import { DEMO_EXPIRED_TOKEN, DEMO_INVALID_TOKEN, demoResetToken } from './demo-reset-token'
 import { TEST_ACCOUNTS } from './test-accounts'
 
 function setup() {
@@ -122,5 +123,67 @@ describe('API simulada · cadastro (RN-ACE-02, 03)', () => {
     const { mock } = setup()
     const error = await failure(mock.register({ ...base, email: 'ana@gmail.com' }))
     expect([error.status, error.code]).toEqual([403, 'EMAIL_DOMAIN_NOT_ALLOWED'])
+  })
+})
+
+describe('API simulada · recuperação de senha (RN-ACE-10)', () => {
+  const email = TEST_ACCOUNTS.student.email
+  const reset = (token: string, password = 'NovaSenha1') => ({ token, password, passwordConfirmation: password })
+
+  it('o envio do link responde igual para e-mail cadastrado e não cadastrado', async () => {
+    const { mock } = setup()
+
+    await expect(mock.forgotPassword({ email })).resolves.toBeUndefined()
+    await expect(mock.forgotPassword({ email: 'ninguem@edu.unifor.br' })).resolves.toBeUndefined()
+    expect(mock.sentEmails).toEqual([email, 'ninguem@edu.unifor.br'])
+  })
+
+  it('com o link válido, troca a senha: a nova entra e a antiga deixa de valer', async () => {
+    const { mock } = setup()
+
+    await mock.resetPassword(reset(demoResetToken(email)))
+
+    await expect(mock.login({ email, password: 'NovaSenha1' })).resolves.toBeTruthy()
+    expect((await failure(mock.login({ email, password: TEST_ACCOUNTS.student.password }))).code).toBe('INVALID_CREDENTIALS')
+  })
+
+  it('o link é de uso único: o segundo uso dá TOKEN_INVALID', async () => {
+    const { mock } = setup()
+    const token = demoResetToken(email)
+
+    await mock.resetPassword(reset(token))
+    const second = await failure(mock.resetPassword(reset(token, 'OutraSenha2')))
+
+    expect([second.status, second.code]).toEqual([400, 'TOKEN_INVALID'])
+    // a senha continua sendo a primeira
+    await expect(mock.login({ email, password: 'NovaSenha1' })).resolves.toBeTruthy()
+  })
+
+  it('link expirado: 400 TOKEN_EXPIRED', async () => {
+    const { mock } = setup()
+    const error = await failure(mock.resetPassword(reset(DEMO_EXPIRED_TOKEN)))
+    expect([error.status, error.code]).toEqual([400, 'TOKEN_EXPIRED'])
+  })
+
+  it.each([[DEMO_INVALID_TOKEN], ['qualquer-coisa'], ['']])('token "%s": 400 TOKEN_INVALID', async (token) => {
+    const { mock } = setup()
+    const error = await failure(mock.resetPassword(reset(token)))
+    expect([error.status, error.code]).toEqual([400, 'TOKEN_INVALID'])
+  })
+
+  it('redefinir a senha zera o bloqueio de login (backend.md §9)', async () => {
+    const { mock } = setup()
+    for (let attempt = 1; attempt <= 5; attempt++) await failure(mock.login(wrong))
+    expect((await failure(mock.login(student))).code).toBe('ACCOUNT_LOCKED')
+
+    await mock.resetPassword(reset(demoResetToken(email)))
+
+    await expect(mock.login({ email, password: 'NovaSenha1' })).resolves.toBeTruthy()
+  })
+
+  it('link de um e-mail sem conta de teste "funciona" mas não cria acesso', async () => {
+    const { mock } = setup()
+    await expect(mock.resetPassword(reset(demoResetToken('outro@edu.unifor.br')))).resolves.toBeUndefined()
+    expect((await failure(mock.login({ email: 'outro@edu.unifor.br', password: 'NovaSenha1' }))).code).toBe('INVALID_CREDENTIALS')
   })
 })
