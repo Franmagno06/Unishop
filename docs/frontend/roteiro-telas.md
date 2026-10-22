@@ -190,8 +190,8 @@ Status: **Feito**, **Em andamento**, **A fazer**.
 | 3 | 11 | Meus pedidos | `/meus-pedidos` | 05c (`23:337`) | A fazer |
 | 4 | 12 | Perfil e Meus anúncios | `/perfil` | 05 (`3:347`) | A fazer |
 | 4 | 13 | Editar perfil e excluir conta | `/perfil/editar` | 05b (`10:484`) | A fazer |
-| 4 | 14 | Anunciar item | `/anunciar` | 06 (`3:395`) | A fazer |
-| 4 | 15 | Anúncio publicado | pop-up em `/anunciar` | 06b (`10:551`) | A fazer |
+| 4 | 14 | Anunciar item | `/anunciar` | 06 (`3:395`) | Pronta (22/10) |
+| 4 | 15 | Anúncio publicado | pop-up em `/anunciar` | 06b (`10:551`) | Pronta (22/10) |
 | 4 | 16 | Gerenciar anúncio (e pausado) | `/anuncios/:id/gerenciar` | 05d (`35:464`), 05e (`35:617`) | A fazer |
 | 4 | 17 | Editar anúncio | `/anuncios/:id/editar` | usa o quadro 06 | A fazer |
 | 5 | 18 | Admin: usuários (lista, detalhes, editar) | `/admin/usuarios...` | A01 (`61:602`), A02 (`62:529`), A02b (`65:702`) | A fazer |
@@ -272,6 +272,7 @@ Para cada tela: regras, componentes novos, estados além do caminho feliz e mód
 - **Componentes:** `ListingForm` (modos criar e editar), `ImageUploader` (uma imagem por requisição, com progresso "2 de 4" e nova tentativa), `PublishedListingModal`.
 - **Estados especiais:** `FILE_TOO_LARGE`, tipo inválido, falha em uma imagem sem perder o anúncio.
 - **Estudo:** B3, B4, C3 (upload).
+- **Feito (22/10):** `CreateListingPage`, `ListingForm` (só o modo criar; o modo editar vem na ordem 17), `ImageUploader` (1 a 5 fotos, 4 MB, miniaturas, capa), `PublishedListingDialog` sobre o `Modal` compartilhado (Esc, foco preso, devolve o foco), `SelectField`, `TextAreaField`, schema Zod com os limites da Regras §9, preço em centavos e WhatsApp com máscara. Dados de exemplo: o anúncio novo vai para o topo da categoria e a contagem sobe (RN-ANU-07); some ao recarregar. Decisões do gestor em 22/10: campo **Quantidade** acrescentado (RN-ANU-01 exige; não está no Figma), até **5 fotos de 4 MB** (Figma diz 1 foto de 5 MB), "Ver meu anúncio" leva à lista da categoria enquanto a tela do produto não existe, aviso de itens proibidos sob a descrição, "Voltar ao perfil" aponta para `/perfil` (ainda sem tela). Admin vê aviso em vez do formulário. Fica para a API: enviar a 1ª imagem em `POST /listings` e as demais em `POST /listings/:id/images` (com progresso e nova tentativa por imagem).
 
 **Ordem 16 · Gerenciar anúncio e anúncio pausado** (Figma 05d e 05e)
 - **Regras:** RF017, RN-ANU-04, 08 e 09, RN-PED-07, 08, 12 e 13, RN-EST-06.

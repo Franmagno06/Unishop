@@ -24,3 +24,22 @@ export type ListingsPage = {
   pageSize: number
   hasNext: boolean
 }
+
+// Dados do formulário "Anunciar item" já convertidos (RN-ANU-01): preço em centavos inteiros,
+// WhatsApp só com dígitos. O backend recebe isso em POST /listings (backend.md §9.4).
+export type NewListing = {
+  title: string
+  categoryId: number
+  description: string
+  priceInCents: number
+  quantity: number
+  whatsapp: string
+  images: File[]
+}
+
+export type CreatedListing = {
+  id: number
+  title: string
+  categoryId: number
+  categoryName: string
+}
