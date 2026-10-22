@@ -1,4 +1,5 @@
 import type { ContactMode, ListingSummary } from '../types/listing.types'
+import { exampleImage } from './example-images'
 
 // Dados de exemplo (preços fictícios). As contagens por categoria são as da tela de Categorias
 // (Figma 04): 48, 21, 35, 27, 12 e 9. A tela de Categorias lê as contagens DAQUI, para as duas
@@ -140,7 +141,7 @@ function build(): ListingSummary[] {
         priceInCents: seed.reais * 100,
         categoryId,
         contact: seed.place ? { mode: seed.mode, place: seed.place } : { mode: seed.mode },
-        imageUrl: null,
+        imageUrl: exampleImage(categoryId, seed.title, 0),
         // dentro de cada categoria, o primeiro é o mais recente (RN-ANU-07)
         publishedAt: new Date(NEWEST - index * THREE_HOURS).toISOString(),
       })

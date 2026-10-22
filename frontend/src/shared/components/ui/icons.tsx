@@ -152,3 +152,29 @@ export function CloseIcon(props: IconProps) {
     </Icon>
   )
 }
+
+export function LockIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="4.5" y="10.5" width="15" height="10" rx="2" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+    </Icon>
+  )
+}
+
+export function BoltIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M13 2.5 5 13.5h6l-1 8 8-11h-6z" />
+    </Icon>
+  )
+}
+
+export function ClockIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M12 6.5V12l3.5 2" />
+    </Icon>
+  )
+}

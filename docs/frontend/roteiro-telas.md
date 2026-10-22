@@ -183,10 +183,10 @@ Status: **Feito**, **Em andamento**, **A fazer**.
 | 1 | 4 | Senha redefinida | `/senha-redefinida` | 03e (`10:440`) | Feito (21/10) |
 | 2 | 5 | Categorias | `/categorias` | 04 (`3:292`) | Feito (21/10), com dados de exemplo e sem guard |
 | 2 | 6 | Anúncios da categoria | `/categorias/:id` | 07 (`8:140`) | Feito (22/10), com dados de exemplo e sem guard |
-| 2 | 7 | Produto | `/produtos/:id` | 08a (`8:211`) | A fazer |
-| 2 | 8 | Fazer pedido (pop-up) | no produto | 08d (`26:366`) | A fazer |
-| 3 | 9 | Pagamento: cartão e Pix | `/pagamento/:pedidoId` | 09a (`8:375`), 09b (`8:445`) | A fazer |
-| 3 | 10 | Pedido confirmado | `/pedido-confirmado/:pedidoId` | 10 (`8:512`) | A fazer |
+| 2 | 7 | Produto | `/produtos/:id` | 08a (`8:211`) | Pronta (22/10) |
+| 2 | 8 | Fazer pedido (pop-up) | no produto | 08d (`26:366`) | Pop-up pronto; "Seguir para o pagamento" cria o pedido e abre a tela 9 (22/10); o WhatsApp ainda só avisa |
+| 3 | 9 | Pagamento: cartão e Pix | `/pagamento/:pedidoId` | 09a (`8:375`), 09b (`8:445`) | Pronta (22/10), com dados de exemplo e sem guard |
+| 3 | 10 | Pedido confirmado | `/pedido-confirmado/:pedidoId` | 10 (`8:512`) | Pronta (22/10), com dados de exemplo e sem guard |
 | 3 | 11 | Meus pedidos | `/meus-pedidos` | 05c (`23:337`) | A fazer |
 | 4 | 12 | Perfil e Meus anúncios | `/perfil` | 05 (`3:347`) | A fazer |
 | 4 | 13 | Editar perfil e excluir conta | `/perfil/editar` | 05b (`10:484`) | A fazer |
@@ -235,11 +235,13 @@ Para cada tela: regras, componentes novos, estados além do caminho feliz e mód
 - **Componentes:** `ImageGallery`, `SellerCard` (selo de aluno verificado), botão "Fazer pedido".
 - **Estados especiais:** anúncio indisponível (`LISTING_UNAVAILABLE`), próprio anúncio (`OWN_LISTING`), sem estoque, 404.
 - **Estudo:** B4, B1, A2.
+- **Feito (22/10):** `ProductPage` (`/produtos/:id`), `ImageGallery` (1 a 5 fotos, miniaturas por teclado, bloco azul-claro sem foto), `SellerCard` ("Aluno(a) verificado(a)" + curso, sem inferir gênero), `OrderPanel` com os avisos do dono (RN-ANU-10) e do admin (não compra). Dados de exemplo: descrição, vendedor e 1 a 5 fotos SVG geradas para todos os anúncios (o nº 1 é o do Figma: Ana Lima, 3 fotos); o card da categoria passa a mostrar a capa. **Correção:** anúncio publicado em "Anunciar item" agora guarda as fotos: a 1ª é a capa do card e todas vão para a galeria do produto (antes o card ficava sem imagem). Decisões do gestor em 22/10: sem seletor de quantidade (pedido de 1 unidade; mostra "N unidades disponíveis" quando há mais de uma), descrições e imagens de exemplo geradas. Sem WhatsApp no detalhe por enquanto. Anúncio inexistente: "Anúncio indisponível".
 
 **Ordem 8 · Fazer pedido, pop-up** (Figma 08d)
 - **Regras:** RF009, RN-PED-04 (dois caminhos), RN-PED-05, RN-PED-10 (reaproveita pedido aberto), RN-EST-02 (quantidade até o disponível).
 - **Componentes:** `Modal` com foco preso e Esc, `MakeOrderModal`, `whatsappLink`.
 - **Estudo:** B4 (acessibilidade de modal), B1 (`useMutation`).
+- **Feito (22/10):** `OrderChoiceDialog` sobre o `Modal` compartilhado (Esc, foco preso, devolve o foco), com resumo do produto e as duas opções. **Decisão do gestor:** as opções ainda não levam a lugar nenhum (nem pagamento, nem WhatsApp, nem criação de pedido): o clique só mostra o aviso "ainda não está disponível na demonstração". O pagamento (tela 9) e o contato pelo WhatsApp (`POST /orders/contact`, `wa.me`) serão ligados depois.
 
 ### Fase 3 · Compra
 
@@ -249,8 +251,13 @@ Para cada tela: regras, componentes novos, estados além do caminho feliz e mód
 - **Estados especiais:** Pix expirado, pagamento recusado, sem estoque após pagar (estorno), 429.
 - **Dados de exemplo:** o SDK do Mercado Pago ainda não está integrado; o cartão usa campos e validação, sem token real. Nunca se envia dado de cartão ao servidor do Unishop.
 - **Estudo:** E3 (integrações), B3 (formulários), C1.
+- **Feito (22/10):** `PaymentPage` (`areas/user/checkout`) com `PaymentMethodTabs` (abas WAI-ARIA, setas, Home e End), `CardPaymentForm` (Zod: número com Luhn, nome, validade não vencida, CVV; máscaras; `autocomplete` `cc-*`), `PixPayment` (QR Code de exemplo, "Copiar", contador mm:ss), `OrderSummary` (o botão de ação entra como `children`), `DemoEnvironmentNotice` e `PixDemoControls`. O pop-up do produto ("Seguir para o pagamento") cria o pedido e abre `/pagamento/:id`; o do WhatsApp continua só com o aviso. Serviço de exemplo em `areas/user/orders` (pedido e pagamento no formato de `backend.md` §9.5 e §9.6, em memória). **Cartões de teste:** `4111 1111 1111 1111` aprova, `4000 0000 0000 0002` recusa (402 `PAYMENT_DECLINED`, nova tentativa no mesmo pedido) e `4000 0000 0000 0119` aprova e depois cancela por falta de estoque, com estorno (RN-PAG-08). O hook do cartão **não usa `useMutation`**, porque o TanStack Query guardaria os dados do cartão no cache; um teste confere que número e nome não ficam no cache, no `sessionStorage` nem na URL. Pedido pendente vence em 30 minutos (RN-PAG-12) e a tela consulta o pedido a cada 5 s enquanto ele está Pendente. "Simular Pix expirado" só aparece no modo de demonstração (`shared/lib/mock-mode.ts`, antes dentro de `public/auth`).
+- **Decisões do gestor em 22/10:** pagamento **só à vista** (o campo "Parcelas" do Figma fica com uma opção, "À vista · R$ X"; parcelamento não está definido); **"Já paguei" é clicável e leva à confirmação**, marcando o pedido como Pago só na demonstração (com a API ele apenas consulta `GET /orders/:id`; quem confirma é o webhook, RN-PAG-05 e 11); o pop-up passa a levar ao pagamento; aviso de estorno na tela 10.
+- **Divergências em relação ao Figma:** aviso de demonstração acrescentado (RN-PAG-15; o Figma não tem); contador "expira em mm:ss" no lugar de "30 minutos" fixo; "o(a) vendedor(a)" no lugar de "a vendedora" (o sistema não sabe o gênero de ninguém); estados de erro (recusado, Pix expirado, 404, 403, esqueleto) sem desenho no Figma, no padrão dos alertas do login.
+- **Sem definição nos documentos:** formato do número do pedido (usa o do Figma, `#UNI-2026-0417`, com o ano da criação), limites do nome impresso no cartão (3 a 60 caracteres, provisório) e parcelamento.
 
 **Ordem 10 · Pedido confirmado** (Figma 10) — RF011, RN-PED-03 (número do pedido), RN-PAG-11. **Estudo:** B1.
+- **Feito (22/10):** `OrderConfirmedPage` com `OrderPaidCard` (número, item, total pago, "Contato do vendedor" como link `wa.me` em outra aba, "Ver meus pedidos" e "Continuar comprando") e `OrderRefundedCard` (**aviso de estorno**: pedido cancelado por falta de estoque ou anúncio inativo depois do pagamento aprovado, com o valor a estornar; RN-PAG-08, 13 e 14, RN-NOT-03). Só diz "Pagamento confirmado" com o pedido Pago (RN-PAG-11): pedido Pendente volta ao pagamento, pedido vencido mostra "Pedido sem pagamento". "Ver meus pedidos" leva a `/meus-pedidos`, que ainda não tem tela (cai no 404 até a ordem 11).
 
 **Ordem 11 · Meus pedidos** (Figma 05c)
 - **Regras:** RF014, RN-PED-06 (do mais recente ao mais antigo), RN-PED-08 ("Confirmar recebimento" em Retirada combinada), RN-PED-12 ("Cancelar pedido" só em Pendente e Em negociação).

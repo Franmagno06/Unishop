@@ -20,6 +20,24 @@ export const userRoutes: RouteObject[] = [
         }),
       },
       {
+        path: 'produtos/:id',
+        lazy: async () => ({
+          Component: (await import('./listings/pages/ProductPage')).ProductPage,
+        }),
+      },
+      {
+        path: 'pagamento/:pedidoId',
+        lazy: async () => ({
+          Component: (await import('./checkout/pages/PaymentPage')).PaymentPage,
+        }),
+      },
+      {
+        path: 'pedido-confirmado/:pedidoId',
+        lazy: async () => ({
+          Component: (await import('./checkout/pages/OrderConfirmedPage')).OrderConfirmedPage,
+        }),
+      },
+      {
         path: 'anunciar',
         lazy: async () => ({
           Component: (await import('./listings/pages/CreateListingPage')).CreateListingPage,

@@ -12,5 +12,9 @@ export const ROUTES = {
   categories: '/categorias',
   profile: '/perfil',
   createListing: '/anunciar',
+  products: '/produtos',
+  payment: '/pagamento',
+  orderConfirmed: '/pedido-confirmado',
+  myOrders: '/meus-pedidos',
   adminUsers: '/admin/usuarios',
 } as const

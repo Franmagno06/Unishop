@@ -1,5 +1,2 @@
-// Modo de demonstração: enquanto a API não existe, o login e o cadastro respondem com dados de
-// exemplo. Só liga em desenvolvimento (`npm run dev`) e com VITE_USE_MOCKS=true; no build de
-// produção a expressão vira `false` e todo o código de exemplo sai do pacote.
-export const MOCK_MODE: boolean =
-  import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true'
+// Modo de demonstração: a definição fica em `shared/lib/mock-mode.ts` (a área do aluno também usa).
+export { MOCK_MODE } from '../../../../shared/lib/mock-mode'

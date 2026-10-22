@@ -3,11 +3,13 @@ import { getCategoryById } from '../../categories/services/categories.service'
 import type {
   ContactMode,
   CreatedListing,
+  ListingDetail,
   ListingSort,
   ListingsPage,
   NewListing,
 } from '../types/listing.types'
 import { addExampleListing, exampleListings, nextExampleListingId } from './listings.data'
+import { DEMO_STUDENT, exampleDetail, getCreatedDetail, registerCreatedDetail } from './listings.details'
 
 export const PAGE_SIZE = 12 // 3 linhas de 4 cards; o backend aceita até 50 (backend.md §9.4)
 
@@ -68,14 +70,37 @@ export async function createListing(input: NewListing): Promise<CreatedListing> 
   if (!category) throw new ApiError(400, 'VALIDATION_ERROR', 'Categoria inválida.')
 
   const id = nextExampleListingId()
+  // Endereços de visualização das fotos escolhidas (a 1ª é a capa do card). Valem até recarregar.
+  const images =
+    typeof URL.createObjectURL === 'function' ? input.images.map((file) => URL.createObjectURL(file)) : []
   addExampleListing({
     id,
     title: input.title,
     priceInCents: input.priceInCents,
     categoryId: input.categoryId,
     contact: { mode: 'whatsapp' },
-    imageUrl: null,
+    imageUrl: images[0] ?? null,
     publishedAt: new Date().toISOString(),
   })
+  registerCreatedDetail({
+    id,
+    title: input.title,
+    priceInCents: input.priceInCents,
+    description: input.description,
+    quantity: input.quantity,
+    categoryId: input.categoryId,
+    images,
+    seller: DEMO_STUDENT,
+    isOwn: true,
+  })
   return { id, title: input.title, categoryId: category.id, categoryName: category.name }
+}
+
+// GET /listings/:id (RF008). Dados de exemplo. null = não existe ou não está visível (RN-ANU-05).
+export async function getListingById(id: number, signal?: AbortSignal): Promise<ListingDetail | null> {
+  signal?.throwIfAborted()
+  const created = getCreatedDetail(id)
+  if (created) return created
+  const summary = exampleListings.find((listing) => listing.id === id)
+  return summary ? exampleDetail(summary) : null
 }
