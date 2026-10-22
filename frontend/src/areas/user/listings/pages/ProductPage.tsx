@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router'
+import {useLocation, useNavigate, useParams } from 'react-router'
 import { ArrowLink } from '../../../../shared/components/ui/ArrowLink'
 import { Button, ButtonLink } from '../../../../shared/components/ui/Button'
 import { EmptyState } from '../../../../shared/components/ui/EmptyState'
@@ -7,6 +7,8 @@ import { Skeleton } from '../../../../shared/components/ui/Skeleton'
 import { ROUTES } from '../../../../shared/constants/routes'
 import { useDocumentTitle } from '../../../../shared/hooks/use-document-title'
 import { useSession } from '../../../../shared/hooks/use-session'
+import { ApiError } from '../../../../shared/lib/api'
+import { useCreateOrder } from '../../orders/hooks/use-create-order'
 import { formatCurrency } from '../../../../shared/utils/format-currency'
 import { useCategory } from '../hooks/use-category'
 import { useListing } from '../hooks/use-listing'
@@ -17,6 +19,16 @@ import { OrderChoiceDialog } from '../components/OrderChoiceDialog'
 import { SellerCard } from '../components/SellerCard'
 
 const sectionClasses = 'mx-auto flex max-w-[1440px] flex-col gap-6 px-4 pb-24 pt-8 sm:px-5 md:px-12 lg:px-[100px] lg:pt-12'
+
+function orderErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.code === 'NETWORK_ERROR') return 'Sem conexão com o servidor. Confira sua internet e tente de novo.'
+    if (error.code === 'LISTING_UNAVAILABLE') return 'Este anúncio não está mais disponível.'
+    if (error.code === 'OWN_LISTING') return 'Você não pode fazer pedido do seu próprio anúncio.'
+    if (error.code === 'OUT_OF_STOCK') return 'Este item acabou. Não há unidades disponíveis.'
+  }
+  return 'Não foi possível criar o pedido agora. Tente de novo em instantes.'
+}
 
 function ProductSkeleton() {
   return (
@@ -35,15 +47,35 @@ function ProductSkeleton() {
 }
 
 // RF008 · RF009 · RN-ANU-03, 05 e 10. Página do produto (Figma 08a) com o pop-up "Fazer pedido"
-// (08d). Hoje usa dados de exemplo; o pop-up ainda não leva ao pagamento nem ao WhatsApp.
+// (08d). Hoje usa dados de exemplo; o pop-up leva ao pagamento e ainda não liga o WhatsApp.
 export function ProductPage() {
   const { id } = useParams()
   const listingId = parseListingId(id)
-  const { role } = useSession()
+  const { role, isLoggedIn } = useSession()
+  const location = useLocation()
   const listing = useListing(listingId)
   const category = useCategory(listing.data?.categoryId ?? null)
   const [ordering, setOrdering] = useState(false)
+  const createOrder = useCreateOrder()
+  const navigate = useNavigate()
   useDocumentTitle(listing.data?.title ?? 'Produto')
+
+  // RN-PED-04 e RN-PED-10: "Seguir para o pagamento" cria o pedido (ou reaproveita o aberto) de 1
+  // unidade e abre a tela de pagamento. Não há seletor de quantidade (decisão de 22/10).
+  function handleSelectPayment(listingId: number) {
+    createOrder.mutate(
+      { listingId, quantity: 1 },
+      { onSuccess: (order) => navigate(`${ROUTES.payment}/${order.id}`) },
+    )
+  }
+
+  function handleOrder(){
+    if(!isLoggedIn){
+      navigate(ROUTES.login, {state: { from: location.pathname + location.search }})
+      return
+    }
+    setOrdering(true)
+  }
 
   const notFound = listingId === null || (listing.isSuccess && listing.data === null)
   const data = listing.data
@@ -109,12 +141,22 @@ export function ProductPage() {
               <OrderPanel
                 priceInCents={data.priceInCents}
                 quantity={data.quantity}
-                onOrder={() => setOrdering(true)}
+                onOrder={handleOrder}
               />
             )}
           </div>
 
-          <OrderChoiceDialog open={ordering} listing={data} onClose={() => setOrdering(false)} />
+          <OrderChoiceDialog
+            open={ordering}
+            listing={data}
+            onClose={() => {
+              setOrdering(false)
+              createOrder.reset()
+            }}
+            onSelectPayment={() => handleSelectPayment(data.id)}
+            paymentStatus={createOrder.isPending ? 'pending' : createOrder.isError ? 'error' : 'idle'}
+            paymentError={createOrder.isError ? orderErrorMessage(createOrder.error) : null}
+          />
         </div>
       )}
     </section>

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { InfoAlert } from '../../../../shared/components/ui/Alert'
+import { ErrorAlert, InfoAlert } from '../../../../shared/components/ui/Alert'
 import { ChatIcon, CloseIcon } from '../../../../shared/components/ui/icons'
 import { Modal } from '../../../../shared/components/ui/Modal'
 import { formatCurrency } from '../../../../shared/utils/format-currency'
@@ -9,6 +9,10 @@ type OrderChoiceDialogProps = {
   open: boolean
   listing: ListingDetail
   onClose: () => void
+  // "Seguir para o pagamento": quem monta a tela cria o pedido e navega (RN-PED-04, RF009.3).
+  onSelectPayment: () => void
+  paymentStatus: 'idle' | 'pending' | 'error'
+  paymentError: string | null
 }
 
 type OptionTone = 'payment' | 'contact'
@@ -24,19 +28,22 @@ function OptionButton({
   title,
   children,
   onClick,
+  disabled,
 }: {
   tone: OptionTone
   icon: ReactNode
   title: string
   children: string
   onClick: () => void
+  disabled?: boolean
 }) {
   const styles = optionStyles[tone]
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-4 rounded-[14px] border-[1.5px] bg-surface p-4 text-left transition-transform duration-150 ease-out-strong active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:p-[18px] ${styles.border}`}
+      disabled={disabled}
+      className={`flex w-full items-center gap-4 rounded-[14px] border-[1.5px] bg-surface p-4 text-left transition-transform duration-150 ease-out-strong active:scale-[0.99] disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:p-[18px] ${styles.border}`}
     >
       <span
         aria-hidden="true"
@@ -56,10 +63,16 @@ function OptionButton({
 }
 
 // Conteúdo à parte do Modal: ao fechar ele sai da tela e o aviso volta a ficar escondido.
-function OrderChoiceContent({ listing, onClose }: Omit<OrderChoiceDialogProps, 'open'>) {
-  // Nenhuma das duas opções leva a uma tela ainda: o pagamento e o contato com o vendedor serão
-  // ligados nas próximas telas. Por isso o clique só avisa.
+function OrderChoiceContent({
+  listing,
+  onClose,
+  onSelectPayment,
+  paymentStatus,
+  paymentError,
+}: Omit<OrderChoiceDialogProps, 'open'>) {
+  // O contato com o vendedor (WhatsApp) ainda não leva a lugar nenhum: o clique só avisa.
   const [soon, setSoon] = useState(false)
+  const paying = paymentStatus === 'pending'
   const cover = listing.images[0]
 
   return (
@@ -92,8 +105,17 @@ function OrderChoiceContent({ listing, onClose }: Omit<OrderChoiceDialogProps, '
         </div>
       </div>
 
-      <OptionButton tone="payment" icon="R$" title="Seguir para o pagamento" onClick={() => setSoon(true)}>
-        Pague agora com cartão de crédito ou Pix pelo Unishop, com segurança.
+      <OptionButton
+        tone="payment"
+        icon="R$"
+        title="Seguir para o pagamento"
+        disabled={paying}
+        onClick={() => {
+          setSoon(false)
+          onSelectPayment()
+        }}
+      >
+        {paying ? 'Criando o seu pedido…' : 'Pague agora com cartão de crédito ou Pix pelo Unishop, com segurança.'}
       </OptionButton>
       <OptionButton
         tone="contact"
@@ -104,6 +126,7 @@ function OrderChoiceContent({ listing, onClose }: Omit<OrderChoiceDialogProps, '
         {`Converse com ${listing.seller.name} no WhatsApp para tirar dúvidas ou negociar.`}
       </OptionButton>
 
+      {paymentStatus === 'error' && paymentError ? <ErrorAlert>{paymentError}</ErrorAlert> : null}
       {soon ? (
         <div role="status">
           <InfoAlert>Esta etapa ainda não está disponível na demonstração. Ela será ligada nas próximas telas.</InfoAlert>
@@ -122,10 +145,10 @@ function OrderChoiceContent({ listing, onClose }: Omit<OrderChoiceDialogProps, '
 }
 
 // Pop-up "Como você quer fazer o pedido?" (Figma 08d, RN-PED-04, RF009.3 e RF009.4).
-export function OrderChoiceDialog({ open, listing, onClose }: OrderChoiceDialogProps) {
+export function OrderChoiceDialog({ open, onClose, ...content }: OrderChoiceDialogProps) {
   return (
     <Modal open={open} onClose={onClose} labelledBy="order-choice-title">
-      <OrderChoiceContent listing={listing} onClose={onClose} />
+      <OrderChoiceContent onClose={onClose} {...content} />
     </Modal>
   )
 }

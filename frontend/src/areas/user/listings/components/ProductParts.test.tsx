@@ -112,14 +112,16 @@ describe('OrderPanel e avisos', () => {
   })
 })
 
+const dialogProps = { onSelectPayment: vi.fn(), paymentStatus: 'idle' as const, paymentError: null }
+
 describe('OrderChoiceDialog', () => {
   it('fechado, não aparece', () => {
-    render(<OrderChoiceDialog open={false} listing={listing} onClose={vi.fn()} />)
+    render(<OrderChoiceDialog open={false} listing={listing} onClose={vi.fn()} {...dialogProps} />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('aberto, mostra o resumo do produto e as duas opções', () => {
-    render(<OrderChoiceDialog open listing={listing} onClose={vi.fn()} />)
+    render(<OrderChoiceDialog open listing={listing} onClose={vi.fn()} {...dialogProps} />)
 
     const dialog = screen.getByRole('dialog', { name: 'Como você quer fazer o pedido?' })
     expect(within(dialog).getByText('Cálculo I — Guidorizzi, vol. 1')).toBeInTheDocument()
@@ -131,19 +133,50 @@ describe('OrderChoiceDialog', () => {
     expect(within(dialog).getByText(/Converse com Ana Lima no WhatsApp/)).toBeInTheDocument()
   })
 
-  it('as opções ainda não levam a lugar nenhum: não são links e só mostram o aviso', async () => {
-    render(<OrderChoiceDialog open listing={listing} onClose={vi.fn()} />)
+  it('"Seguir para o pagamento" chama onSelectPayment e não mostra o aviso', async () => {
+    const onSelectPayment = vi.fn()
+    render(
+      <OrderChoiceDialog open listing={listing} onClose={vi.fn()} {...dialogProps} onSelectPayment={onSelectPayment} />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /Seguir para o pagamento/ }))
+    expect(onSelectPayment).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('criando o pedido, trava a opção de pagamento', () => {
+    render(<OrderChoiceDialog open listing={listing} onClose={vi.fn()} {...dialogProps} paymentStatus="pending" />)
+    expect(screen.getByRole('button', { name: /Seguir para o pagamento/ })).toBeDisabled()
+    expect(screen.getByText('Criando o seu pedido…')).toBeInTheDocument()
+  })
+
+  it('falha ao criar o pedido: mostra o erro e deixa tentar de novo', () => {
+    render(
+      <OrderChoiceDialog
+        open
+        listing={listing}
+        onClose={vi.fn()}
+        {...dialogProps}
+        paymentStatus="error"
+        paymentError="Este anúncio não está mais disponível."
+      />,
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent('Este anúncio não está mais disponível.')
+    expect(screen.getByRole('button', { name: /Seguir para o pagamento/ })).toBeEnabled()
+  })
+
+  it('o contato com o vendedor ainda não leva a lugar nenhum: só mostra o aviso', async () => {
+    render(<OrderChoiceDialog open listing={listing} onClose={vi.fn()} {...dialogProps} />)
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: /Seguir para o pagamento/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Entrar em contato com o vendedor/ }))
     expect(screen.getByRole('status')).toHaveTextContent('ainda não está disponível')
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('o X, o Cancelar e o Esc fecham', async () => {
     const onClose = vi.fn()
-    render(<OrderChoiceDialog open listing={listing} onClose={onClose} />)
+    render(<OrderChoiceDialog open listing={listing} onClose={onClose} {...dialogProps} />)
 
     await userEvent.click(screen.getByRole('button', { name: 'Fechar' }))
     await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
@@ -152,7 +185,7 @@ describe('OrderChoiceDialog', () => {
   })
 
   it('sem foto, usa o bloco azul-claro no resumo', () => {
-    render(<OrderChoiceDialog open listing={{ ...listing, images: [] }} onClose={vi.fn()} />)
+    render(<OrderChoiceDialog open listing={{ ...listing, images: [] }} onClose={vi.fn()} {...dialogProps} />)
     expect(within(screen.getByRole('dialog')).queryByRole('img')).not.toBeInTheDocument()
   })
 })

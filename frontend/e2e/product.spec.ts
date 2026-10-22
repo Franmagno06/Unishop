@@ -39,8 +39,8 @@ test.describe('Produto · fluxo', () => {
     await expect(dialog).toBeVisible()
     await expect(dialog).toContainText('vendido por Ana Lima')
 
-    // as duas opções ainda não levam a lugar nenhum: só avisam
-    await dialog.getByRole('button', { name: /Seguir para o pagamento/ }).click()
+    // o contato por WhatsApp ainda não leva a lugar nenhum: só avisa (o pagamento está em checkout.spec.ts)
+    await dialog.getByRole('button', { name: /Entrar em contato com o vendedor/ }).click()
     await expect(dialog.getByRole('status')).toContainText('ainda não está disponível')
     await expect(page).toHaveURL('/produtos/1')
 
@@ -83,6 +83,20 @@ test.describe('Produto · fluxo', () => {
     await page.getByRole('link', { name: 'Ver categorias' }).click()
     await expect(page).toHaveURL('/categorias')
   })
+
+  test('visitante: Fazer pedido leva ao login e, depois de entrar, volta ao produto', async ({ page }) => {
+  await page.goto('/produtos/1')
+  await page.getByRole('button', { name: /^Fazer pedido/ }).click()
+  await expect(page).toHaveURL('/login')
+
+  await page.getByLabel('E-mail institucional').fill('aluno.teste@edu.unifor.br')
+  await page.getByLabel('Senha').fill('Senha1234')
+  await page.getByRole('button', { name: 'Entrar' }).click()
+
+  await expect(page).toHaveURL('/produtos/1')
+  await expect(page.getByRole('button', { name: /^Fazer pedido/ })).toBeVisible()
+})
+
 
   for (const width of [320, 390, 768, 1440]) {
     test(`produto e pop-up sem rolagem horizontal em ${width}px`, async ({ page }) => {

@@ -32,6 +32,39 @@ describe('GuestRoute', () => {
     expect(router.state.location.pathname).toBe('/categorias')
   })
 
+  it('ao entrar, o aluno volta para a tela guardada em "from" (ex.: o produto) e não para Categorias', async () => {
+    const router = createMemoryRouter(
+      [
+        { element: <GuestRoute />, children: [{ path: '/login', element: <p>Tela de login</p> }] },
+        { path: '/categorias', element: <p>Categorias</p> },
+        { path: '/produtos/:id', element: <p>Produto</p> },
+      ],
+      { initialEntries: [{ pathname: '/login', state: { from: '/produtos/7?x=1' } }] },
+    )
+    render(<RouterProvider router={router} />)
+    expect(screen.getByText('Tela de login')).toBeInTheDocument()
+
+    act(() => setToken('jwt', 'student'))
+
+    expect(await screen.findByText('Produto')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/produtos/7')
+    expect(router.state.location.search).toBe('?x=1')
+  })
+
+  it('administrador ignora o "from" e vai para o painel', async () => {
+    setToken('jwt', 'admin')
+    const router = createMemoryRouter(
+      [
+        { element: <GuestRoute />, children: [{ path: '/login', element: <p>Tela de login</p> }] },
+        { path: '/produtos/:id', element: <p>Produto</p> },
+        { path: '/admin/usuarios', element: <p>Painel admin</p> },
+      ],
+      { initialEntries: [{ pathname: '/login', state: { from: '/produtos/7' } }] },
+    )
+    render(<RouterProvider router={router} />)
+    expect(await screen.findByText('Painel admin')).toBeInTheDocument()
+  })
+
   it('administrador já logado vai para o painel', async () => {
     setToken('jwt', 'admin')
     const router = renderGuest()
