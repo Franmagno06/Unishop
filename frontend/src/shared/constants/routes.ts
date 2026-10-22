@@ -12,5 +12,6 @@ export const ROUTES = {
   categories: '/categorias',
   profile: '/perfil',
   createListing: '/anunciar',
+  products: '/produtos',
   adminUsers: '/admin/usuarios',
 } as const

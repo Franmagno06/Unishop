@@ -37,3 +37,6 @@ export function parseSort(raw: string | null): ListingSort {
 export function sortToParam(sort: ListingSort): string | null {
   return SORT_TO_PARAM[sort]
 }
+
+// O id do anúncio na URL segue a mesma regra do id da categoria: inteiro positivo, sem zero à esquerda.
+export const parseListingId = parseCategoryId

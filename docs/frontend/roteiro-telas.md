@@ -183,8 +183,8 @@ Status: **Feito**, **Em andamento**, **A fazer**.
 | 1 | 4 | Senha redefinida | `/senha-redefinida` | 03e (`10:440`) | Feito (21/10) |
 | 2 | 5 | Categorias | `/categorias` | 04 (`3:292`) | Feito (21/10), com dados de exemplo e sem guard |
 | 2 | 6 | Anúncios da categoria | `/categorias/:id` | 07 (`8:140`) | Feito (22/10), com dados de exemplo e sem guard |
-| 2 | 7 | Produto | `/produtos/:id` | 08a (`8:211`) | A fazer |
-| 2 | 8 | Fazer pedido (pop-up) | no produto | 08d (`26:366`) | A fazer |
+| 2 | 7 | Produto | `/produtos/:id` | 08a (`8:211`) | Pronta (22/10) |
+| 2 | 8 | Fazer pedido (pop-up) | no produto | 08d (`26:366`) | Pop-up pronto, opções ainda sem destino (22/10) |
 | 3 | 9 | Pagamento: cartão e Pix | `/pagamento/:pedidoId` | 09a (`8:375`), 09b (`8:445`) | A fazer |
 | 3 | 10 | Pedido confirmado | `/pedido-confirmado/:pedidoId` | 10 (`8:512`) | A fazer |
 | 3 | 11 | Meus pedidos | `/meus-pedidos` | 05c (`23:337`) | A fazer |
@@ -235,11 +235,13 @@ Para cada tela: regras, componentes novos, estados além do caminho feliz e mód
 - **Componentes:** `ImageGallery`, `SellerCard` (selo de aluno verificado), botão "Fazer pedido".
 - **Estados especiais:** anúncio indisponível (`LISTING_UNAVAILABLE`), próprio anúncio (`OWN_LISTING`), sem estoque, 404.
 - **Estudo:** B4, B1, A2.
+- **Feito (22/10):** `ProductPage` (`/produtos/:id`), `ImageGallery` (1 a 5 fotos, miniaturas por teclado, bloco azul-claro sem foto), `SellerCard` ("Aluno(a) verificado(a)" + curso, sem inferir gênero), `OrderPanel` com os avisos do dono (RN-ANU-10) e do admin (não compra). Dados de exemplo: descrição, vendedor e 1 a 5 fotos SVG geradas para todos os anúncios (o nº 1 é o do Figma: Ana Lima, 3 fotos); o card da categoria passa a mostrar a capa. **Correção:** anúncio publicado em "Anunciar item" agora guarda as fotos: a 1ª é a capa do card e todas vão para a galeria do produto (antes o card ficava sem imagem). Decisões do gestor em 22/10: sem seletor de quantidade (pedido de 1 unidade; mostra "N unidades disponíveis" quando há mais de uma), descrições e imagens de exemplo geradas. Sem WhatsApp no detalhe por enquanto. Anúncio inexistente: "Anúncio indisponível".
 
 **Ordem 8 · Fazer pedido, pop-up** (Figma 08d)
 - **Regras:** RF009, RN-PED-04 (dois caminhos), RN-PED-05, RN-PED-10 (reaproveita pedido aberto), RN-EST-02 (quantidade até o disponível).
 - **Componentes:** `Modal` com foco preso e Esc, `MakeOrderModal`, `whatsappLink`.
 - **Estudo:** B4 (acessibilidade de modal), B1 (`useMutation`).
+- **Feito (22/10):** `OrderChoiceDialog` sobre o `Modal` compartilhado (Esc, foco preso, devolve o foco), com resumo do produto e as duas opções. **Decisão do gestor:** as opções ainda não levam a lugar nenhum (nem pagamento, nem WhatsApp, nem criação de pedido): o clique só mostra o aviso "ainda não está disponível na demonstração". O pagamento (tela 9) e o contato pelo WhatsApp (`POST /orders/contact`, `wa.me`) serão ligados depois.
 
 ### Fase 3 · Compra
 
