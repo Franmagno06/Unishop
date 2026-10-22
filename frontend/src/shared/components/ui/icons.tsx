@@ -133,3 +133,22 @@ export function ChatIcon(props: IconProps) {
     </Icon>
   )
 }
+
+export function UploadIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 16V4" />
+      <path d="m7 9 5-5 5 5" />
+      <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+    </Icon>
+  )
+}
+
+export function CloseIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M6 6l12 12" />
+      <path d="M18 6 6 18" />
+    </Icon>
+  )
+}

@@ -19,6 +19,12 @@ export const userRoutes: RouteObject[] = [
           Component: (await import('./listings/pages/CategoryListingsPage')).CategoryListingsPage,
         }),
       },
+      {
+        path: 'anunciar',
+        lazy: async () => ({
+          Component: (await import('./listings/pages/CreateListingPage')).CreateListingPage,
+        }),
+      },
     ],
   },
 ]

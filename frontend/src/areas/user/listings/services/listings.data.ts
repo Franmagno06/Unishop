@@ -154,3 +154,15 @@ export const exampleListings: ListingSummary[] = build()
 export function listingCountByCategory(categoryId: number): number {
   return TOTALS[categoryId] ?? 0
 }
+
+// Anúncio publicado na tela "Anunciar item" (modo de demonstração): entra no topo da categoria
+// (RN-ANU-07) e a contagem da categoria sobe em 1. Some ao recarregar a página.
+export function addExampleListing(listing: ListingSummary): void {
+  exampleListings.unshift(listing)
+  TOTALS[listing.categoryId] = (TOTALS[listing.categoryId] ?? 0) + 1
+}
+
+let nextExampleId = exampleListings.length + 1
+export function nextExampleListingId(): number {
+  return nextExampleId++
+}

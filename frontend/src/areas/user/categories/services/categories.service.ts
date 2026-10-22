@@ -19,10 +19,12 @@ const categoryNames = [
   { id: 6, name: 'Outros' },
 ]
 
-const exampleCategories: Category[] = categoryNames.map((category) => ({
-  ...category,
-  activeListingCount: listingCountByCategory(category.id),
-}))
+// Calculado a cada chamada: um anúncio novo (tela Anunciar item) muda a contagem na hora.
+const listExampleCategories = (): Category[] =>
+  categoryNames.map((category) => ({
+    ...category,
+    activeListingCount: listingCountByCategory(category.id),
+  }))
 
 // Busca sem diferenciar maiúsculas nem acentos: "eletronicos" encontra "Eletrônicos".
 function normalize(text: string): string {
@@ -36,6 +38,7 @@ function normalize(text: string): string {
 export async function getCategories(search = '', signal?: AbortSignal): Promise<Category[]> {
   signal?.throwIfAborted()
   const term = normalize(search)
+  const exampleCategories = listExampleCategories()
   if (!term) return exampleCategories
   return exampleCategories.filter((category) => normalize(category.name).includes(term))
 }
