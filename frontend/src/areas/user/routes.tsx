@@ -13,6 +13,12 @@ export const userRoutes: RouteObject[] = [
           Component: (await import('./categories/pages/CategoriesPage')).CategoriesPage,
         }),
       },
+      {
+        path: 'categorias/:id',
+        lazy: async () => ({
+          Component: (await import('./listings/pages/CategoryListingsPage')).CategoryListingsPage,
+        }),
+      },
     ],
   },
 ]
