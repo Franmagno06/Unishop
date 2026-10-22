@@ -1,6 +1,6 @@
 import type { MouseEvent, ReactNode } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router'
-import { ArrowLeftIcon } from './icons'
+import { useLocation, useNavigate } from 'react-router'
+import { ArrowLink } from './ArrowLink'
 
 type BackLinkProps = {
   // Para onde ir quando não há tela anterior do próprio site (link direto, F5, abertura pelo e-mail).
@@ -14,9 +14,9 @@ type BackLinkProps = {
 export function BackLink({ fallbackTo, children = 'Voltar' }: BackLinkProps) {
   const location = useLocation()
   const navigate = useNavigate()
+  // Depois de redefinir a senha, o login não deve voltar para dentro do fluxo de recuperação.
   const afterReset = (location.state as { afterReset?: boolean } | null)?.afterReset === true
   const hasPreviousScreen = location.key !== 'default' && !afterReset
-
 
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
     const plainLeftClick =
@@ -28,13 +28,8 @@ export function BackLink({ fallbackTo, children = 'Voltar' }: BackLinkProps) {
   }
 
   return (
-    <Link
-      to={fallbackTo}
-      onClick={handleClick}
-      className="group inline-flex items-center gap-1.5 self-start rounded text-sm font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-    >
-      <ArrowLeftIcon className="size-4 transition-transform duration-150 ease-out-strong group-hover:-translate-x-0.5 motion-reduce:transition-none" />
+    <ArrowLink to={fallbackTo} onClick={handleClick}>
       {children}
-    </Link>
+    </ArrowLink>
   )
 }

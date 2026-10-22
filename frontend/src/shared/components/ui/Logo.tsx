@@ -10,7 +10,7 @@ export function Logo() {
   return (
     <Link to={ROUTES.home} className="flex items-center gap-2.5" aria-label="Unishop, página inicial">
       <LogoIcon />
-      <span translate="no" className="hidden font-display text-xl min-[360px]:inline font-bold text-navy sm:text-[26px]">
+      <span translate="no" className="hidden font-display text-xl min-[440px]:inline font-bold text-navy sm:text-[26px]">
         Unishop
       </span>
     </Link>

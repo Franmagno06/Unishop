@@ -182,7 +182,7 @@ Status: **Feito**, **Em andamento**, **A fazer**.
 | 1 | 3 | Nova senha | `/redefinir-senha/:token` | 03d (`10:401`) | Feito (21/10) |
 | 1 | 4 | Senha redefinida | `/senha-redefinida` | 03e (`10:440`) | Feito (21/10) |
 | 2 | 5 | Categorias | `/categorias` | 04 (`3:292`) | Feito (21/10), com dados de exemplo e sem guard |
-| 2 | 6 | Anúncios da categoria | `/categorias/:id` | 07 (`8:140`) | A fazer |
+| 2 | 6 | Anúncios da categoria | `/categorias/:id` | 07 (`8:140`) | Feito (22/10), com dados de exemplo e sem guard |
 | 2 | 7 | Produto | `/produtos/:id` | 08a (`8:211`) | A fazer |
 | 2 | 8 | Fazer pedido (pop-up) | no produto | 08d (`26:366`) | A fazer |
 | 3 | 9 | Pagamento: cartão e Pix | `/pagamento/:pedidoId` | 09a (`8:375`), 09b (`8:445`) | A fazer |
@@ -223,10 +223,12 @@ Para cada tela: regras, componentes novos, estados além do caminho feliz e mód
 - **Estudo:** B1, B2 (seções 4 e 5), B4.
 
 **Ordem 6 · Anúncios da categoria** (Figma 07)
-- **Regras:** RF007, RN-ANU-05 (só anúncio ativo), RN-ANU-06 (filtro de preço e ordenação).
-- **Componentes:** `ListingCard`, `ListingGrid`, `ListingFilters`, `Pagination`, `Badge`.
-- **Estado na URL:** categoria, preço, ordenação e página na query string.
-- **Estudo:** B2 (busca e parâmetros na URL), B1, B4.
+- **Regras:** RF007, RN-ANU-05 (só anúncio ativo), RN-ANU-06 (ordenação; faixa de preço ainda não desenhada), RN-ANU-07 (mais recentes primeiro).
+- **Feito (22/10/2026):** link "← Categorias" (`ArrowLink`), título e total ("48 anúncios de alunos da Unifor"), chips de forma de contato, "Ordenar por" (Mais recentes, Menor preço, Maior preço), grade de 4 colunas (3, 2 e 1 em telas menores) e **rolagem infinita** (12 anúncios por vez, pedidos 400 px antes do fim, sem botão na tela). Para teclado e leitor de tela existe o botão "Carregar mais anúncios", escondido e visível só com o foco. Estados: carregando (8 e 4 esqueletos), vazio, categoria inexistente, erro na primeira carga e erro ao carregar mais (mantém o que já apareceu).
+- **Componentes:** `ListingCard`, `ListingGrid`, `ListingFilters`, `ContactLine` (ícones no lugar dos emojis do Figma), `useListings` (`useInfiniteQuery`), `useReachEnd` (vigia o fim da lista com `IntersectionObserver`).
+- **Estado na URL:** `?contato=site|campus|whatsapp` e `?ordem=menor-preco|maior-preco`. A **página não vai na URL** (rolagem infinita) e os filtros usam `replace` (o Voltar do navegador não passa por cada chip). Ao voltar da página do produto, a lista e a posição da rolagem são restauradas (conferido no navegador).
+- **Dados de exemplo:** `listings.data.ts` gera as contagens de Categorias (48, 21, 35, 27, 12 e 9) e os 8 primeiros de "Livros e apostilas" são os do Figma; preços fictícios. A tela de Categorias lê as contagens do mesmo lugar.
+- **Estudo:** B1 (seção 7, `placeholderData`; `useInfiniteQuery` e `IntersectionObserver` não estão no roadmap), B2 (`useSearchParams`, `:id`), B4.
 
 **Ordem 7 · Produto** (Figma 08a)
 - **Regras:** RF008, RN-ANU-03 (galeria), RN-ANU-10 (esconder "Fazer pedido" no próprio anúncio), RN-PER-04 (WhatsApp só logado), RN-EST-02.
@@ -300,6 +302,7 @@ Pedir ao grupo o desenho no Figma de: **Completar cadastro** (RN-ACE-06 e 14: ac
 
 ## 9. Pendências que afetam as telas
 
+- **Para o grupo (Felipe e Ana Clara), tela 07:** o Figma tem os chips "Pagamento no site / No campus / WhatsApp" e a linha de contato do card ("Bloco K · Horário EF"), mas **o banco e a API não têm isso**: `anuncio` só guarda o WhatsApp, a forma de negociação nasce no pedido (RN-PED-04 oferece os dois caminhos em todo anúncio) e "bloco e horário" não existe em tabela alguma. Hoje a tela usa dados de exemplo. Decidir: criar os campos no anúncio (e o filtro na API) ou trocar o desenho. A faixa de preço (RN-ANU-06) também ainda não está desenhada.
 - Fotos das categorias e do carrossel da tela inicial (hoje, blocos azul-claros).
 - Número de WhatsApp do suporte (`VITE_SUPPORT_WHATSAPP`) e texto de Termos e Privacidade.
 - Desenho das telas da Fase 6 e do menu do avatar.
