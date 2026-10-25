@@ -40,7 +40,7 @@ describe('anúncios de exemplo', () => {
       expect(listing.priceInCents).toBeGreaterThan(0)
       expect(listing.priceInCents).toBeLessThanOrEqual(9_999_999) // até R$ 99.999,99 (RN-ANU-02)
       expect(Boolean(listing.contact.place)).toBe(listing.contact.mode === 'campus')
-      expect(listing.imageUrl).toBeNull()
+      expect(listing.imageUrl).toMatch(/^data:image\/svg\+xml/) // capa de exemplo
     }
   })
 

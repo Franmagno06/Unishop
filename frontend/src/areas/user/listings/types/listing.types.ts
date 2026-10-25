@@ -24,3 +24,36 @@ export type ListingsPage = {
   pageSize: number
   hasNext: boolean
 }
+
+// Detalhe de um anúncio (formato assumido de GET /listings/:id, backend.md §9.4). Sem WhatsApp:
+// o contato com o vendedor ainda não está ligado nesta tela.
+export type ListingDetail = {
+  id: number
+  title: string
+  priceInCents: number
+  description: string
+  quantity: number // unidades disponíveis
+  categoryId: number
+  images: string[] // a primeira é a capa; de 0 a 5
+  seller: { name: string; course: string | null }
+  isOwn: boolean // anúncio da própria pessoa logada (RN-ANU-10: não faz pedido)
+}
+
+// Dados do formulário "Anunciar item" já convertidos (RN-ANU-01): preço em centavos inteiros,
+// WhatsApp só com dígitos. O backend recebe isso em POST /listings (backend.md §9.4).
+export type NewListing = {
+  title: string
+  categoryId: number
+  description: string
+  priceInCents: number
+  quantity: number
+  whatsapp: string
+  images: File[]
+}
+
+export type CreatedListing = {
+  id: number
+  title: string
+  categoryId: number
+  categoryName: string
+}

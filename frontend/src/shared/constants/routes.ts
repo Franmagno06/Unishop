@@ -14,6 +14,10 @@ export const ROUTES = {
   editProfile: '/perfil/editar',
   myOrders: '/meus-pedidos',
   createListing: '/anunciar',
+  products: '/produtos',
+  payment: '/pagamento',
+  orderConfirmed: '/pedido-confirmado',
+  myOrders: '/meus-pedidos',
   adminUsers: '/admin/usuarios',
 } as const
 

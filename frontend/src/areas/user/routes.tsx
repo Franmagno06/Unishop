@@ -20,27 +20,27 @@ export const userRoutes: RouteObject[] = [
         }),
       },
       {
-        path: 'perfil',
+        path: 'produtos/:id',
         lazy: async () => ({
-          Component: (await import('./profile/pages/ProfilePage')).ProfilePage,
+          Component: (await import('./listings/pages/ProductPage')).ProductPage,
         }),
       },
       {
-        path: 'perfil/editar',
+        path: 'pagamento/:pedidoId',
         lazy: async () => ({
-          Component: (await import('./profile/pages/EditProfilePage')).EditProfilePage,
+          Component: (await import('./checkout/pages/PaymentPage')).PaymentPage,
         }),
       },
       {
-        path: 'meus-pedidos',
+        path: 'pedido-confirmado/:pedidoId',
         lazy: async () => ({
-          Component: (await import('./orders/pages/MyOrdersPage')).MyOrdersPage,
+          Component: (await import('./checkout/pages/OrderConfirmedPage')).OrderConfirmedPage,
         }),
       },
       {
-        path: 'anuncios/:id/gerenciar',
+        path: 'anunciar',
         lazy: async () => ({
-          Component: (await import('./listings/pages/ManageListingPage')).ManageListingPage,
+          Component: (await import('./listings/pages/CreateListingPage')).CreateListingPage,
         }),
       },
     ],

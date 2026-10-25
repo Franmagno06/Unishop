@@ -53,6 +53,8 @@ export function Modal({
         onCloseRef.current()
         return
       }
+      if (event.key !== 'Tab') return
+      const items = focusables()
       if (event.key !== 'Tab' || !dialog) return
       const items = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE))
       if (items.length === 0) {
@@ -61,6 +63,11 @@ export function Modal({
       }
       const first = items[0]!
       const last = items[items.length - 1]!
+      const active = document.activeElement
+      if (event.shiftKey && (active === first || active === panel)) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && active === last) {
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault()
         last.focus()
@@ -73,6 +80,31 @@ export function Modal({
       }
     }
     document.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+      opener?.focus?.()
+    }
+  }, [open])
+
+  if (!open) return null
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-navy/50 p-4 transition-opacity duration-200 ease-out-strong starting:opacity-0 motion-reduce:transition-none"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        tabIndex={-1}
+        className="max-h-full w-full max-w-md overflow-y-auto rounded-[20px] bg-surface p-6 shadow-[0_16px_48px_rgba(13,26,51,0.25)] transition-[opacity,transform] duration-200 ease-out-strong focus:outline-none starting:scale-95 starting:opacity-0 motion-reduce:transition-none sm:p-9"
+      >
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = previousOverflow
