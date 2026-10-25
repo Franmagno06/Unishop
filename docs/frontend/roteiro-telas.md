@@ -107,6 +107,9 @@ Pontos ainda **sem decisão** (adotado um padrão provisório, a confirmar):
 
 | Tela | Ponto | Padrão provisório |
 |---|---|---|
+| Gerenciar anúncio pausado (05e) | O quadro 05e está em branco no Figma | Reaproveita a 05d: selo PAUSADO e botão "Reativar anúncio"; vendido esconde pausar e vender | Sem desenho; pedir ao grupo |
+| Excluir perfil (05b e pop-up) | Texto diz que anúncios e pedidos "serão apagados" | Texto fala em anonimizar e avisa que pedidos pagos continuam no histórico da outra pessoa | Exclusão lógica (RN-PER-06, Regras §10) |
+| Meus pedidos e Pedidos recebidos | Só o botão do WhatsApp | Acrescenta "Cancelar pedido", "Confirmar recebimento", "Combinar retirada", "Concluir venda" e "Encerrar negociação" | RN-PED-08 e RN-PED-12 (frontend.md §7) |
 | Cabeçalho logado | Menu do avatar (Perfil, Trocar senha, Sair) previsto no `frontend.md` §9, mas não desenhado | Avatar com "PF" fixo, link para `/perfil`; o menu entra com o perfil |
 | Cabeçalho logado | Navegação no celular não desenhada | Linha de links com rolagem horizontal abaixo de `md` |
 | Categorias | Busca de **itens** (RN-CAT-03) não desenhada | Filtra só as categorias; "Itens encontrados" entra na tela 07, com o `ListingCard` |
@@ -187,12 +190,12 @@ Status: **Feito**, **Em andamento**, **A fazer**.
 | 2 | 8 | Fazer pedido (pop-up) | no produto | 08d (`26:366`) | A fazer |
 | 3 | 9 | Pagamento: cartão e Pix | `/pagamento/:pedidoId` | 09a (`8:375`), 09b (`8:445`) | A fazer |
 | 3 | 10 | Pedido confirmado | `/pedido-confirmado/:pedidoId` | 10 (`8:512`) | A fazer |
-| 3 | 11 | Meus pedidos | `/meus-pedidos` | 05c (`23:337`) | A fazer |
-| 4 | 12 | Perfil e Meus anúncios | `/perfil` | 05 (`3:347`) | A fazer |
-| 4 | 13 | Editar perfil e excluir conta | `/perfil/editar` | 05b (`10:484`) | A fazer |
+| 3 | 11 | Meus pedidos | `/meus-pedidos` | 05c (`23:337`) | Feito (25/10), dados de exemplo e sem guard |
+| 4 | 12 | Perfil e Meus anúncios | `/perfil` | 05 (`3:347`) | Feito (25/10), dados de exemplo e sem guard |
+| 4 | 13 | Editar perfil e excluir conta | `/perfil/editar` | 05b (`10:484`) | Feito (25/10), dados de exemplo e sem guard |
 | 4 | 14 | Anunciar item | `/anunciar` | 06 (`3:395`) | A fazer |
 | 4 | 15 | Anúncio publicado | pop-up em `/anunciar` | 06b (`10:551`) | A fazer |
-| 4 | 16 | Gerenciar anúncio (e pausado) | `/anuncios/:id/gerenciar` | 05d (`35:464`), 05e (`35:617`) | A fazer |
+| 4 | 16 | Gerenciar anúncio (e pausado) | `/anuncios/:id/gerenciar` | 05d (`35:464`), 05e (`35:617`) | Feito (25/10), dados de exemplo e sem guard |
 | 4 | 17 | Editar anúncio | `/anuncios/:id/editar` | usa o quadro 06 | A fazer |
 | 5 | 18 | Admin: usuários (lista, detalhes, editar) | `/admin/usuarios...` | A01 (`61:602`), A02 (`62:529`), A02b (`65:702`) | A fazer |
 | 5 | 19 | Admin: produtos (lista, ver, editar) | `/admin/produtos...` | A03 (`63:552`), A04 (`65:626`), A05 (`63:724`) | A fazer |

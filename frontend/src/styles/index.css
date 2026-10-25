@@ -19,6 +19,7 @@
   /* Derivados, não desenhados no Figma: hover e fundos suaves dos alertas */
   --color-primary-hover: #285f97;
   --color-whatsapp-hover: #186540;
+  --color-danger-hover: #a82020;
   --color-danger-soft: #fdecec;
   --color-success-soft: #e8f5ee;
 
