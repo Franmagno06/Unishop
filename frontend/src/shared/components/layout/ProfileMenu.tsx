@@ -10,12 +10,12 @@ import {
 } from 'react'
 import { Link } from 'react-router'
 import { ROUTES } from '../../constants/routes'
+import { useCurrentUser } from '../../hooks/use-current-user'
 import { useLogout } from '../../hooks/use-logout'
 import type { Role } from '../../lib/session'
+import { getInitials } from '../../utils/initials'
 import { DashboardIcon, LogoutIcon, UserIcon } from '../ui/icons'
 
-// Iniciais provisórias: o nome da pessoa só existe com a API (decisão de 21/10/2026).
-const AVATAR_INITIALS = 'PF'
 // Tempo para o cursor atravessar do avatar ao cartão sem o menu fechar.
 const CLOSE_DELAY_MS = 150
 
@@ -34,6 +34,8 @@ export function ProfileMenu({ role }: { role: Role }) {
   const menuId = useId()
   const logout = useLogout()
   const isAdmin = role === 'admin'
+  // Iniciais (ou a foto) do aluno de exemplo; vêm de GET /auth/me quando a API existir.
+  const { name, avatarUrl } = useCurrentUser()
 
   useEffect(() => () => clearTimeout(closeTimer.current), [])
 
@@ -104,7 +106,11 @@ export function ProfileMenu({ role }: { role: Role }) {
         onClick={handleButtonClick}
         className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-primary-soft text-[15px] font-bold text-navy transition-[transform,background-color] duration-150 ease-out-strong hover:bg-primary-soft/70 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
-        {AVATAR_INITIALS}
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="" className="size-full rounded-full object-cover" />
+        ) : (
+          getInitials(name)
+        )}
       </button>
 
       {open ? (

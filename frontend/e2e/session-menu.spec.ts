@@ -36,7 +36,7 @@ test.describe('Cabeçalho · aluno logado', () => {
   test('em Categorias mostra "+ Anunciar item" e o avatar, e some Entrar e Criar conta', async ({ page }) => {
     await expect(header(page).getByRole('link', { name: '+ Anunciar item' })).toBeVisible()
     await expect(avatar(page)).toBeVisible()
-    await expect(avatar(page)).toHaveText('PF')
+    await expect(avatar(page)).toHaveText('AT')
     await expect(header(page).getByRole('link', { name: 'Entrar' })).toHaveCount(0)
     await expect(header(page).getByRole('link', { name: 'Criar conta' })).toHaveCount(0)
   })

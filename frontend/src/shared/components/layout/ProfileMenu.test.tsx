@@ -38,10 +38,10 @@ const menuOpen = () => avatar().getAttribute('aria-expanded') === 'true'
 afterEach(() => clearToken())
 
 describe('ProfileMenu · aparência', () => {
-  it('é um avatar com as iniciais "PF", fechado no começo', () => {
+  it('é um avatar com as iniciais do aluno ("AT"), fechado no começo', () => {
     renderMenu()
 
-    expect(avatar()).toHaveTextContent('PF')
+    expect(avatar()).toHaveTextContent('AT')
     expect(menuOpen()).toBe(false)
     expect(screen.queryByRole('link', { name: 'Ver perfil' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Sair' })).not.toBeInTheDocument()

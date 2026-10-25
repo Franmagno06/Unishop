@@ -107,6 +107,9 @@ Pontos ainda **sem decisão** (adotado um padrão provisório, a confirmar):
 
 | Tela | Ponto | Padrão provisório |
 |---|---|---|
+| Gerenciar anúncio pausado (05e) | O quadro 05e está em branco no Figma | Reaproveita a 05d: selo PAUSADO e botão "Reativar anúncio"; vendido esconde pausar e vender | Sem desenho; pedir ao grupo |
+| Excluir perfil (05b e pop-up) | Texto diz que anúncios e pedidos "serão apagados" | Texto fala em anonimizar e avisa que pedidos pagos continuam no histórico da outra pessoa | Exclusão lógica (RN-PER-06, Regras §10) |
+| Meus pedidos e Pedidos recebidos | Só o botão do WhatsApp | Acrescenta "Cancelar pedido", "Confirmar recebimento", "Combinar retirada", "Concluir venda" e "Encerrar negociação" | RN-PED-08 e RN-PED-12 (frontend.md §7) |
 | Cabeçalho logado | Menu do avatar (Perfil, Trocar senha, Sair) previsto no `frontend.md` §9, mas não desenhado | Avatar com "PF" fixo, link para `/perfil`; o menu entra com o perfil |
 | Cabeçalho logado | Navegação no celular não desenhada | Linha de links com rolagem horizontal abaixo de `md` |
 | Categorias | Busca de **itens** (RN-CAT-03) não desenhada | Filtra só as categorias; "Itens encontrados" entra na tela 07, com o `ListingCard` |
