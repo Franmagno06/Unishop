@@ -39,6 +39,7 @@ As skills ficam em `.claude/skills/` (detalhes e análise de cobertura em [`docs
 | Schema, migração, índice, transação, lock, consulta lenta, concorrência de estoque no PostgreSQL | `supabase-postgres-best-practices` |
 | Rodar a aplicação local no navegador, screenshots, console, fluxos Playwright | `webapp-testing` |
 | Criar, testar ou melhorar skills do projeto | `skill-creator` |
+| Mapear o projeto em grafo de conhecimento (só se o usuário pedir `/graphify`) | `graphify` |
 
 Fluxo sugerido por momento do trabalho (quando o código existir):
 

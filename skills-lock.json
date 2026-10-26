@@ -1,6 +1,13 @@
 {
   "version": 1,
   "skills": {
+    "graphify": {
+      "source": "Graphify-Labs/graphify",
+      "sourceType": "github",
+      "skillPath": "graphify/skill.md",
+      "commit": "dac063456bc1f5d92354ec3936fd9dd1513a83f3",
+      "computedHash": "8736200e6b7d131d937d8ed4b8d84bf74ef7760aa58de80c9df9f2ba8a67e106"
+    },
     "animate": {
       "source": "emilkowalski/skills",
       "sourceType": "github",

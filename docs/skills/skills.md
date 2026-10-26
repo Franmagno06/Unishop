@@ -60,6 +60,7 @@ Todas ficam em `.claude/skills/`, cada uma com seu conteúdo real (sem symlinks 
 | `supabase-postgres-best-practices` | Supabase (MIT) | Boas práticas de PostgreSQL: schema, índices, transações, locks, conexões | Modelagem, migrações, consultas e concorrência de estoque |
 | `webapp-testing` | Anthropic | Testar a aplicação local com Playwright (Python): screenshots, logs do console, fluxos | Verificar telas rodando e depurar a interface |
 | `skill-creator` | Anthropic | Criar, testar e melhorar skills; otimizar a descrição de acionamento | Criar ou refinar skills do Unishop |
+| `graphify` | Graphify Labs | Transformar código e documentos em grafo de conhecimento (`/graphify`); precisa do pacote Python `graphifyy` | Mapear a arquitetura e as relações entre arquivos, só quando o usuário pedir |
 | `emil-design-eng` | Emil Kowalski (MIT) | Polimento de UI, detalhes de componente e decisões de animação | Acabamento visual das telas (início, login, cadastro) |
 | `animate` | Emil Kowalski (MIT) | Construir animação escolhendo curva, duração e propriedades; só anima o que faz sentido | Transições, feedback de botão, aparecer e sumir de elementos |
 | `animation-performance` | Emil Kowalski (MIT) | Animação sem perder quadros (propriedades baratas, CSS × JS, `will-change`) | Animação travando ou escolha entre CSS e JS |
