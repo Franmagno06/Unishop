@@ -33,7 +33,12 @@ export function ProductsTable({ products, onDelete }: ProductsTableProps) {
             ? products.map((product) => (
                 <tr key={product.id} className={tableRow}>
                   <td className={`${tableCell} max-w-[340px]`}>
-                    <div className="flex items-center gap-4">
+                    {/* Imagem e nome abrem os detalhes do produto. */}
+                    <Link
+                      to={adminPaths.productDetail(product.id)}
+                      aria-label={`Abrir ${product.title}`}
+                      className="group flex items-center gap-4 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    >
                       <span
                         aria-hidden="true"
                         className="size-16 shrink-0 overflow-hidden rounded-lg bg-primary-soft"
@@ -42,11 +47,13 @@ export function ProductsTable({ products, onDelete }: ProductsTableProps) {
                           <img src={product.images[0].url} alt="" className="size-full object-cover" />
                         ) : null}
                       </span>
-                      <div className="flex min-w-0 flex-col leading-snug">
-                        <span className="font-semibold text-text">{product.title}</span>
+                      <span className="flex min-w-0 flex-col leading-snug">
+                        <span className="font-semibold text-text group-hover:text-primary group-hover:underline">
+                          {product.title}
+                        </span>
                         <span className="line-clamp-2 text-xs text-text-muted">{product.description}</span>
-                      </div>
-                    </div>
+                      </span>
+                    </Link>
                   </td>
                   <td className={tableCell}>{product.categoryName}</td>
                   <td className={`${tableCell} whitespace-nowrap font-semibold`}>

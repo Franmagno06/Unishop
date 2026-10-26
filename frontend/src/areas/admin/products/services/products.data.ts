@@ -16,10 +16,8 @@ export const CATEGORIES: AdminCategory[] = [
 export const TOTAL_PRODUCTS = 266
 const categoryName = (id: number) => CATEGORIES.find((category) => category.id === id)!.name
 
-// Produtos com pedido Pago em aberto não podem ser excluídos (RN-ADM-09); os com qualquer pedido
-// aberto não trocam de vendedor, porque o pedido guarda o vendedor (RN-ADM-08 e RN-PED-01).
+// Produtos com pedido Pago em aberto não podem ser excluídos (RN-ADM-09).
 export const PRODUCTS_WITH_OPEN_PAID_ORDERS: ReadonlySet<number> = new Set([1])
-export const PRODUCTS_WITH_OPEN_ORDERS: ReadonlySet<number> = new Set([1, 2])
 
 type Seed = {
   id: number

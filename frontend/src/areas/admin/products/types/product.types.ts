@@ -31,15 +31,6 @@ export type ProductListQuery = {
   page: number
 }
 
-export type SellerOption = { id: number; name: string; email: string }
-
-export type UpdateProductInput = {
-  title: string
-  categoryId: number
-  priceInCents: number
-  description: string
-  sellerId: number
-  whatsapp: string
-  status: ListingStatus
-  imageUrl?: string | null // nova imagem de capa; undefined mantém as atuais
-}
+// O admin edita só o status do anúncio (decisão de 26/10/2026): Ativo ou Pausado. Quem já está
+// Vendido pode ser revertido pelo admin (Regras §3).
+export type UpdateProductInput = { status: ListingStatus }

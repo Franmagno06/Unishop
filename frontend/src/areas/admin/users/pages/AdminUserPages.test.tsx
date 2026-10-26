@@ -109,51 +109,36 @@ describe('Admin · detalhes do usuário (A02)', () => {
 })
 
 describe('Admin · editar usuário (A02b)', () => {
-  it('abre preenchido e valida o e-mail institucional antes de salvar (RN-ADM-04)', async () => {
+  it('mostra os dados só para consulta e deixa editar apenas o status', async () => {
     renderAt('/admin/usuarios/2/editar')
-    const email = await screen.findByLabelText('E-mail institucional *')
-    expect(email).toHaveValue('ana.lima@edu.unifor.br')
-    expect(screen.getByLabelText('WhatsApp')).toHaveValue('(85) 9 9123-4567')
-
-    await userEvent.clear(email)
-    await userEvent.type(email, 'ana@gmail.com')
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-    expect(await screen.findByText('Use o e-mail institucional @edu.unifor.br.')).toBeInTheDocument()
+    expect(await screen.findByText('ana.lima@edu.unifor.br')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Nome *')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('E-mail institucional *')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Status da conta')).toHaveValue('active')
+    expect(within(screen.getByLabelText('Status da conta')).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Ativa',
+      'Suspensa',
+    ])
   })
 
-  it('nome curto e WhatsApp incompleto também são recusados', async () => {
-    renderAt('/admin/usuarios/2/editar')
-    const name = await screen.findByLabelText('Nome *')
-    await userEvent.clear(name)
-    await userEvent.type(name, 'An')
-    const phone = screen.getByLabelText('WhatsApp')
-    await userEvent.clear(phone)
-    await userEvent.type(phone, '8599')
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-    expect(await screen.findByText('O nome precisa ter ao menos 3 caracteres.')).toBeInTheDocument()
-    expect(screen.getByText('Informe o WhatsApp com DDD (10 ou 11 dígitos).')).toBeInTheDocument()
-  })
-
-  it('e-mail de outra conta mostra o erro no campo', async () => {
-    renderAt('/admin/usuarios/2/editar')
-    const email = await screen.findByLabelText('E-mail institucional *')
-    await userEvent.clear(email)
-    await userEvent.type(email, 'bruno.sales@edu.unifor.br')
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-    expect(await screen.findByText('Este e-mail já está cadastrado.')).toBeInTheDocument()
-  })
-
-  it('salvar abre "Alterações salvas!" e o botão volta aos detalhes', async () => {
+  it('salvar o status abre "Alterações salvas!" e o botão volta aos detalhes com a conta suspensa', async () => {
     const router = renderAt('/admin/usuarios/4/editar')
-    const course = await screen.findByLabelText('Curso')
-    await userEvent.clear(course)
-    await userEvent.type(course, 'Odontologia')
+    await userEvent.selectOptions(await screen.findByLabelText('Status da conta'), 'Suspensa')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Alterações salvas!' })
     await userEvent.click(within(dialog).getByRole('button', { name: 'Voltar' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Detalhes do usuário' })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/admin/usuarios/4')
-    expect(await screen.findByText('Odontologia')).toBeInTheDocument()
+    expect(await screen.findByText('Conta suspensa')).toBeInTheDocument()
+  })
+})
+
+describe('Admin · perfil pela lista', () => {
+  it('foto e nome do usuário na lista abrem os detalhes', async () => {
+    const router = renderAt('/admin/usuarios')
+    await userEvent.click(await screen.findByRole('link', { name: 'Abrir perfil de Carla Mendes' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Detalhes do usuário' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/admin/usuarios/4')
   })
 })

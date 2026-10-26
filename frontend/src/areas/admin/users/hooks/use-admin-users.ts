@@ -1,5 +1,11 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { deleteUser, getUserDetail, getUserStats, listUsers, updateUser } from '../services/users.service'
+import {
+  deleteUser,
+  getUserDetail,
+  getUserStats,
+  listUsers,
+  updateUser,
+} from '../services/users.service'
 import type { UpdateUserInput, UserListQuery } from '../types/user.types'
 
 const usersKey = ['admin', 'users'] as const

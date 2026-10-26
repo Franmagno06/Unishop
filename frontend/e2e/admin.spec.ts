@@ -89,30 +89,21 @@ test.describe('Painel · usuários', () => {
     await expect(page.getByText('Logado agora')).toHaveCount(0)
   })
 
-  test('detalhes, editar e salvar mostram "Alterações salvas!" e voltam aos detalhes', async ({ page }) => {
-    await page.getByRole('link', { name: 'Ver Carla Mendes' }).click()
+  test('foto e nome abrem o perfil; de lá, editar o status e voltar aos detalhes', async ({ page }) => {
+    await page.getByRole('link', { name: 'Abrir perfil de Carla Mendes' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Detalhes do usuário' })).toBeVisible()
     await expect(page.getByText('carla.mendes@edu.unifor.br')).toBeVisible()
 
     await page.getByRole('link', { name: 'Editar usuário' }).click()
-    await page.getByLabel('Curso').fill('Odontologia')
-    await page.getByLabel('Status da conta').selectOption('suspended')
+    await expect(page.getByLabel('Nome *')).toHaveCount(0) // só o status é editável
+    await page.getByLabel('Status da conta').selectOption('Suspensa')
     await page.getByRole('button', { name: 'Salvar alterações' }).click()
 
     const dialog = page.getByRole('dialog', { name: 'Alterações salvas!' })
     await expect(dialog).toBeVisible()
     await dialog.getByRole('button', { name: 'Voltar' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Detalhes do usuário' })).toBeVisible()
-    await expect(page.getByText('Odontologia')).toBeVisible()
     await expect(page.getByText('Conta suspensa')).toBeVisible()
-  })
-
-  test('e-mail fora do domínio institucional é recusado antes de salvar', async ({ page }) => {
-    await page.getByRole('link', { name: 'Ver Bruno Sales' }).click()
-    await page.getByRole('link', { name: 'Editar usuário' }).click()
-    await page.getByLabel('E-mail institucional').fill('bruno@gmail.com')
-    await page.getByRole('button', { name: 'Salvar alterações' }).click()
-    await expect(page.getByText('Use o e-mail institucional @edu.unifor.br.')).toBeVisible()
   })
 
   test('excluir um usuário com pedido pago em aberto é recusado (RN-ADM-06)', async ({ page }) => {
@@ -169,30 +160,18 @@ test.describe('Painel · produtos', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'Ana Lima' })).toBeVisible()
   })
 
-  test('editar: troca o vendedor pela busca, o status e salva', async ({ page }) => {
-    await page.getByRole('link', { name: /^Ver Física I/ }).click()
+  test('imagem e nome abrem os detalhes; editar muda só o status (Ativo ou Pausado)', async ({ page }) => {
+    await page.getByRole('link', { name: 'Abrir Física I — Halliday, 10ª ed.' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Detalhes do produto' })).toBeVisible()
     await page.getByRole('link', { name: 'Editar produto' }).click()
 
-    await page.getByLabel('Status').selectOption('sold')
-    const seller = page.getByRole('combobox', { name: 'Vendedor responsável *' })
-    await seller.fill('carla')
-    await page.getByRole('option', { name: /Carla Mendes/ }).click()
-    await expect(seller).toHaveValue(/Carla Mendes — carla\.mendes@edu\.unifor\.br/)
-
+    await expect(page.getByLabel('Nome do produto *')).toHaveCount(0)
+    await expect(page.getByLabel('Status')).toHaveValue('paused')
+    await page.getByLabel('Status').selectOption('Ativo')
     await page.getByRole('button', { name: 'Salvar alterações' }).click()
     await page.getByRole('dialog', { name: 'Alterações salvas!' }).getByRole('button', { name: 'Voltar' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Detalhes do produto' })).toBeVisible()
-    await expect(page.getByText('Carla Mendes', { exact: true })).toBeVisible()
-  })
-
-  test('produto com pedido aberto não troca de vendedor (RN-ADM-08)', async ({ page }) => {
-    await page.getByRole('link', { name: /^Ver Calculadora HP 12C/ }).click()
-    await page.getByRole('link', { name: 'Editar produto' }).click()
-    const seller = page.getByRole('combobox', { name: 'Vendedor responsável *' })
-    await seller.fill('bruno')
-    await page.getByRole('option', { name: /Bruno Sales/ }).click()
-    await page.getByRole('button', { name: 'Salvar alterações' }).click()
-    await expect(page.getByText(/pedido aberto, então o vendedor não pode ser trocado/)).toBeVisible()
+    await expect(page.getByText('Ativo', { exact: true })).toBeVisible()
   })
 
   test('excluir produto com pedido pago é recusado; sem pedido, tira da lista', async ({ page }) => {

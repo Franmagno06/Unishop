@@ -20,6 +20,7 @@ function renderAt(entry: string) {
       { path: '/admin/produtos', element: <AdminProductsPage /> },
       { path: '/admin/produtos/:id', element: <AdminProductDetailPage /> },
       { path: '/admin/produtos/:id/editar', element: <AdminProductEditPage /> },
+      { path: '/admin/usuarios/:id', element: <p>Detalhes do usuário</p> },
     ],
     { initialEntries: [entry] },
   )
@@ -92,60 +93,47 @@ describe('Admin · detalhes do produto (A04)', () => {
 })
 
 describe('Admin · editar produto (A05)', () => {
-  it('abre preenchido, com o preço em reais e o vendedor atual', async () => {
+  it('mostra os dados só para consulta e deixa editar apenas o status (Ativo ou Pausado)', async () => {
     renderAt('/admin/produtos/1/editar')
-    expect(await screen.findByLabelText('Nome do produto *')).toHaveValue('Cálculo I — Guidorizzi, vol. 1')
-    expect(screen.getByLabelText('Preço (R$) *')).toHaveValue('45,00')
-    expect(screen.getByLabelText('Categoria *')).toHaveValue('1')
-    expect(screen.getByRole('combobox', { name: 'Vendedor responsável *' })).toHaveValue(
-      'Ana Lima — ana.lima@edu.unifor.br',
-    )
-    expect(screen.getByLabelText('Status')).toHaveValue('active')
+    expect(await screen.findByText('Cálculo I — Guidorizzi, vol. 1')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Nome do produto *')).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Vendedor responsável *' })).not.toBeInTheDocument()
+    const status = screen.getByLabelText('Status')
+    expect(status).toHaveValue('active')
+    expect(within(status).getAllByRole('option').map((o) => o.textContent)).toEqual(['Ativo', 'Pausado'])
   })
 
-  it('valida os limites do anúncio antes de salvar (Regras §9)', async () => {
-    renderAt('/admin/produtos/1/editar')
-    const title = await screen.findByLabelText('Nome do produto *')
-    await userEvent.clear(title)
-    await userEvent.type(title, 'Ab')
-    const price = screen.getByLabelText('Preço (R$) *')
-    await userEvent.clear(price)
-    await userEvent.type(price, '100000')
-    const description = screen.getByLabelText('Descrição *')
-    await userEvent.clear(description)
-    await userEvent.type(description, 'Curta')
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-
-    expect(await screen.findByText('O nome deve ter pelo menos 3 caracteres.')).toBeInTheDocument()
-    expect(screen.getByText('O preço pode ser no máximo R$ 99.999,99.')).toBeInTheDocument()
-    expect(screen.getByText('A descrição deve ter pelo menos 10 caracteres.')).toBeInTheDocument()
+  it('produto vendido também oferece "Vendido" (o admin pode reverter)', async () => {
+    renderAt('/admin/produtos/6/editar')
+    const status = await screen.findByLabelText('Status')
+    expect(status).toHaveValue('sold')
+    expect(within(status).getAllByRole('option').map((o) => o.textContent)).toEqual(['Ativo', 'Pausado', 'Vendido'])
   })
 
-  it('salvar abre "Alterações salvas!" e o botão volta ao produto com os dados novos', async () => {
-    const router = renderAt('/admin/produtos/3/editar')
-    const price = await screen.findByLabelText('Preço (R$) *')
-    await userEvent.clear(price)
-    await userEvent.type(price, '55,50')
-    await userEvent.selectOptions(screen.getByLabelText('Status'), 'sold')
+  it('salvar abre "Alterações salvas!" e o botão volta ao produto com o status novo', async () => {
+    const router = renderAt('/admin/produtos/1/editar')
+    await userEvent.selectOptions(await screen.findByLabelText('Status'), 'Pausado')
     await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Alterações salvas!' })
     await userEvent.click(within(dialog).getByRole('button', { name: 'Voltar' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Detalhes do produto' })).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/admin/produtos/3')
-    expect(await screen.findByText(/R\$\s55,50/)).toBeInTheDocument()
-    expect(screen.getByText('Vendido')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/admin/produtos/1')
+    expect(await screen.findByText('Pausado')).toBeInTheDocument()
+  })
+})
+
+describe('Admin · detalhes pela lista', () => {
+  it('imagem e nome do produto na lista abrem os detalhes', async () => {
+    const router = renderAt('/admin/produtos')
+    await userEvent.click(await screen.findByRole('link', { name: 'Abrir Calculadora HP 12C' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Detalhes do produto' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/admin/produtos/2')
   })
 
-  it('trocar o vendedor de produto com pedido aberto mostra o erro no campo', async () => {
-    renderAt('/admin/produtos/2/editar')
-    const seller = await screen.findByRole('combobox', { name: 'Vendedor responsável *' })
-    await userEvent.clear(seller)
-    await userEvent.type(seller, 'bruno')
-    await userEvent.click(await screen.findByRole('option', { name: /Bruno Sales/ }))
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
-    expect(
-      await screen.findByText('Este produto tem pedido aberto, então o vendedor não pode ser trocado agora.'),
-    ).toBeInTheDocument()
+  it('foto e nome do vendedor, nos detalhes, abrem o perfil dele', async () => {
+    const router = renderAt('/admin/produtos/1')
+    await userEvent.click(await screen.findByRole('link', { name: 'Abrir perfil de Ana Lima' }))
+    expect(router.state.location.pathname).toBe('/admin/usuarios/2')
   })
 })

@@ -1,6 +1,7 @@
 import type { ListingStatus } from '../../shared/types'
 
-// Conta do aluno (banco `usuario.status_conta`): `excluida` é anonimizada e some do painel.
+// Conta do aluno (banco `usuario.status_conta`): `ativa`, `suspensa` (pelo admin) e `excluida`
+// (anonimizada, some do painel). Na tela: "Ativa" é `active` e "Suspensa" é `suspended` (RN-ADM-05).
 export type AccountStatus = 'active' | 'suspended'
 
 // Aluno na visão do admin, formato assumido de GET /admin/users/:id (backend.md §9).
@@ -51,12 +52,5 @@ export type AdminUserDetail = {
   stats: { listings: number; sales: number; purchases: number }
 }
 
-// Campos editáveis pelo admin (RN-ADM-04 e 05). `avatarUrl: undefined` mantém a foto atual.
-export type UpdateUserInput = {
-  name: string
-  email: string
-  course: string
-  whatsapp: string
-  status: AccountStatus
-  avatarUrl?: string | null
-}
+// O admin edita só o status da conta (decisão de 26/10/2026): Ativa ou Suspensa.
+export type UpdateUserInput = { status: AccountStatus }

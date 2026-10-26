@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resetProductsData } from '../../products/services/products.data'
 import { resetUsersData } from './users.data'
-import { deleteUser, getUserDetail, getUserStats, listUsers, updateUser } from './users.service'
+import {
+  deleteUser,
+  getUserDetail,
+  getUserStats,
+  listUsers,
+  updateUser,
+} from './users.service'
 
 beforeEach(() => {
   resetUsersData()
@@ -62,29 +68,13 @@ describe('API simulada · usuários do admin', () => {
     expect(await getUserDetail(99999)).toBeNull()
   })
 
-  it('edita os dados e suspende a conta; suspensa não conta como logada (RN-ADM-05)', async () => {
-    const saved = await updateUser(1, {
-      name: ' Francisco M. ',
-      email: 'FRANMAGNO06@edu.unifor.br',
-      course: 'Engenharia',
-      whatsapp: '85991110001',
-      status: 'suspended',
-    })
-    expect(saved.name).toBe('Francisco M.')
-    expect(saved.email).toBe('franmagno06@edu.unifor.br')
+  it('o admin altera só o status da conta; suspensa não conta como logada (RN-ADM-05)', async () => {
+    const saved = await updateUser(1, { status: 'suspended' })
+    expect(saved.status).toBe('suspended')
     expect(saved.isOnline).toBe(false)
+    expect(saved.email).toBe('franmagno06@edu.unifor.br')
     expect((await getUserDetail(1))?.user.status).toBe('suspended')
-  })
-
-  it('e-mail de outra conta é recusado com 409', async () => {
-    const attempt = updateUser(1, {
-      name: 'Francisco Magno',
-      email: 'ana.lima@edu.unifor.br',
-      course: '',
-      whatsapp: '',
-      status: 'active',
-    })
-    await expect(attempt).rejects.toMatchObject({ status: 409, code: 'EMAIL_ALREADY_REGISTERED' })
+    expect((await updateUser(1, { status: 'active' })).status).toBe('active')
   })
 
   it('excluir com pedido pago em aberto é recusado e nada muda (RN-ADM-06)', async () => {

@@ -5,7 +5,6 @@ import {
   getProductDetail,
   getProductStats,
   listProducts,
-  searchSellers,
   updateProduct,
 } from '../services/products.service'
 import type { ProductListQuery, UpdateProductInput } from '../types/product.types'
@@ -36,14 +35,6 @@ export function useProductDetail(id: number) {
     queryKey: [...productsKey, 'detail', id],
     queryFn: ({ signal }) => getProductDetail(id, signal),
     enabled: Number.isInteger(id) && id > 0,
-  })
-}
-
-export function useSellerSearch(search: string) {
-  return useQuery({
-    queryKey: ['admin', 'sellers', search],
-    queryFn: ({ signal }) => searchSellers(search, signal),
-    placeholderData: keepPreviousData,
   })
 }
 

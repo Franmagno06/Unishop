@@ -108,13 +108,22 @@ export function AdminProductDetailPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-4 border-t border-border pt-5">
-            <Avatar name={product.seller.name} className="size-11 text-[15px]" />
-            <div className="flex min-w-0 flex-1 flex-col leading-snug">
-              <span className="font-semibold text-text">{product.seller.name}</span>
-              <span className="break-all text-[13px] text-text-muted">
-                {product.seller.email} · WhatsApp {formatWhatsapp(product.whatsapp)}
+            {/* Foto e nome do vendedor abrem o perfil dele. */}
+            <Link
+              to={adminPaths.userDetail(product.seller.id)}
+              aria-label={`Abrir perfil de ${product.seller.name}`}
+              className="group flex min-w-0 flex-1 items-center gap-4 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <Avatar name={product.seller.name} className="size-11 text-[15px]" />
+              <span className="flex min-w-0 flex-col leading-snug">
+                <span className="font-semibold text-text group-hover:text-primary group-hover:underline">
+                  {product.seller.name}
+                </span>
+                <span className="break-all text-[13px] text-text-muted">
+                  {product.seller.email} · WhatsApp {formatWhatsapp(product.whatsapp)}
+                </span>
               </span>
-            </div>
+            </Link>
             <Link
               to={adminPaths.userDetail(product.seller.id)}
               className="rounded text-[13px] font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"

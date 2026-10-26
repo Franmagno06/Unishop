@@ -1,4 +1,5 @@
-import { useParams } from 'react-router'
+import { useState } from 'react'
+import { useNavigate, useParams } from 'react-router'
 import { ArrowLink } from '../../../../shared/components/ui/ArrowLink'
 import { Button, ButtonLink } from '../../../../shared/components/ui/Button'
 import { EmptyState } from '../../../../shared/components/ui/EmptyState'
@@ -6,13 +7,16 @@ import { Skeleton } from '../../../../shared/components/ui/Skeleton'
 import { adminPaths, ROUTES } from '../../../../shared/constants/routes'
 import { useDocumentTitle } from '../../../../shared/hooks/use-document-title'
 import { AdminPageHeading } from '../../shared/components/AdminPageHeading'
-import { ProductForm } from '../components/ProductForm'
+import { SavedChangesModal } from '../../shared/components/SavedChangesModal'
+import { ProductStatusForm } from '../components/ProductStatusForm'
 import { useProductDetail } from '../hooks/use-admin-products'
 
 // RF024 (Figma A05). Carrega o produto e mostra o formulário já preenchido.
 export function AdminProductEditPage() {
   const id = Number(useParams().id)
+  const navigate = useNavigate()
   const detail = useProductDetail(id)
+  const [saved, setSaved] = useState(false)
   useDocumentTitle('Editar produto · Admin')
 
   return (
@@ -26,7 +30,7 @@ export function AdminProductEditPage() {
           <p role="status" className="sr-only">
             Carregando produto…
           </p>
-          <div className="grid gap-5 lg:grid-cols-[1fr_440px]">
+          <div className="grid gap-5 lg:grid-cols-[1fr_420px]">
             <Skeleton className="h-[520px] rounded-2xl" />
             <Skeleton className="h-[420px] rounded-2xl" />
           </div>
@@ -41,7 +45,11 @@ export function AdminProductEditPage() {
           </EmptyState>
         </div>
       ) : detail.data ? (
-        <ProductForm key={detail.data.id} product={detail.data} />
+        <ProductStatusForm
+          key={`${detail.data.id}-${detail.data.status}`}
+          product={detail.data}
+          onSaved={() => setSaved(true)}
+        />
       ) : (
         <EmptyState
           title="Produto não encontrado"
@@ -50,6 +58,10 @@ export function AdminProductEditPage() {
           Ele pode ter sido excluído ou o endereço está errado.
         </EmptyState>
       )}
+
+      {saved ? (
+        <SavedChangesModal onClose={() => void navigate(adminPaths.productDetail(id), { replace: true })} />
+      ) : null}
     </>
   )
 }

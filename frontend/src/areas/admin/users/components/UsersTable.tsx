@@ -10,7 +10,11 @@ import type { AdminUser, AdminUserRow } from '../types/user.types'
 
 // Coluna "Status" (Figma A01): "Logado agora" em verde, ou o tempo desde o último acesso em cinza.
 // Conta suspensa pelo admin mostra o selo próprio (RN-ADM-05).
-export function UserPresence({ user }: { user: Pick<AdminUser, 'status' | 'isOnline' | 'lastAccessAt'> }) {
+export function UserPresence({
+  user,
+}: {
+  user: Pick<AdminUser, 'status' | 'isOnline' | 'lastAccessAt'>
+}) {
   if (user.status === 'suspended') return <Badge tone="danger">Conta suspensa</Badge>
   const dot = user.isOnline ? 'bg-whatsapp' : 'bg-border'
   return (
@@ -50,13 +54,20 @@ export function UsersTable({ users, onDelete }: UsersTableProps) {
             ? users.map((user) => (
                 <tr key={user.id} className={tableRow}>
                   <td className={tableCell}>
-                    <div className="flex items-center gap-3">
+                    {/* Foto e nome abrem o perfil do usuário (detalhes). */}
+                    <Link
+                      to={adminPaths.userDetail(user.id)}
+                      aria-label={`Abrir perfil de ${user.name}`}
+                      className="group flex items-center gap-3 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    >
                       <Avatar name={user.name} imageUrl={user.avatarUrl} />
-                      <div className="flex min-w-0 flex-col leading-snug">
-                        <span className="truncate font-semibold text-text">{user.name}</span>
+                      <span className="flex min-w-0 flex-col leading-snug">
+                        <span className="truncate font-semibold text-text group-hover:text-primary group-hover:underline">
+                          {user.name}
+                        </span>
                         <span className="truncate text-xs text-text-muted">{user.course || 'Curso não informado'}</span>
-                      </div>
-                    </div>
+                      </span>
+                    </Link>
                   </td>
                   <td className={tableCell}>{user.email}</td>
                   <td className={tableCell}>

@@ -86,26 +86,13 @@ export async function getUserDetail(id: number, signal?: AbortSignal): Promise<A
   }
 }
 
-// RF021 · RN-ADM-04 e 05: edita os dados e suspende ou reativa a conta.
-export async function updateUser(id: number, input: UpdateUserInput): Promise<AdminUser> {
+// RF021 · RN-ADM-05: o admin edita só o status da conta (Ativa ou Suspensa). Conta suspensa não
+// entra, tem os anúncios ocultos e não conta como logada.
+export async function updateUser(id: number, { status }: UpdateUserInput): Promise<AdminUser> {
   await wait()
   const user = findUser(id)
   if (!user) throw notFound()
-  const email = input.email.trim().toLowerCase()
-  if (getAllUsers().some((other) => other.id !== id && other.email === email)) {
-    throw new ApiError(409, 'EMAIL_ALREADY_REGISTERED', 'Este e-mail já está cadastrado.')
-  }
-  const changed: AdminUser = {
-    ...user,
-    name: input.name.trim(),
-    email,
-    course: input.course.trim(),
-    whatsapp: input.whatsapp,
-    status: input.status,
-    avatarUrl: input.avatarUrl === undefined ? user.avatarUrl : input.avatarUrl,
-    // Conta suspensa não aparece como logada (RN-ADM-02).
-    isOnline: input.status === 'active' ? user.isOnline : false,
-  }
+  const changed: AdminUser = { ...user, status, isOnline: status === 'active' ? user.isOnline : false }
   saveUser(changed)
   return changed
 }

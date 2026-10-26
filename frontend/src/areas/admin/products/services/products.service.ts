@@ -1,13 +1,11 @@
 import { ApiError } from '../../../../shared/lib/api'
 import { DAY, DEMO_NOW, normalize, paginate, wait } from '../../shared/services/mock-utils'
 import type { Page } from '../../shared/types'
-import { getAllUsers } from '../../users/services/users.data'
 import type {
   AdminCategory,
   AdminProduct,
   ProductListQuery,
   ProductStats,
-  SellerOption,
   UpdateProductInput,
 } from '../types/product.types'
 import {
@@ -15,7 +13,6 @@ import {
   findProduct,
   getAllProducts,
   markProductDeleted,
-  PRODUCTS_WITH_OPEN_ORDERS,
   PRODUCTS_WITH_OPEN_PAID_ORDERS,
   saveProduct,
 } from './products.data'
@@ -71,55 +68,12 @@ export async function getProductDetail(id: number, signal?: AbortSignal): Promis
   return findProduct(id) ?? null
 }
 
-// Vendedores para o campo "Vendedor responsável" (RN-ADM-08): só contas ativas, no máximo 8.
-export async function searchSellers(search: string, signal?: AbortSignal): Promise<SellerOption[]> {
-  await wait(150)
-  signal?.throwIfAborted()
-  const term = normalize(search)
-  return getAllUsers()
-    .filter((user) => user.status === 'active')
-    .filter((user) => !term || normalize(user.name).includes(term) || normalize(user.email).includes(term))
-    .slice(0, 8)
-    .map(({ id, name, email }) => ({ id, name, email }))
-}
-
-// RF024 · RN-ADM-08: edita o produto, inclusive o vendedor e o status (o admin reverte Vendido).
-// Trocar o vendedor com pedido aberto é recusado, porque o pedido guarda o vendedor.
-export async function updateProduct(id: number, input: UpdateProductInput): Promise<AdminProduct> {
+// RF024 · RN-ADM-08 (simplificado em 26/10/2026): o admin altera só o status do anúncio.
+export async function updateProduct(id: number, { status }: UpdateProductInput): Promise<AdminProduct> {
   await wait()
   const product = findProduct(id)
   if (!product) throw notFound()
-
-  let seller = product.seller
-  if (input.sellerId !== product.seller.id) {
-    if (PRODUCTS_WITH_OPEN_ORDERS.has(id)) {
-      throw new ApiError(409, 'HAS_OPEN_ORDERS', 'Há pedido aberto neste produto.')
-    }
-    const next = getAllUsers().find((user) => user.id === input.sellerId)
-    if (!next || next.status !== 'active') {
-      throw new ApiError(400, 'VALIDATION_ERROR', 'Escolha um vendedor com conta ativa.')
-    }
-    seller = { id: next.id, name: next.name, email: next.email, whatsapp: next.whatsapp }
-  }
-
-  const category = CATEGORIES.find((item) => item.id === input.categoryId)
-  if (!category) throw new ApiError(400, 'VALIDATION_ERROR', 'Categoria inválida.')
-
-  const changed: AdminProduct = {
-    ...product,
-    title: input.title.trim(),
-    description: input.description.trim(),
-    priceInCents: input.priceInCents,
-    categoryId: category.id,
-    categoryName: category.name,
-    status: input.status,
-    whatsapp: input.whatsapp,
-    seller,
-    images:
-      input.imageUrl === undefined
-        ? product.images
-        : [{ id: product.images[0]?.id ?? product.id * 10, url: input.imageUrl }, ...product.images.slice(1)],
-  }
+  const changed: AdminProduct = { ...product, status }
   saveProduct(changed)
   return changed
 }

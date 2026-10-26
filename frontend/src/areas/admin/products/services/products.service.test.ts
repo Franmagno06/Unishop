@@ -7,7 +7,6 @@ import {
   getProductDetail,
   getProductStats,
   listProducts,
-  searchSellers,
   updateProduct,
 } from './products.service'
 
@@ -17,15 +16,6 @@ beforeEach(() => {
 })
 
 const all = { search: '', categoryId: null, page: 1 }
-const keep = {
-  title: 'Cálculo I — Guidorizzi, vol. 1',
-  categoryId: 1,
-  priceInCents: 4500,
-  description: 'Livro em ótimo estado, 5ª edição.',
-  sellerId: 2,
-  whatsapp: '85991234567',
-  status: 'active' as const,
-}
 
 describe('API simulada · produtos do admin', () => {
   it('lista 6 por página, os 6 primeiros são os do Figma, e fecha os 266 produtos', async () => {
@@ -54,35 +44,18 @@ describe('API simulada · produtos do admin', () => {
     expect((await listProducts({ ...all, search: 'halliday' })).total).toBe(1)
   })
 
-  it('edita dados e status; o admin reverte "Vendido" (RN-ADM-08)', async () => {
-    const saved = await updateProduct(6, {
-      ...keep,
-      title: ' Jaleco branco ',
-      sellerId: 7,
-      categoryId: 4,
-      priceInCents: 3000,
-      status: 'active',
-    })
-    expect(saved).toMatchObject({ title: 'Jaleco branco', status: 'active', priceInCents: 3000 })
+  it('o admin altera só o status; reverte "Vendido" e pausa o ativo (RN-ADM-08)', async () => {
+    expect((await updateProduct(6, { status: 'active' })).status).toBe('active')
     expect((await getProductDetail(6))?.status).toBe('active')
+    const paused = await updateProduct(1, { status: 'paused' })
+    expect(paused.status).toBe('paused')
+    // O resto do anúncio não muda.
+    expect(paused).toMatchObject({ title: 'Cálculo I — Guidorizzi, vol. 1', priceInCents: 4500 })
+    expect(paused.seller.name).toBe('Ana Lima')
   })
 
-  it('troca o vendedor quando não há pedido aberto', async () => {
-    const saved = await updateProduct(3, { ...keep, sellerId: 4, whatsapp: '85991110004' })
-    expect(saved.seller.name).toBe('Carla Mendes')
-  })
-
-  it('com pedido aberto, trocar o vendedor é recusado; os outros campos mudam (RN-ADM-08)', async () => {
-    await expect(updateProduct(2, { ...keep, sellerId: 3 })).rejects.toMatchObject({
-      status: 409,
-      code: 'HAS_OPEN_ORDERS',
-    })
-    await expect(updateProduct(2, { ...keep, sellerId: 1, title: 'Calculadora HP 12C Gold' })).resolves.toBeTruthy()
-  })
-
-  it('a imagem nova vira a capa', async () => {
-    const saved = await updateProduct(4, { ...keep, sellerId: 4, imageUrl: 'blob:nova' })
-    expect(saved.images[0]!.url).toBe('blob:nova')
+  it('produto que não existe é recusado com 404', async () => {
+    await expect(updateProduct(99999, { status: 'paused' })).rejects.toMatchObject({ status: 404 })
   })
 
   it('excluir com pedido pago em aberto é recusado; sem pedido, remove o anúncio (RN-ADM-09)', async () => {
@@ -95,10 +68,5 @@ describe('API simulada · produtos do admin', () => {
   it('os produtos de um usuário excluído saem do painel', async () => {
     await deleteUser(7)
     expect(await getProductDetail(6)).toBeNull()
-  })
-
-  it('a busca de vendedores devolve no máximo 8 contas ativas', async () => {
-    expect((await searchSellers('')).length).toBe(8)
-    expect((await searchSellers('bruno.sales')).map((seller) => seller.name)).toEqual(['Bruno Sales'])
   })
 })
