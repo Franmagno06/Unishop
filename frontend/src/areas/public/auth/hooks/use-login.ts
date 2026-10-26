@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router'
 import { ROUTES } from '../../../../shared/constants/routes'
 import { setToken } from '../../../../shared/lib/session'
+import { adminDestination } from '../../../../shared/utils/admin-destination'
 import { login } from '../services/auth.service'
 
 type LocationState = { from?: string } | null
@@ -17,7 +18,7 @@ export function useLogin() {
     onSuccess: ({ data }) => {
       setToken(data.token, data.user.role)
       const destination =
-        data.user.role === 'admin' ? ROUTES.adminUsers : (from ?? ROUTES.categories)
+        data.user.role === 'admin' ? adminDestination(from) : (from ?? ROUTES.categories)
       navigate(destination, { replace: true })
     },
   })

@@ -12,8 +12,12 @@ export function useLogout(): () => void {
   const navigate = useNavigate()
 
   return useCallback(() => {
-    clearToken()
-    queryClient.clear()
-    navigate(ROUTES.home, { replace: true })
+    // Primeiro sai da tela, depois apaga a sessão: se o token sumisse antes, o guard da área em que
+    // a pessoa está (ex.: /admin) a mandaria ao login em vez de à tela inicial.
+    void (async () => {
+      await navigate(ROUTES.home, { replace: true })
+      clearToken()
+      queryClient.clear()
+    })()
   }, [queryClient, navigate])
 }

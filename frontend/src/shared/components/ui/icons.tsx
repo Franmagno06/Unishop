@@ -178,3 +178,33 @@ export function ClockIcon(props: IconProps) {
     </Icon>
   )
 }
+
+export function UsersIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
+      <path d="M16 4.6a3.5 3.5 0 0 1 0 6.8" />
+      <path d="M18 14.3c2 .8 3.5 2.6 3.5 5.7" />
+    </Icon>
+  )
+}
+
+export function BoxIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M21 8 12 3 3 8v8l9 5 9-5V8Z" />
+      <path d="m3 8 9 5 9-5" />
+      <path d="M12 13v8" />
+    </Icon>
+  )
+}
+
+export function SearchIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </Icon>
+  )
+}

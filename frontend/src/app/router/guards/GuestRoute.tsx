@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { ROUTES } from '../../../shared/constants/routes'
 import { useSession } from '../../../shared/hooks/use-session'
+import { adminDestination } from '../../../shared/utils/admin-destination'
 
 type LocationState = { from?: string } | null
 
@@ -13,5 +14,5 @@ export function GuestRoute() {
   // Ao entrar, o aluno volta para onde estava (ex.: o produto de onde clicou em "Fazer pedido");
   // sem isso este redirecionamento vence o do login e ele cairia sempre em Categorias.
   const student = from ?? ROUTES.categories
-  return <Navigate to={role === 'admin' ? ROUTES.adminUsers : student} replace />
+  return <Navigate to={role === 'admin' ? adminDestination(from) : student} replace />
 }

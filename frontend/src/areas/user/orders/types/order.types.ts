@@ -44,15 +44,7 @@ export type CardPaymentInput = {
 export type NewOrder = {
   listingId: number
   quantity: number
-// Estados do pedido (Regras §3, banco `pedido.status_pedido`): o código escreve em inglês e o
-// Prisma faz a ponte com os valores em português (pendente, pago, retirada_combinada...).
-export type OrderStatus =
-  | 'pending'
-  | 'paid'
-  | 'pickup_arranged'
-  | 'completed'
-  | 'negotiating'
-  | 'cancelled'
+}
 
 // Forma de negociação do pedido: pagamento pelo site ou conversa pelo WhatsApp (RN-PED-04).
 export type Negotiation = 'site_payment' | 'whatsapp'

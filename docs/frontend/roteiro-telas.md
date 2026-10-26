@@ -145,7 +145,7 @@ Enquanto a API não existe, o login e o cadastro respondem com dados de exemplo.
 |---|---|
 | `aluno.teste@edu.unifor.br` + `Senha1234` | Entra e vai para `/categorias` |
 | "Esqueci minha senha" com qualquer e-mail | Vai a "Verifique seu e-mail"; o botão "Abrir link do e-mail (simulação)" abre a tela de nova senha. Depois de redefinir, o login aceita a **senha nova** (e recusa a antiga) até recarregar a página. "Simular link expirado" e "Simular link inválido" mostram os alertas de erro. Redefinir zera o bloqueio de login |
-| `admin.teste@unishop.local` + `Admin1234` | Entra pela `/admin/login` e vai para `/admin/usuarios` (tela ainda não existe) |
+| `administrador.teste@edu.unifor.br` + `Admin1234` | Entra pelo `/login` ou pelo `/admin/login` e abre direto em `/admin/usuarios` (painel, ver §5.7). As duas contas de teste aparecem no aviso da tela de login (só em desenvolvimento). Antes era `admin.teste@unishop.local`; mudou em 25/10/2026 a pedido do gestor |
 | Outro e-mail ou senha | Alerta "Não foi possível entrar. E-mail ou senha incorretos." (a senha é limpa e recebe o foco) |
 | 5 senhas erradas seguidas; depois a tentativa seguinte | Alerta "Conta bloqueada. Tente de novo em 15 minutos." (RN-ACE-09) |
 | `suspenso@edu.unifor.br` | Alerta "Conta suspensa" (RN-ACE-12) |
@@ -167,6 +167,20 @@ Enquanto a API não existe, o login e o cadastro respondem com dados de exemplo.
 - `ProfileMenu`: avatar "PF" fixo (decisão de 21/10) com cartão no canto: "Ver perfil" e **"Sair" em vermelho**. Abre ao passar o mouse, ao clicar ou tocar e por Enter ou Espaço; fecha com Esc (devolve o foco ao avatar), clique ou toque fora e Tab para fora.
 - Tela inicial logada: o botão do topo vira "Ver categorias" e o rodapé esconde "Criar conta". `GuestRoute`: aluno logado vai a Categorias e admin ao painel.
 - Ainda **sem** `PrivateRoute`/`AuthProvider`/`GET /auth/me` (entram com a API).
+
+### 5.7 Painel do administrador (25/10/2026)
+
+Pedido do gestor: criar as telas do admin, com a conta de teste `administrador.teste@edu.unifor.br` / `Admin1234` na tela de login, e abrir o painel quando a conta for de admin. **Só frontend**, com dados de exemplo no formato assumido de `backend.md` §9 (o `openapi.yaml` ainda não existe).
+
+- **Entrada:** o login (`/login` ou `/admin/login`) lê o perfil da resposta e leva o admin a `/admin/usuarios`. `AdminRoute` (`app/router/guards`) manda quem não entrou ao `/admin/login` guardando o destino (volta para ele depois de entrar, só para caminhos `/admin/...`) e mostra "Acesso negado" ao aluno. Só UX: a barreira de verdade é o backend (RN-ADM-01). "Sair" navega para a tela inicial **antes** de apagar a sessão, para o guard não desviar para o login.
+- **Telas** (código em `src/areas/admin/`): `AdminLayout` + `AdminSidebar` (menu lateral; abaixo de `lg` vira barra no topo), A01 Usuários, A02 Detalhes do usuário, A02b Editar usuário, A03 Produtos, A04 Ver produto, A05 Editar produto, pop-ups de excluir (usuário e produto) e "Alterações salvas!", mais o 404 dentro do painel. Busca, filtro, categoria e página ficam na URL (`?busca=`, `?status=logados|offline`, `?categoria=`, `?pagina=`).
+- **Componentes novos:** `Pagination` (compartilhado), `SellerSearchSelect` (campo de busca com lista, padrão combobox), `StatsCards`, `SavedChangesModal`, `UsersTable`, `ProductsTable`, `UserForm`, `ProductForm`. O `Modal` agora aceita `open` e `labelledBy` além de `title`.
+- **Regras cobertas:** RN-ADM-01 a 09 e RN-ADM-12 (a conta admin nunca aparece na lista, então não há o que proteger na tela; a mensagem `ADMIN_PROTECTED` já é tratada no pop-up de exclusão).
+- **O que o dado de exemplo simula:** 1.412 alunos e 266 produtos (os números do Figma); a **Ana Lima** e o **João Pereira** têm pedido Pago em aberto (excluir é recusado com `HAS_OPEN_PAID_ORDERS`); o produto 1 (Cálculo I) tem pedido pago e o 2 (Calculadora HP 12C) tem pedido aberto (trocar o vendedor é recusado com `HAS_OPEN_ORDERS`). "Logado agora" = atividade nos últimos 5 minutos (RN-ADM-03) e o relógio da demonstração para quando a página abre. Excluir usuário o anonimiza: some da lista, dos indicadores e os anúncios dele saem do painel.
+- **Divergências do Figma (decisões provisórias, a confirmar):** (1) o texto de excluir usuário diz "anonimizada" (Regras §10) em vez de "removidos"; (2) imagem de **4 MB** no lugar dos 5 MB do Figma (desvio do PDF confirmado em 16/10); (3) "Curso" é campo de texto, como no perfil do aluno (o Figma desenha uma lista); (4) o selo do usuário é "Logado agora" (sem flexão de gênero); (5) "Vendidos no mês" conta os vendidos nos últimos 30 dias (a regra não diz se é mês de calendário).
+- **Sem tela no Figma e fora dos documentos (não inventado):** painel com visão geral, histórico de auditoria (`/admin/audit-logs` não tem tela no MVP, `frontend.md` §7) e tela de login própria do admin (usa a do aluno, decisão de 10/10).
+- **Estudo:** B2 (`AdminRoute` e layout aninhado), E2 (autorização), B4 (modais e combobox acessíveis), B1 (`useMutation`, `keepPreviousData`).
+- **Reparo junto (merge de 21 a 22/10):** `Modal.tsx`, `order.types.ts` e `orders.service.ts` estavam com código das duas branches misturado e o projeto não compilava; foram reconciliados (o `Modal` aceita os dois formatos de uso e o serviço de pedidos voltou a ter `getMyOrders`, `cancelOrder` e `confirmReceipt`) e o `routes.ts` perdeu a chave `myOrders` duplicada.
 
 ## 6. Ordem das telas
 
@@ -197,8 +211,8 @@ Status: **Feito**, **Em andamento**, **A fazer**.
 | 4 | 15 | Anúncio publicado | pop-up em `/anunciar` | 06b (`10:551`) | Pronta (22/10) |
 | 4 | 16 | Gerenciar anúncio (e pausado) | `/anuncios/:id/gerenciar` | 05d (`35:464`), 05e (`35:617`) | A fazer |
 | 4 | 17 | Editar anúncio | `/anuncios/:id/editar` | usa o quadro 06 | A fazer |
-| 5 | 18 | Admin: usuários (lista, detalhes, editar) | `/admin/usuarios...` | A01 (`61:602`), A02 (`62:529`), A02b (`65:702`) | A fazer |
-| 5 | 19 | Admin: produtos (lista, ver, editar) | `/admin/produtos...` | A03 (`63:552`), A04 (`65:626`), A05 (`63:724`) | A fazer |
+| 5 | 18 | Admin: usuários (lista, detalhes, editar) | `/admin/usuarios...` | A01 (`61:602`), A02 (`62:529`), A02b (`65:702`) | Feito (25/10), com dados de exemplo, ver §5.7 |
+| 5 | 19 | Admin: produtos (lista, ver, editar) | `/admin/produtos...` | A03 (`63:552`), A04 (`65:626`), A05 (`63:724`) | Feito (25/10), com dados de exemplo, ver §5.7 |
 | 6 | 20 | Completar cadastro, Trocar senha, Confirmar troca de e-mail, 403, 404 e sessão expirada | ver `frontend.md` §7 | **sem quadro no Figma** | A fazer (pedir o desenho) |
 | 6 | 21 | Termos de uso e Política de privacidade | `/termos`, `/privacidade` | sem quadro | Existem só como "em elaboração"; texto é do Francisco |
 

@@ -9,7 +9,7 @@ export function MockModeNotice({ page }: { page: 'login' | 'register' }) {
   return (
     <InfoAlert title="Modo de demonstração (sem servidor)">
       {page === 'login'
-        ? `Conta de teste: ${TEST_ACCOUNTS.student.email} · senha ${TEST_ACCOUNTS.student.password}. Qualquer outra combinação mostra o erro de login.`
+        ? `Conta de aluno: ${TEST_ACCOUNTS.student.email} · senha ${TEST_ACCOUNTS.student.password}. Conta de administrador: ${TEST_ACCOUNTS.admin.email} · senha ${TEST_ACCOUNTS.admin.password}. Qualquer outra combinação mostra o erro de login.`
         : `Para ver o erro de "e-mail já cadastrado", use ${TEST_ACCOUNTS.student.email}. Qualquer outro e-mail @edu.unifor.br cria a conta.`}
     </InfoAlert>
   )

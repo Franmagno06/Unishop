@@ -72,7 +72,7 @@ test.describe('Login', () => {
 
   test('a conta de teste do admin entra pela rota de admin', async ({ page }) => {
     await page.goto('/admin/login')
-    await login(page, 'admin.teste@unishop.local', 'Admin1234')
+    await login(page, 'administrador.teste@edu.unifor.br', 'Admin1234')
     await expect(page).toHaveURL('/admin/usuarios')
   })
 })

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 // Cabeçalho que muda com a sessão e menu do perfil (API simulada, VITE_USE_MOCKS=true).
 const STUDENT = { email: 'aluno.teste@edu.unifor.br', password: 'Senha1234' }
-const ADMIN = { email: 'admin.teste@unishop.local', password: 'Admin1234' }
+const ADMIN = { email: 'administrador.teste@edu.unifor.br', password: 'Admin1234' }
 
 async function loginAs(page: Page, account: { email: string; password: string }, path = '/login') {
   await page.goto(path)
@@ -201,6 +201,8 @@ test.describe('Cabeçalho · administrador logado', () => {
   test('não anuncia: tem o avatar, sem "+ Anunciar item"; o menu leva ao painel e permite sair', async ({ page }) => {
     await loginAs(page, ADMIN, '/admin/login')
     await expect(page).toHaveURL('/admin/usuarios')
+    // O painel tem o próprio menu lateral; o cabeçalho do site aparece nas telas comuns.
+    await page.goto('/categorias')
 
     await expect(avatar(page)).toBeVisible()
     await expect(header(page).getByRole('link', { name: '+ Anunciar item' })).toHaveCount(0)
@@ -209,7 +211,11 @@ test.describe('Cabeçalho · administrador logado', () => {
     await avatar(page).hover()
     await expect(page.getByRole('link', { name: 'Painel admin' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Ver perfil' })).toHaveCount(0)
+    await page.getByRole('link', { name: 'Painel admin' }).click()
+    await expect(page).toHaveURL('/admin/usuarios')
 
+    await page.goto('/categorias')
+    await avatar(page).hover()
     await page.getByRole('button', { name: 'Sair' }).click()
     await expect(page).toHaveURL('/')
     await expect(header(page).getByRole('link', { name: 'Entrar' })).toBeVisible()

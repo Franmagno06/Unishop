@@ -19,6 +19,7 @@ describe('MockModeNotice', () => {
     render(<MockModeNotice page="login" />)
     expect(screen.getByText('Modo de demonstração (sem servidor)')).toBeInTheDocument()
     expect(screen.getByText(/aluno\.teste@edu\.unifor\.br · senha Senha1234/)).toBeInTheDocument()
+    expect(screen.getByText(/administrador\.teste@edu\.unifor\.br · senha Admin1234/)).toBeInTheDocument()
   })
 
   it('no cadastro explica o e-mail que simula "já cadastrado"', async () => {

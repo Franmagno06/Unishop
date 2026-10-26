@@ -5,7 +5,13 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 type ModalProps = {
-  title: string
+  // Duas formas de uso: `title` (+ `description` e `icon`) monta o cabeçalho; sem `title`, o
+  // conteúdo é livre e `labelledBy` aponta o id do título que ele mesmo desenha.
+  title?: string
+  labelledBy?: string
+  // Padrão `true`: quem monta o pop-up só quando precisa não passa nada; o pop-up sempre montado
+  // (ex.: anúncio publicado) controla por aqui.
+  open?: boolean
   description?: string
   // Ícone redondo do topo (o "!" e o "✓" do Figma): decorativo.
   icon?: ReactNode
@@ -21,6 +27,8 @@ type ModalProps = {
 // o foco a quem abriu, a rolagem da página trava e o clique fora fecha (frontend.md, qualidade).
 export function Modal({
   title,
+  labelledBy,
+  open = true,
   description,
   icon,
   onClose,
@@ -39,6 +47,7 @@ export function Modal({
   })
 
   useEffect(() => {
+    if (!open) return
     const opener = document.activeElement as HTMLElement | null
     const dialog = dialogRef.current
     const previousOverflow = document.body.style.overflow
@@ -53,8 +62,6 @@ export function Modal({
         onCloseRef.current()
         return
       }
-      if (event.key !== 'Tab') return
-      const items = focusables()
       if (event.key !== 'Tab' || !dialog) return
       const items = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE))
       if (items.length === 0) {
@@ -63,11 +70,6 @@ export function Modal({
       }
       const first = items[0]!
       const last = items[items.length - 1]!
-      const active = document.activeElement
-      if (event.shiftKey && (active === first || active === panel)) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && active === last) {
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault()
         last.focus()
@@ -80,31 +82,6 @@ export function Modal({
       }
     }
     document.addEventListener('keydown', onKeyDown)
-
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      document.body.style.overflow = previousOverflow
-      opener?.focus?.()
-    }
-  }, [open])
-
-  if (!open) return null
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-navy/50 p-4 transition-opacity duration-200 ease-out-strong starting:opacity-0 motion-reduce:transition-none"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
-    >
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={labelledBy}
-        tabIndex={-1}
-        className="max-h-full w-full max-w-md overflow-y-auto rounded-[20px] bg-surface p-6 shadow-[0_16px_48px_rgba(13,26,51,0.25)] transition-[opacity,transform] duration-200 ease-out-strong focus:outline-none starting:scale-95 starting:opacity-0 motion-reduce:transition-none sm:p-9"
-      >
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = previousOverflow
@@ -112,7 +89,9 @@ export function Modal({
     }
     // O foco inicial só vale na abertura.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [open])
+
+  if (!open) return null
 
   return createPortal(
     <div
@@ -125,15 +104,17 @@ export function Modal({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId}
+        aria-labelledby={title ? titleId : labelledBy}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         className="flex w-full max-w-[480px] flex-col gap-4 rounded-[20px] bg-surface p-6 shadow-[0_16px_48px_rgba(13,26,51,0.25)] transition duration-200 ease-out-strong focus:outline-none starting:translate-y-2 starting:scale-[0.98] starting:opacity-0 motion-reduce:transition-none sm:p-8"
       >
         {icon ? <div aria-hidden="true">{icon}</div> : null}
-        <h2 id={titleId} className="font-display text-[26px] font-bold leading-tight text-navy">
-          {title}
-        </h2>
+        {title ? (
+          <h2 id={titleId} className="font-display text-[26px] font-bold leading-tight text-navy">
+            {title}
+          </h2>
+        ) : null}
         {description ? (
           <p id={descriptionId} className="break-words text-[15px] text-text-muted">
             {description}
