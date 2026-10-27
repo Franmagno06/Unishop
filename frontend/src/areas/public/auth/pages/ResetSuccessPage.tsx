@@ -9,7 +9,7 @@ export function ResetSuccessPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex size-16 items-center justify-center rounded-full bg-whatsapp text-surface">
+      <div className="flex size-16 items-center justify-center rounded-full bg-whatsapp text-surface transition-[scale,opacity] duration-300 ease-out-strong starting:scale-90 starting:opacity-0 motion-reduce:transition-opacity">
         <CheckIcon className="size-8" />
       </div>
       <div className="flex flex-col gap-3">

@@ -16,7 +16,7 @@ export function PublishedListingDialog({ listing, onClose }: PublishedListingDia
     <Modal open={listing !== null} onClose={onClose} labelledBy="published-title">
       {listing ? (
         <div className="flex flex-col items-center gap-4 text-center">
-          <span className="inline-flex size-16 items-center justify-center rounded-full bg-whatsapp text-surface">
+          <span className="inline-flex size-16 items-center justify-center rounded-full bg-whatsapp text-surface transition-[scale,opacity] duration-300 ease-out-strong starting:scale-90 starting:opacity-0 motion-reduce:transition-opacity">
             <CheckIcon className="size-8" />
           </span>
           <h2 id="published-title" className="font-display text-3xl font-bold text-navy">

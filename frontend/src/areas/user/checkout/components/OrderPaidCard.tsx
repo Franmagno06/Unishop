@@ -10,7 +10,7 @@ import { OrderDetailsList } from './OrderDetailsList'
 export function OrderPaidCard({ order }: { order: Order }) {
   return (
     <div className="flex flex-col items-center gap-5 text-center">
-      <span aria-hidden="true" className="inline-flex size-16 items-center justify-center rounded-full bg-whatsapp text-surface">
+      <span aria-hidden="true" className="inline-flex size-16 items-center justify-center rounded-full bg-whatsapp text-surface transition-[scale,opacity] duration-300 ease-out-strong starting:scale-90 starting:opacity-0 motion-reduce:transition-opacity">
         <CheckIcon className="size-8" strokeWidth={3} />
       </span>
       <div className="flex flex-col gap-2">
