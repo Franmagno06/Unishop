@@ -144,7 +144,7 @@ Enquanto a API não existe, o login e o cadastro respondem com dados de exemplo.
 | Entrada | Resultado na tela |
 |---|---|
 | `aluno.teste@edu.unifor.br` + `Senha1234` | Entra e vai para `/categorias` |
-| "Esqueci minha senha" com qualquer e-mail | Vai a "Verifique seu e-mail"; o botão "Abrir link do e-mail (simulação)" abre a tela de nova senha. Depois de redefinir, o login aceita a **senha nova** (e recusa a antiga) até recarregar a página. "Simular link expirado" e "Simular link inválido" mostram os alertas de erro. Redefinir zera o bloqueio de login |
+| "Esqueci minha senha" com qualquer e-mail | Vai a "Verifique seu e-mail"; o botão "Abrir link (simulação)" abre a tela de nova senha. Depois de redefinir, o login aceita a **senha nova** (e recusa a antiga) até recarregar a página. "Simular link expirado" e "Simular link inválido" mostram os alertas de erro. Redefinir zera o bloqueio de login |
 | `administrador.teste@edu.unifor.br` + `Admin1234` | Entra pelo `/login` ou pelo `/admin/login` e abre direto em `/admin/usuarios` (painel, ver §5.7). As duas contas de teste aparecem no aviso da tela de login (só em desenvolvimento). Antes era `admin.teste@unishop.local`; mudou em 25/10/2026 a pedido do gestor |
 | Outro e-mail ou senha | Alerta "Não foi possível entrar. E-mail ou senha incorretos." (a senha é limpa e recebe o foco) |
 | 5 senhas erradas seguidas; depois a tentativa seguinte | Alerta "Conta bloqueada. Tente de novo em 15 minutos." (RN-ACE-09) |
@@ -158,14 +158,14 @@ Enquanto a API não existe, o login e o cadastro respondem com dados de exemplo.
 
 ### 5.5 Botão "Voltar" (21/10/2026)
 
-`BackLink` (`shared/components/ui`): volta para **a tela anterior do site**; se a tela foi aberta direto (link, F5, e-mail), vai ao destino padrão. É um link de verdade (Ctrl+clique abre em outra aba). Destinos padrão: login e cadastro → tela inicial; "Esqueceu a senha?" e "Criar nova senha" → login; "Verifique seu e-mail" → "Esqueceu a senha?". "Senha redefinida!" não tem "Voltar" (tem "Ir para o login"). Fica no **topo** do formulário (o Figma põe o da 03b embaixo do botão).
+`BackLink` (`shared/components/ui`): volta para **a tela anterior do site**; se a tela foi aberta direto (link, F5, e-mail), vai ao destino padrão. É um link de verdade (Ctrl+clique abre em outra aba). Destinos padrão: login e cadastro → tela inicial; "Esqueceu a senha?" e "Criar nova senha" → login; "Verifique seu e-mail" → "Esqueceu a senha?". "Senha redefinida!" não tem "Voltar" (tem "Entrar"). Fica no **topo** do formulário (o Figma põe o da 03b embaixo do botão).
 
 ### 5.6 Sessão reativa, cabeçalho único e menu do perfil (21/10/2026)
 
 - `session.ts` avisa quando o token muda e guarda também o papel (aluno ou admin, só para a interface; o backend continua sendo a barreira). `useSession()` e `useLogout()` (apaga o token, limpa o cache do TanStack Query e volta à tela inicial, trocando a entrada do histórico).
 - `SiteHeader` (`shared/components/layout`) substitui `PublicHeader` e `AppHeader`: visitante (Entrar e Criar conta), aluno (Meus anúncios, "+ Anunciar item" e avatar) e admin (sem "Anunciar item"; o menu tem "Painel admin").
 - `ProfileMenu`: avatar "PF" fixo (decisão de 21/10) com cartão no canto: "Ver perfil" e **"Sair" em vermelho**. Abre ao passar o mouse, ao clicar ou tocar e por Enter ou Espaço; fecha com Esc (devolve o foco ao avatar), clique ou toque fora e Tab para fora.
-- Tela inicial logada: o botão do topo vira "Ver categorias" e o rodapé esconde "Criar conta". `GuestRoute`: aluno logado vai a Categorias e admin ao painel.
+- Tela inicial logada: o botão do topo vira "Categorias" e o rodapé esconde "Criar conta". `GuestRoute`: aluno logado vai a Categorias e admin ao painel.
 - Ainda **sem** `PrivateRoute`/`AuthProvider`/`GET /auth/me` (entram com a API).
 
 ### 5.7 Painel do administrador (25/10/2026)
@@ -275,7 +275,7 @@ Para cada tela: regras, componentes novos, estados além do caminho feliz e mód
 - **Sem definição nos documentos:** formato do número do pedido (usa o do Figma, `#UNI-2026-0417`, com o ano da criação), limites do nome impresso no cartão (3 a 60 caracteres, provisório) e parcelamento.
 
 **Ordem 10 · Pedido confirmado** (Figma 10) — RF011, RN-PED-03 (número do pedido), RN-PAG-11. **Estudo:** B1.
-- **Feito (22/10):** `OrderConfirmedPage` com `OrderPaidCard` (número, item, total pago, "Contato do vendedor" como link `wa.me` em outra aba, "Ver meus pedidos" e "Continuar comprando") e `OrderRefundedCard` (**aviso de estorno**: pedido cancelado por falta de estoque ou anúncio inativo depois do pagamento aprovado, com o valor a estornar; RN-PAG-08, 13 e 14, RN-NOT-03). Só diz "Pagamento confirmado" com o pedido Pago (RN-PAG-11): pedido Pendente volta ao pagamento, pedido vencido mostra "Pedido sem pagamento". "Ver meus pedidos" leva a `/meus-pedidos`, que ainda não tem tela (cai no 404 até a ordem 11).
+- **Feito (22/10):** `OrderConfirmedPage` com `OrderPaidCard` (número, item, total pago, "Contato do vendedor" como link `wa.me` em outra aba, "Meus pedidos" e "Continuar comprando") e `OrderRefundedCard` (**aviso de estorno**: pedido cancelado por falta de estoque ou anúncio inativo depois do pagamento aprovado, com o valor a estornar; RN-PAG-08, 13 e 14, RN-NOT-03). Só diz "Pagamento confirmado" com o pedido Pago (RN-PAG-11): pedido Pendente volta ao pagamento, pedido vencido mostra "Pedido sem pagamento". "Meus pedidos" leva a `/meus-pedidos`, que ainda não tem tela (cai no 404 até a ordem 11).
 
 **Ordem 11 · Meus pedidos** (Figma 05c)
 - **Regras:** RF014, RN-PED-06 (do mais recente ao mais antigo), RN-PED-08 ("Confirmar recebimento" em Retirada combinada), RN-PED-12 ("Cancelar pedido" só em Pendente e Em negociação).
@@ -297,7 +297,7 @@ Para cada tela: regras, componentes novos, estados além do caminho feliz e mód
 - **Componentes:** `ListingForm` (modos criar e editar), `ImageUploader` (uma imagem por requisição, com progresso "2 de 4" e nova tentativa), `PublishedListingModal`.
 - **Estados especiais:** `FILE_TOO_LARGE`, tipo inválido, falha em uma imagem sem perder o anúncio.
 - **Estudo:** B3, B4, C3 (upload).
-- **Feito (22/10):** `CreateListingPage`, `ListingForm` (só o modo criar; o modo editar vem na ordem 17), `ImageUploader` (1 a 5 fotos, 4 MB, miniaturas, capa), `PublishedListingDialog` sobre o `Modal` compartilhado (Esc, foco preso, devolve o foco), `SelectField`, `TextAreaField`, schema Zod com os limites da Regras §9, preço em centavos e WhatsApp com máscara. Dados de exemplo: o anúncio novo vai para o topo da categoria e a contagem sobe (RN-ANU-07); some ao recarregar. Decisões do gestor em 22/10: campo **Quantidade** acrescentado (RN-ANU-01 exige; não está no Figma), até **5 fotos de 4 MB** (Figma diz 1 foto de 5 MB), "Ver meu anúncio" leva à lista da categoria enquanto a tela do produto não existe, aviso de itens proibidos sob a descrição, "Voltar ao perfil" aponta para `/perfil` (ainda sem tela). Admin vê aviso em vez do formulário. Fica para a API: enviar a 1ª imagem em `POST /listings` e as demais em `POST /listings/:id/images` (com progresso e nova tentativa por imagem).
+- **Feito (22/10):** `CreateListingPage`, `ListingForm` (só o modo criar; o modo editar vem na ordem 17), `ImageUploader` (1 a 5 fotos, 4 MB, miniaturas, capa), `PublishedListingDialog` sobre o `Modal` compartilhado (Esc, foco preso, devolve o foco), `SelectField`, `TextAreaField`, schema Zod com os limites da Regras §9, preço em centavos e WhatsApp com máscara. Dados de exemplo: o anúncio novo vai para o topo da categoria e a contagem sobe (RN-ANU-07); some ao recarregar. Decisões do gestor em 22/10: campo **Quantidade** acrescentado (RN-ANU-01 exige; não está no Figma), até **5 fotos de 4 MB** (Figma diz 1 foto de 5 MB), "Meu anúncio" leva à lista da categoria enquanto a tela do produto não existe, aviso de itens proibidos sob a descrição, "Voltar ao perfil" aponta para `/perfil` (ainda sem tela). Admin vê aviso em vez do formulário. Fica para a API: enviar a 1ª imagem em `POST /listings` e as demais em `POST /listings/:id/images` (com progresso e nova tentativa por imagem).
 
 **Ordem 16 · Gerenciar anúncio e anúncio pausado** (Figma 05d e 05e)
 - **Regras:** RF017, RN-ANU-04, 08 e 09, RN-PED-07, 08, 12 e 13, RN-EST-06.
