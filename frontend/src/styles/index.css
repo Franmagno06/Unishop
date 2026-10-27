@@ -46,8 +46,17 @@
   a,
   button,
   input,
+  select,
+  textarea,
   label {
     touch-action: manipulation;
+  }
+
+  /* segurar o dedo selecionava o texto do botão; conteúdo continua copiável */
+  button,
+  [role='button'] {
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   /* Campos com menos de 16px fazem o iOS dar zoom na página ao focar */

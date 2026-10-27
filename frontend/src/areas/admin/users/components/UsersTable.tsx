@@ -36,7 +36,7 @@ type UsersTableProps = {
 // Tabela de usuários (Figma A01). "Ver" abre os detalhes; "Excluir" abre o pop-up de confirmação.
 export function UsersTable({ users, onDelete }: UsersTableProps) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto overscroll-x-contain">
       <table className="w-full min-w-[820px] border-collapse">
         <caption className="sr-only">Usuários cadastrados</caption>
         <thead>

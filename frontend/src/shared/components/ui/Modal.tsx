@@ -95,7 +95,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-navy/45 p-4 transition-opacity duration-150 ease-out-strong starting:opacity-0 motion-reduce:transition-opacity"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain bg-navy/45 p-4 transition-opacity duration-150 ease-out-strong starting:opacity-0 motion-reduce:transition-opacity"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !busyRef.current) onCloseRef.current()
       }}

@@ -15,7 +15,7 @@ type ProductsTableProps = {
 // Tabela de produtos (Figma A03). "Ver" abre os detalhes; "Excluir" abre o pop-up de confirmação.
 export function ProductsTable({ products, onDelete }: ProductsTableProps) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto overscroll-x-contain">
       <table className="w-full min-w-[900px] border-collapse">
         <caption className="sr-only">Produtos anunciados</caption>
         <thead>
