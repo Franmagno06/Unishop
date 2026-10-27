@@ -6,7 +6,7 @@ Contexto para o Claude Code trabalhar no projeto **Unishop**, e-commerce web par
 
 Conjunto de documentos alinhado em 16/10/2026. Precedência entre eles: PDF, Regras de Negócio, Banco de Dados, Backend e Frontend, API e Deploy (quando dois discordam, corrige-se o de menor precedência).
 
-- [`docs/regras-de-negócio/regras-de-negócio.md`](docs/regras-de-negócio/regras-de-negócio.md) (v0.4) — regras RN-XXX-nn, estados, permissões, escopo do MVP (§8), limites de campos e itens proibidos (§9), desvios do PDF (§10) e cenários de teste.
+- [`docs/regras-de-negócio/regras-de-negócio.md`](docs/regras-de-negócio/regras-de-negócio.md) (v0.4.1) — regras RN-XXX-nn, estados, permissões, escopo do MVP (§8), limites de campos e itens proibidos (§9), desvios do PDF (§10) e cenários de teste.
 - [`docs/BancoDeDados/bd.md`](docs/BancoDeDados/bd.md) (v0.2) — as 8 tabelas no estado final, dicionário de dados, valores fixos dos estados, mapeamento banco × backend, consultas críticas, anonimização (LGPD), migração pelo Prisma, papéis do banco e SQL da migração manual.
 - [`docs/backend/backend.md`](docs/backend/backend.md) (v0.3) — arquitetura em camadas, autenticação, módulos e rotas (§9), pagamentos, estados, jobs, erros, segurança e mapa das regras RN no backend.
 - [`docs/frontend/frontend.md`](docs/frontend/frontend.md) (v0.4) — estrutura, rotas, componentes, estado, sessão e padrões de qualidade do frontend.
@@ -255,7 +255,7 @@ skills-lock.json                           # origem e hash das skills externas
 docs/
 ├─ frontend/frontend.md                    # estrutura, rotas, componentes, estado, qualidade (v0.4)
 ├─ frontend/roteiro-telas.md               # ordem das telas, ciclo de cada tela e fichas (v0.1)
-├─ regras-de-negócio/regras-de-negócio.md  # regras RN-XXX-nn, estados, permissões, MVP, testes (v0.4)
+├─ regras-de-negócio/regras-de-negócio.md  # regras RN-XXX-nn, estados, permissões, MVP, testes (v0.4.1)
 ├─ BancoDeDados/bd.md                      # dicionário de dados, migração, papéis, LGPD (v0.2)
 ├─ backend/backend.md                      # arquitetura, rotas, pagamentos, segurança (v0.3)
 ├─ deploy/deploy.md                        # deploy na Vercel + Neon (v0.3)

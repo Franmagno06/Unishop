@@ -1,8 +1,8 @@
 ---
 title: Documentação Técnica — Regras de Negócio
 project: Unishop
-version: 0.4
-date: 2026-10-16
+version: 0.4.1
+date: 2026-10-27
 status: vigente com pendências
 owners: Francisco Magno (consolidação)
 based_on: requisitos RF001–RF024 e RNF001–RNF016 (PDF do trabalho), protótipos do Figma, decisões do grupo
@@ -14,7 +14,7 @@ language: pt-BR
 
 # Documentação Técnica — Regras de Negócio
 
-- Versão 0.4 · 16/10/2026
+- Versão 0.4.1 · 27/10/2026
 - Consolidação: Francisco Magno (gestão e integração front-back)
 - Base: requisitos RF001–RF024 e RNF001–RNF016, protótipos do Figma e decisões do grupo
 
@@ -24,6 +24,7 @@ language: pt-BR
 |---|---|---|
 | 0.3 | 13/10/2026 | Regras por domínio, ciclo de vida, decisões de 10/10 e 13/10 e mapa de testes. |
 | 0.4 | 16/10/2026 | Promove às regras as decisões que estavam só no Backend (JWT de 2 h, máximo de 5 imagens, cartão abandonado, e-mail ao comprador, 409 sem estoque, anonimização pelo admin, proteção do admin, canal por e-mail, "completar cadastro" do Google). Acrescenta os casos de borda de dinheiro e estoque (pagamento tardio, liquidação com anúncio inativo, exclusão com pedido em aberto, pedido reaproveitado, cancelamento pelo comprador), o vendedor e o produto congelados no pedido, o WhatsApp no anúncio, a troca de senha, o formato do WhatsApp e a definição de "aluno verificado". Limite de imagem de 4 MB. Login com Google entra no MVP. Une as duas tabelas de decisões em uma. Novas seções: escopo do MVP (8), limites de campos e itens proibidos (9), desvios do PDF (10) e pendências (11). Os nomes de tabela e coluna das regras passam a ser os do Banco de Dados. |
+| 0.4.1 | 27/10/2026 | O admin edita só o status: da conta (Ativa ou Suspensa) e do anúncio (Ativo ou Pausado, revertendo Vendido). RN-ADM-04 e RN-ADM-08 reescritas, sem edição de dados nem troca de vendedor; decisão de 26/10 na seção 6, desvio do PDF na seção 10 e pendência 6. |
 
 ## 1. Como ler este documento
 
@@ -70,8 +71,8 @@ Aqui estão as regras que o sistema precisa respeitar, não importa a tela nem a
 | Criar, editar, pausar, vender e excluir o próprio anúncio | Não | Sim | Não |
 | Ver o próprio histórico de pedidos e os pedidos recebidos | Não | Sim | Não |
 | Editar e excluir o próprio perfil | Não | Sim | Sim |
-| Gerenciar qualquer usuário (editar, suspender, excluir) | Não | Não | Sim |
-| Gerenciar qualquer produto (editar, mudar status, trocar vendedor, excluir) | Não | Não | Sim |
+| Gerenciar qualquer usuário (ver, suspender ou reativar, excluir) | Não | Não | Sim |
+| Gerenciar qualquer produto (ver, mudar status, excluir) | Não | Não | Sim |
 
 > A checagem de permissão é feita sempre no **backend** (RNF004). Esconder um botão no frontend não é controle de acesso.
 
@@ -254,11 +255,11 @@ Ativa ou Suspensa ──usuário ou admin exclui──▶ Excluída (anonimizada
 | RN-ADM-01 | O painel só abre para perfil de administrador, inclusive se a URL for digitada. A verificação é feita no backend. | RF018.1, RNF004 | Frontend, Backend |
 | RN-ADM-02 | A lista de usuários mostra indicadores (cadastrados, logados agora, novos na semana), busca por nome ou e-mail e status de acesso. Os indicadores contam só **alunos** com conta ativa ou suspensa; admin e contas excluídas ficam de fora, e "logado agora" conta só contas ativas. | RF019.1–RF019.4 | Frontend, Backend |
 | RN-ADM-03 | "Logado agora" significa atividade nos últimos **5 minutos** (campo `ultimo_acesso` do Banco); depois disso mostra o tempo desde o último acesso. | RF019.3 | Backend, Banco |
-| RN-ADM-04 | O admin edita usuário (foto, nome, e-mail institucional, curso, WhatsApp) com as validações do cadastro. | RF021.1–RF021.3 | Frontend, Backend |
+| RN-ADM-04 | O admin vê os dados do usuário (foto, nome, e-mail institucional, curso, WhatsApp) **só para consulta**. A edição se limita ao **status da conta** (Ativa ou Suspensa, RN-ADM-05); `excluida` vem só da ação Excluir (RN-ADM-06). Desvio do PDF (seção 10). | RF021.1–RF021.3 | Frontend, Backend |
 | RN-ADM-05 | O admin suspende e reativa contas. Suspender impede o login e oculta os anúncios, sem apagar dados. | RF021.4, RF021.5 | Backend |
 | RN-ADM-06 | Excluir usuário **anonimiza** a conta, com o mesmo tratamento da RN-PER-06: os anúncios saem do ar e os pedidos pagos permanecem no histórico. É bloqueada enquanto houver pedido Pago ou em Retirada combinada em aberto. Pede confirmação em modal. | RF020.6, RF020.7 | Frontend, Backend |
 | RN-ADM-07 | A lista de produtos mostra indicadores (ativos, pausados e vendidos no mês), busca por nome ou vendedor, filtro por categoria e paginação. | RF022.1–RF022.5 | Frontend, Backend |
-| RN-ADM-08 | O admin edita produto, inclusive trocar o vendedor responsável e o status (Ativo, Pausado, Vendido). **A troca de vendedor só vale se o anúncio não tiver pedido aberto**, porque o pedido guarda o vendedor (RN-PED-01). | RF024.2–RF024.5 | Frontend, Backend |
+| RN-ADM-08 | O admin altera **só o status do anúncio**: Ativo ou Pausado, e reverte Vendido para um dos dois (seção 4). Dados, imagens e vendedor aparecem só para consulta; **não há troca de vendedor**. Desvio do PDF (seção 10). | RF024.2–RF024.5 | Frontend, Backend |
 | RN-ADM-09 | Excluir produto remove o anúncio, notifica o vendedor e pede confirmação em modal. É bloqueada enquanto houver pedido Pago ou em Retirada combinada em aberto. | RF023.6, RF023.7 | Frontend, Backend |
 | RN-ADM-10 | Edição, suspensão e exclusão feitas pelo admin ficam registradas em log, com data e responsável. | RF018.5 | Backend, Banco |
 | RN-ADM-11 | A conta admin é criada por script (seed), nunca pelo cadastro público. Por isso ela é a exceção da regra do domínio `@edu.unifor.br`. | Equipe | Backend |
@@ -287,6 +288,7 @@ Uma tabela só, com a data de cada decisão. Quando duas decisões tratam do mes
 | Imagem de 4 MB | Limite de **4 MB** por imagem, uma por requisição (limite da hospedagem). | 16/10 |
 | Infraestrutura | Gratuita. A meta de 500 usuários simultâneos é meta de produto, **não é medida no MVP**; se o projeto seguir como produto depois da avaliação, a meta e a infraestrutura são revistas. | 16/10 |
 | Casos de borda de dinheiro | Pagamento tardio estornado, liquidação só com anúncio ativo, exclusão bloqueada com pedido em aberto, pedido aberto reaproveitado, cancelamento pelo comprador (RN-PAG-13, RN-PAG-14, RN-PER-06, RN-PED-10, RN-PED-12). | 16/10 |
+| Edição pelo admin | O admin edita **só o status**: da conta (Ativa ou Suspensa) e do anúncio (Ativo ou Pausado, revertendo Vendido). Os dados ficam só para consulta, sem troca de vendedor e sem punições ou prazos de suspensão. Substitui a edição completa da v0.4 (RN-ADM-04, RN-ADM-08). Pedido do gestor; registrado em 27/10. | 26/10 |
 
 ## 7. Mapa de testes
 
@@ -297,7 +299,7 @@ O RNF016 exige testes de autenticação, pagamento e status de anúncio. Mínimo
 | Autenticação | ACE-02, 03, 04, 06, 09, 10, 11, 12, 14, 15 | E-mail fora do domínio; e-mail repetido com maiúsculas; senha fraca; sem aceite dos Termos; 5ª tentativa errada; link expirado; usuário suspenso; token expirado (2 h); token anterior à troca de senha; Google com e-mail de outro domínio ou não verificado; troca de senha com a atual errada. |
 | Pagamento | PAG-04 a 08, 12 a 14; PED-02 | Webhook duplicado; Pix expirado cancela; pedido pendente de 30 min cancela; total correto; pagamento recusado; estoque acabou antes da confirmação; pagamento aprovado em pedido já cancelado é estornado; pagamento com anúncio pausado cancela e estorna. |
 | Estoque | EST-03 a 06 | Duas compras simultâneas da última unidade; quantidade nunca negativa; WhatsApp não desconta até concluir; concluir sem estoque devolve 409 (PED-13). |
-| Anúncio e permissões | ANU-03, 04, 05, 09; EST-06; ADM-01, 06, 08, 09, 12 | Máximo de 5 imagens; pausar e reativar; excluído some e o pedido permanece; exclusão bloqueada com pedido pago em aberto; aluno em rota admin ou em anúncio alheio recebe 403; admin não troca vendedor com pedido aberto; admin não suspende a si mesmo. |
+| Anúncio e permissões | ANU-03, 04, 05, 09; EST-06; ADM-01, 06, 08, 09, 12 | Máximo de 5 imagens; pausar e reativar; excluído some e o pedido permanece; exclusão bloqueada com pedido pago em aberto; aluno em rota admin ou em anúncio alheio recebe 403; edição do admin aceita só o status (outros campos são recusados); admin não suspende a si mesmo. |
 | Pedido | PED-04, 05, 08, 10, 11, 12 | Os dois caminhos do pop-up; ordem do histórico; transições de status; novo clique reaproveita o pedido aberto; comprador cancela o pendente; vendedor encerra a negociação. |
 | Perfil | PER-05, 06, 07 | Foto acima de 4 MB; exclusão bloqueada com pedido pago em aberto; WhatsApp com formato inválido. |
 | Acesso ao catálogo | CAT-04 | Visitante não acessa categorias, listagem nem produto. |
@@ -362,6 +364,7 @@ O PDF do trabalho tem precedência sobre este documento. Cada ponto abaixo foge 
 | Confirmação de e-mail fora do MVP | RF002.5 | RN-ACE-07 | Item "desejável"; entra ligando a chave |
 | Metas de 500 usuários e 99% | RNF010, RNF011 | Seção 6 | Meta de produto; não é medida no MVP |
 | Admin não compra nem anuncia | Não está no PDF | Seção 3 | Regra do grupo |
+| Admin edita só o status (conta e anúncio), sem editar dados nem trocar o vendedor | RF021.1–RF021.3, RF024.2–RF024.5 | RN-ADM-04, RN-ADM-08 | Decisão de 26/10/2026 (seção 6); conferir o texto exato no PDF (pendência 6) |
 
 O texto do RNF005 cita "NoSQL Injection", mas o banco é PostgreSQL: o risco real é **SQL Injection**. A correção é no PDF do trabalho, que não é editado por este grupo; a documentação técnica usa "SQL Injection".
 
@@ -374,3 +377,4 @@ O texto do RNF005 cita "NoSQL Injection", mas o banco é PostgreSQL: o risco rea
 | 3 | Os textos dos Termos de uso e da Política de privacidade ainda não existem | Francisco escreve a versão mínima, com a versão do aceite e a limitação dos backups (Deploy, seção 11) |
 | 4 | Os valores da seção 9 e a lista de itens proibidos são propostas da equipe | O grupo confirma ou ajusta antes de o Frontend e o Backend implementarem |
 | 5 | Se o projeto seguir como produto depois da avaliação, a meta de 500 usuários e o plano de hospedagem voltam à mesa | Revisar o Deploy (limites do plano gratuito) |
+| 6 | A edição só de status (26/10) foge de RF021.1–RF021.3 e RF024.2–RF024.5; o texto exato desses itens não foi conferido no PDF | Conferir no PDF quais subitens deixam de ser atendidos e confirmar o desvio com o grupo antes da entrega |

@@ -3,12 +3,12 @@ name: unishop-rules
 description: Regras de negócio do Unishop (códigos RN-ACE, RN-PER, RN-CAT, RN-ANU, RN-EST, RN-PED, RN-PAG, RN-NOT, RN-ADM), ciclo de vida de anúncio, pedido e conta, permissões por ator (visitante, aluno, admin), escopo do MVP, limites de campos, itens proibidos e desvios do PDF. Use SEMPRE que o usuário perguntar "qual é a regra", "pode ou não pode", "isso entra no MVP", "qual o limite do campo", citar um RF, RNF ou RN-XXX-nn, escrever critério de aceite ou teste de regra, decidir comportamento de tela ou rota que a documentação não mostra, ou conferir se um documento contradiz as regras, mesmo que não diga "regra de negócio" ou "Unishop".
 metadata:
   author: unishop-team
-  version: "0.1.0"
+  version: "0.1.1"
 ---
 
 # Regras de negócio do Unishop
 
-Índice operacional. Fonte completa e autoritativa: [`docs/regras-de-negócio/regras-de-negócio.md`](../../../docs/regras-de-negócio/regras-de-negócio.md) (v0.4, de 16/10/2026; consolidação: Francisco). Este arquivo **não lista as 88 regras**: aponta onde está cada uma e guarda o que mais se consulta. Para o texto exato de uma regra, abra o documento na seção indicada.
+Índice operacional. Fonte completa e autoritativa: [`docs/regras-de-negócio/regras-de-negócio.md`](../../../docs/regras-de-negócio/regras-de-negócio.md) (v0.4.1, de 27/10/2026; consolidação: Francisco). Este arquivo **não lista as 88 regras**: aponta onde está cada uma e guarda o que mais se consulta. Para o texto exato de uma regra, abra o documento na seção indicada.
 
 Se uma regra não estiver no documento, no PDF (`Trabalho Desenvolvimento Web 2026.pdf`) ou nas decisões do grupo (CLAUDE.md), diga que **não está definida**; não invente. Quando duas fontes discordam: PDF > decisões do grupo > Regras de Negócio > Banco de Dados > Backend e Frontend > API e Deploy > Figma; corrige-se o de menor precedência.
 
@@ -61,7 +61,7 @@ Itens proibidos no anúncio: armas e munições; drogas, cigarros e bebidas alco
 - **Liquidação** (RN-PAG-13, 14): só conclui com anúncio ativo, vendedor com conta ativa e estoque; pagamento tardio em pedido cancelado é estornado, com e-mail ao comprador (RN-NOT-03).
 - **Exclusão** (RN-ANU-09, RN-PER-06, RN-ADM-06, 09): lógica ou por anonimização, **bloqueada** com pedido Pago ou em Retirada combinada em aberto.
 - **Login** (RN-ACE-09 a 15): 5 erros = bloqueio de 15 min; JWT de 2 h sem refresh; Google no MVP com "completar cadastro"; troca de senha logado invalida tokens antigos.
-- **Admin** (RN-ADM-11, 12): conta só por seed; não suspende nem exclui a si mesmo; o último admin ativo não sai; troca de vendedor só sem pedido aberto (RN-ADM-08).
+- **Admin** (RN-ADM-11, 12): conta só por seed; não suspende nem exclui a si mesmo; o último admin ativo não sai. O admin edita **só o status** da conta e do anúncio, sem editar dados nem trocar o vendedor (RN-ADM-04, 08; decisão de 26/10).
 - **Produção em demonstração** (RN-PAG-10, 15): credenciais de teste do Mercado Pago, repasse simulado e aviso na tela de pagamento e no rodapé.
 - **Notificação** (RN-NOT-01 a 04): só por e-mail; não há tela de notificações no MVP.
 
@@ -73,7 +73,7 @@ Itens proibidos no anúncio: armas e munições; drogas, cigarros e bebidas alco
 
 ## Desvios do PDF (seção 10)
 
-Imagem de 4 MB (RF015.2, RF024.4, RNF005; confirmado 16/10) · produção com credenciais de teste (RF010.7) · exclusão lógica e anonimização no lugar de "excluir" (RF013.8, RF017.11, RF020.7) · Apple fora (RF002.6, RF003.3) · confirmação de e-mail fora do MVP (RF002.5) · metas de 500 usuários e 99% como metas de produto (RNF010, RNF011) · admin não compra nem anuncia (regra do grupo). O que não está nessa lista segue o PDF. O RNF005 cita "NoSQL Injection", mas o banco é PostgreSQL: leia como **SQL Injection** (a correção seria no PDF, que o grupo não edita).
+Imagem de 4 MB (RF015.2, RF024.4, RNF005; confirmado 16/10) · produção com credenciais de teste (RF010.7) · exclusão lógica e anonimização no lugar de "excluir" (RF013.8, RF017.11, RF020.7) · Apple fora (RF002.6, RF003.3) · confirmação de e-mail fora do MVP (RF002.5) · metas de 500 usuários e 99% como metas de produto (RNF010, RNF011) · admin não compra nem anuncia (regra do grupo) · admin edita só o status, sem dados nem troca de vendedor (RF021.1–3, RF024.2–5; decisão de 26/10, texto do PDF a conferir). O que não está nessa lista segue o PDF. O RNF005 cita "NoSQL Injection", mas o banco é PostgreSQL: leia como **SQL Injection** (a correção seria no PDF, que o grupo não edita).
 
 ## Como usar nas tarefas
 

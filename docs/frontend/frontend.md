@@ -370,8 +370,8 @@ O admin não suspende nem exclui a própria conta, e o último admin não é rem
 | `user/orders` | MyOrdersPage | OrderCard, OrderStatusBadge, MakeOrderModal, CancelOrderDialog, ConfirmReceiptDialog |
 | `user/checkout` | PaymentPage, OrderConfirmedPage | PaymentMethodTabs, CardPaymentForm, PixPayment (QR, copia e cola, contador), OrderSummary, DemoEnvironmentNotice |
 | `user/profile` | ProfilePage, EditProfilePage, ChangePasswordPage, ConfirmEmailChangePage | ProfileHeader, MyListingsList, AvatarUploader, ChangePasswordForm, ChangeEmailForm, DeleteAccountModal (digitar "EXCLUIR") |
-| `admin/users` | AdminUsersPage, AdminUserDetailPage, AdminUserEditPage | UsersTable, StatsCards, UserForm, DeleteUserModal, SavedChangesModal |
-| `admin/products` | AdminProductsPage, AdminProductDetailPage, AdminProductEditPage | ProductsTable, StatsCards, ProductForm, SellerSearchSelect, DeleteProductModal, SavedChangesModal |
+| `admin/users` | AdminUsersPage, AdminUserDetailPage, AdminUserEditPage | UsersTable, StatsCards, UserStatusForm, DeleteUserModal, SavedChangesModal |
+| `admin/products` | AdminProductsPage, AdminProductDetailPage, AdminProductEditPage | ProductsTable, StatsCards, ProductStatusForm, ProductGallery, DeleteProductModal, SavedChangesModal |
 
 ### Layouts (um por área)
 
@@ -447,7 +447,7 @@ O protótipo mostra só o caminho feliz. Toda tela que busca dados trata os esta
 | Imagem grande demais (413 ou `FILE_TOO_LARGE`) | "A imagem passa de 4 MB" |
 | Imagem de tipo inválido | "Use JPG ou PNG" |
 | Exclusão bloqueada (409 `HAS_OPEN_PAID_ORDERS`) | Explica que há pedido pago ou em retirada combinada em aberto |
-| Troca de vendedor ou anúncio com pedido aberto (409 `HAS_OPEN_ORDERS`) | Mostra a mensagem da API |
+| Anúncio com pedido aberto (409 `HAS_OPEN_ORDERS`) | Mostra a mensagem da API |
 | Senha atual errada (`CURRENT_PASSWORD_INVALID`) | Erro no campo "senha atual" |
 | Ação sobre admin (`ADMIN_PROTECTED`) | Mensagem da API; botão oculto na própria conta |
 

@@ -363,7 +363,7 @@ Uma função da Vercel aceita no máximo **4,5 MB** na requisição inteira. O U
 - **Uma imagem por requisição**, com limite de **4 MB** por imagem (sobra margem para os campos do formulário).
 - A API continua conferindo o tipo real do arquivo (`multer` + `file-type`) e enviando ao Cloudinary. Nada de envio direto do navegador nem de assinatura.
 - No anúncio, a **primeira** imagem vai com `POST /listings` (que cria o anúncio com pelo menos 1 imagem, RN-ANU-03) e as **demais** vão uma a uma com `POST /listings/:id/images`. A remoção usa `DELETE /listings/:id/images/:imageId`.
-- O avatar do aluno (`PUT /users/me/avatar`) e o avatar editado pelo admin (`PUT /admin/users/:id/avatar`) já são uma imagem só.
+- O avatar do aluno (`PUT /users/me/avatar`) já é uma imagem só. O admin não troca a foto do usuário (RN-ADM-04, Regras v0.4.1).
 - O frontend confere o tamanho **antes** de enviar: um arquivo acima de 4,5 MB é barrado pela própria Vercel com um erro 413 genérico, sem a mensagem do Unishop. O frontend trata o 413 como "imagem grande demais" (`FILE_TOO_LARGE`). O limite de 5 imagens por anúncio vale (RN-ANU-03).
 - Como cada imagem fica ligada a um anúncio existente assim que sobe, **não há imagens órfãs** como no envio direto. Se o banco falhar na criação do anúncio, a API remove a imagem do Cloudinary, como já descreve o Backend (§10).
 

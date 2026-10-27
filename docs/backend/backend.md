@@ -58,7 +58,7 @@ language: pt-BR (código e pastas em inglês; interface em português)
 | Pix expirado | Gerava novo código | Cancela o pedido; o aluno faz um novo (RN-PAG-04) |
 | Pagamentos por pedido | Uma linha, atualizada | Uma linha por tentativa; só uma em andamento (Banco §4.6) |
 | Exclusão de anúncio, perfil e usuário | Remoção | Exclusão lógica e anonimização, bloqueadas com pedido Pago ou em Retirada combinada em aberto (RN-ANU-09, RN-PER-06, RN-ADM-06, 09) |
-| Troca de vendedor pelo admin | Livre | Só sem pedido aberto (RN-ADM-08) |
+| Edição pelo admin | Dados, vendedor e imagem | Só o status da conta e do anúncio, sem troca de vendedor (RN-ADM-04, 08; Regras v0.4.1, decisão de 26/10) |
 | Proteção do admin | Proposta | Regra: não suspende nem exclui a si mesmo; último admin protegido (RN-ADM-12) |
 | Jobs | A cada 1 a 5 minutos | A cada 30 minutos, para caber no plano gratuito do Neon |
 | Imagem | 4 MB contra 5 MB (pendência) | 4 MB, confirmado pelo grupo (Regras §10) |
@@ -622,8 +622,8 @@ Quem pode o quê (documento de Regras de Negócio, seção 3):
 | Criar, editar, pausar, vender e excluir o próprio anúncio | Não | Sim | Não |
 | Ver o próprio histórico de pedidos e os pedidos recebidos | Não | Sim | Não |
 | Editar e excluir o próprio perfil | Não | Sim | Sim |
-| Gerenciar qualquer usuário (editar, suspender, excluir) | Não | Não | Sim |
-| Gerenciar qualquer produto (editar, mudar status, trocar vendedor, excluir) | Não | Não | Sim |
+| Gerenciar qualquer usuário (ver, suspender ou reativar, excluir) | Não | Não | Sim |
+| Gerenciar qualquer produto (ver, mudar status, excluir) | Não | Não | Sim |
 
 - Perfil errado (por exemplo, admin tentando comprar) responde **403** `FORBIDDEN`, aplicado por `authorizeRole`.
 - "Só no que é dele": além do perfil, o service confere se o recurso pertence a quem pede (RNF004). Anúncio ou pedido alheio responde **403**.
@@ -954,14 +954,12 @@ export default router
 | `GET /admin/users` | Admin | Lista usuários com status de acesso; aceita `search` (nome ou e-mail) e `page` | RN-ADM-02 |
 | `GET /admin/users/stats` | Admin | Cadastrados, logados agora e novos na semana (só alunos; "logados agora" só contas ativas) | RN-ADM-02 |
 | `GET /admin/users/:id` | Admin | Detalhes, indicadores e anúncios do usuário | RF020 |
-| `PATCH /admin/users/:id` | Admin | Edita nome, e-mail, curso, WhatsApp e status (Ativa ou Suspensa) | RN-ADM-04, 05 |
-| `PUT /admin/users/:id/avatar` | Admin | Troca a foto do usuário | RF021.2 |
-| `DELETE /admin/users/:id/avatar` | Admin | Remove a foto do usuário | RF021.2 |
+| `PATCH /admin/users/:id` | Admin | Altera só o status da conta (`{ status: "ativa" \| "suspensa" }`); qualquer outro campo é recusado (400) | RN-ADM-04, 05 |
 | `DELETE /admin/users/:id` | Admin | Anonimiza a conta (mesmo tratamento do RN-PER-06), com confirmação; 409 `HAS_OPEN_PAID_ORDERS` se houver pedido Pago ou em Retirada combinada em aberto | RN-ADM-06 |
 
 - **"Logado agora"** = atividade nos últimos 5 minutos, pelo campo `lastSeen`; depois disso mostra o tempo desde o último acesso (RN-ADM-03).
 - Suspender impede o login e oculta os anúncios, **sem apagar dados** (RN-ADM-05).
-- O e-mail editado precisa seguir as validações do cadastro (RN-ADM-04).
+- O admin não edita foto, nome, e-mail, curso nem WhatsApp: os dados aparecem só para consulta (RN-ADM-04, decisão de 26/10; desvio do PDF nas Regras §10).
 - Toda edição, suspensão e exclusão grava log de auditoria, com data e responsável (RN-ADM-10).
 - **Proteção do admin** (RN-ADM-12): o admin não suspende nem exclui a própria conta, e o último admin ativo não pode ser removido (409 `ADMIN_PROTECTED`).
 
@@ -973,10 +971,10 @@ export default router
 | `GET /admin/listings` | Admin | Lista produtos; filtra por `search` (nome ou vendedor), `category` e `page` | RN-ADM-07 |
 | `GET /admin/listings/stats` | Admin | Ativos, pausados e vendidos no mês | RN-ADM-07 |
 | `GET /admin/listings/:id` | Admin | Detalhes, vendedor e indicadores | RF023 |
-| `PATCH /admin/listings/:id` | Admin | Edita dados, vendedor, imagem e status (Ativo, Pausado, Vendido). Trocar o vendedor com pedido aberto responde 409 `HAS_OPEN_ORDERS` | RN-ADM-08 |
+| `PATCH /admin/listings/:id` | Admin | Altera só o status do anúncio (`{ status: "ativo" \| "pausado" }`), inclusive para reverter Vendido; qualquer outro campo é recusado (400) | RN-ADM-08 |
 | `DELETE /admin/listings/:id` | Admin | Exclusão lógica, notifica o vendedor e pede confirmação; 409 `HAS_OPEN_PAID_ORDERS` com pedido Pago ou em Retirada combinada em aberto | RN-ADM-09 |
 
-- A busca de vendedor na edição reaproveita `GET /admin/users?search=` (RF024.3).
+- Dados, imagens e vendedor aparecem só para consulta; não há troca de vendedor (RN-ADM-08, decisão de 26/10; desvio do PDF nas Regras §10).
 - **Só o admin reverte "Vendido"** (RN §4), e a ação vai para o log. Para o dono, "Vendido" é final.
 
 
@@ -1682,7 +1680,7 @@ Alinhado ao mapa de testes das Regras de Negócio (seção 7). O nome de cada te
 | Autenticação | RN-ACE-02, 03, 04, 06, 09, 10, 11, 12, 14, 15 | E-mail fora do domínio; e-mail repetido com maiúsculas; senha fraca; sem aceite dos Termos; 5ª tentativa errada bloqueia por 15 min; link de redefinição expirado ou já usado; token expirado (2 h); token anterior à troca de senha; usuário suspenso barrado; mensagem de erro genérica; Google com e-mail de outro domínio ou não verificado; troca de senha com a senha atual errada; `Authorization: Bearer undefined` recusado |
 | Pagamento | RN-PAG-04 a 08, 12 a 14, RN-PED-02 | Webhook duplicado não desconta duas vezes; webhook sem assinatura recusado; Pix expirado cancela o pedido; pedido pendente de 30 min cancela; total correto (preço × quantidade + taxa); pagamento recusado permite tentar de novo (nova linha); estoque acabou antes da confirmação cancela e estorna; pagamento aprovado em pedido já cancelado é estornado; pagamento com anúncio pausado cancela e estorna; estorno que falha fica `estorno_pendente` e o job refaz |
 | Estoque | RN-EST-03 a 06, RN-PED-13 | Duas compras simultâneas da última unidade: só uma conclui; quantidade nunca fica negativa; WhatsApp não desconta até o vendedor concluir; concluir sem estoque devolve 409; zerar o estoque muda o anúncio para Vendido |
-| Anúncio e permissões | RN-ANU-03, 04, 05, 09, RN-EST-06, RN-ADM-01, 06, 08, 09, 12 | Máximo de 5 imagens; pausar e reativar; excluído some e o pedido permanece; exclusão bloqueada com pedido pago em aberto; aluno em rota admin ou em anúncio alheio recebe 403; admin não faz pedido nem anuncia; só o admin reverte "Vendido"; admin não troca vendedor com pedido aberto; admin não suspende a si mesmo |
+| Anúncio e permissões | RN-ANU-03, 04, 05, 09, RN-EST-06, RN-ADM-01, 06, 08, 09, 12 | Máximo de 5 imagens; pausar e reativar; excluído some e o pedido permanece; exclusão bloqueada com pedido pago em aberto; aluno em rota admin ou em anúncio alheio recebe 403; admin não faz pedido nem anuncia; só o admin reverte "Vendido"; edição do admin aceita só o status; admin não suspende a si mesmo |
 | Pedido | RN-PED-04, 05, 08, 10, 11, 12 | Os dois caminhos (pagamento e WhatsApp); ordem do histórico; vendedor marca a retirada e comprador confirma; comprador não confirma antes da retirada combinada; novo clique reaproveita o pedido aberto; comprador cancela o pendente; vendedor encerra a negociação |
 | Perfil | RN-PER-05, 06, 07 | Foto acima de 4 MB; exclusão bloqueada com pedido pago em aberto; WhatsApp com formato inválido |
 | Acesso ao catálogo | RN-CAT-04 | Visitante não acessa categorias, listagem nem produto (401) |
@@ -1812,11 +1810,11 @@ Cada regra do documento de **Regras de Negócio v0.4** que cabe ao backend (ou a
 | RN-ADM-01 | Painel só para admin, também pela URL | admin.routes.ts, authorizeRole.ts |
 | RN-ADM-02 | Indicadores só de alunos, busca e status de acesso | admin-users.service.ts |
 | RN-ADM-03 | "Logado agora" = atividade nos últimos 5 min (`lastSeen`) | trackLastSeen.ts, constants |
-| RN-ADM-04 | Admin edita usuário com as validações do cadastro | admin-users.schemas.ts |
+| RN-ADM-04 | Admin edita só o status da conta; dados só para consulta | admin-users.schemas.ts |
 | RN-ADM-05 | Suspender barra login e oculta anúncios, sem apagar | admin-users.service.ts, authenticate.ts |
 | RN-ADM-06 | Excluir usuário anonimiza; bloqueado com pedido pago em aberto | admin-users.service.ts |
 | RN-ADM-07 | Indicadores, busca e filtro de produtos | admin-listings.service.ts |
-| RN-ADM-08 | Admin edita produto, vendedor e status; troca de vendedor só sem pedido aberto | admin-listings.service.ts |
+| RN-ADM-08 | Admin edita só o status do anúncio (reverte Vendido); sem troca de vendedor | admin-listings.schemas.ts, admin-listings.service.ts |
 | RN-ADM-09 | Excluir produto notifica o vendedor; bloqueado com pedido pago em aberto | admin-listings.service.ts, notifications |
 | RN-ADM-10 | Log de edição, suspensão e exclusão | audit-logs.service.ts (mesma transação) |
 | RN-ADM-11 | Admin criado por seed, exceção do domínio | prisma/seed.ts; `register` nunca cria admin |

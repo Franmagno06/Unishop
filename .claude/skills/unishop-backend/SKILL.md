@@ -3,7 +3,7 @@ name: unishop-backend
 description: Regras e arquitetura do backend do Unishop (Node.js + Express + TypeScript, Prisma, PostgreSQL, JWT). Use SEMPRE que o usuário criar, editar ou revisar rotas, controllers, services, repositories, middlewares, providers, jobs, autenticação (e-mail e senha, Google, troca de senha), pagamentos (cartão, Pix, webhook, estorno), estoque, pedidos, anúncios, imagens, área admin, logs de auditoria ou erros da API do Unishop, mesmo que não diga "backend" ou "Unishop" explicitamente.
 metadata:
   author: unishop-team
-  version: "0.3.0"
+  version: "0.3.1"
 ---
 
 # Backend do Unishop
@@ -51,7 +51,7 @@ Estrutura: `src/modules/` (aluno: auth, users, categories, listings, orders, pay
 - **Pendente há mais de 30 min sem pagamento aprovado = Cancelado** (Pix vencido ou cartão abandonado), no job e também **sob demanda** ao ler ou pagar o pedido. Pix expirado não gera novo código: cancela, e o aluno faz outro pedido (RN-PAG-04, 12). Cada nova tentativa de pagamento cria uma linha de `pagamento`; só uma pode estar em andamento.
 - **Taxa de serviço R$ 0,00**; repasse simulado em conta única de teste; produção usa credenciais de teste do Mercado Pago (RN-PAG-10). Dinheiro em **centavos** (inteiros) no código.
 - **Visibilidade de anúncio em um único filtro** no repository (ativo + conta ativa + não excluído; no banco, a view `anuncio_visivel`) para listagens, busca, carrossel e contagem de categorias. WhatsApp só em rotas autenticadas; `/listings/recent` (carrossel) é a única rota de catálogo pública.
-- **Exclusão é lógica ou por anonimização**, nunca `DELETE` físico: anúncio recebe `excluido_em`; perfil e usuário viram "Usuário removido". Ambas ficam **bloqueadas** com pedido Pago ou em Retirada combinada em aberto (409 `HAS_OPEN_PAID_ORDERS`); Pendentes e Em negociação são cancelados. Admin trocar o vendedor de anúncio com pedido aberto = 409 `HAS_OPEN_ORDERS`. Só o admin reverte `Vendido`, e a ação vai para o log.
+- **Exclusão é lógica ou por anonimização**, nunca `DELETE` físico: anúncio recebe `excluido_em`; perfil e usuário viram "Usuário removido". Ambas ficam **bloqueadas** com pedido Pago ou em Retirada combinada em aberto (409 `HAS_OPEN_PAID_ORDERS`); Pendentes e Em negociação são cancelados. O admin edita só o status (conta e anúncio), sem troca de vendedor (RN-ADM-04, 08; Regras v0.4.1). Só o admin reverte `Vendido`, e a ação vai para o log.
 - **Auditoria:** toda edição/suspensão/exclusão do admin grava `log_admin` na **mesma transação** da ação (sem log, sem ação).
 - **Upload:** JPG/PNG, tipo conferido pelo conteúdo real (file-type); de 1 a 5 imagens por anúncio; **uma imagem por requisição, até 4 MB** (limite de 4,5 MB da Vercel; desvio do PDF confirmado pelo grupo em 16/10/2026). A primeira vai em `POST /listings`; as demais em `POST /listings/:id/images`; remoção em `DELETE /listings/:id/images/:imageId` (o anúncio mantém pelo menos 1). Se o banco falhar após o upload, remover do storage.
 - **Nunca em log:** senha, JWT, token de cartão, corpo de `/auth` e `/payments`, WhatsApp completo.
