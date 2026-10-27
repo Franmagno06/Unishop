@@ -23,7 +23,7 @@ test.describe('Cabeçalho · visitante', () => {
     await expect(header(page).getByRole('link', { name: 'Criar conta' })).toBeVisible()
     await expect(avatar(page)).toHaveCount(0)
     await expect(header(page).getByRole('link', { name: '+ Anunciar item' })).toHaveCount(0)
-    await expect(page.getByRole('link', { name: 'Criar conta', exact: true })).toBeVisible()
+    await expect(page.getByRole('main').getByRole('link', { name: 'Criar conta', exact: true })).toBeVisible()
   })
 })
 
@@ -48,7 +48,7 @@ test.describe('Cabeçalho · aluno logado', () => {
     await expect(header(page).getByRole('link', { name: '+ Anunciar item' })).toBeVisible()
     await expect(avatar(page)).toBeVisible()
     await expect(header(page).getByRole('link', { name: 'Entrar' })).toHaveCount(0)
-    await expect(page.getByRole('link', { name: 'Categorias', exact: true })).toBeVisible()
+    await expect(page.getByRole('main').getByRole('link', { name: 'Categorias', exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Criar conta', exact: true })).toHaveCount(0)
     await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Criar conta' })).toHaveCount(0)
   })
@@ -104,7 +104,7 @@ test.describe('Cabeçalho · aluno logado', () => {
     await expect(header(page).getByRole('link', { name: 'Criar conta' })).toBeVisible()
     await expect(avatar(page)).toHaveCount(0)
     await expect(header(page).getByRole('link', { name: '+ Anunciar item' })).toHaveCount(0)
-    await expect(page.getByRole('link', { name: 'Criar conta', exact: true })).toBeVisible()
+    await expect(page.getByRole('main').getByRole('link', { name: 'Criar conta', exact: true })).toBeVisible()
     expect(await tokenInStorage(page)).toBeNull()
   })
 

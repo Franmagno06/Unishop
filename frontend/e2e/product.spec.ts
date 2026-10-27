@@ -111,7 +111,8 @@ test.describe('Produto · fluxo', () => {
     await loginAsStudent(page)
     await page.goto('/produtos/999999')
     await expect(page.getByRole('heading', { name: 'Anúncio indisponível' })).toBeVisible()
-    await page.getByRole('link', { name: 'Categorias', exact: true }).click()
+    // No conteúdo há o atalho do topo e o botão da tela de erro (o último); o cabeçalho e o rodapé ficam de fora.
+    await page.getByRole('main').getByRole('link', { name: 'Categorias', exact: true }).last().click()
     await expect(page).toHaveURL('/categorias')
   })
 
