@@ -55,7 +55,7 @@ export function PaymentMethodTabs({ method, onMethodChange, children }: PaymentM
               aria-controls={panelId}
               tabIndex={selected ? 0 : -1}
               onClick={() => onMethodChange(item.value)}
-              className={`inline-flex items-center justify-center gap-2 rounded-lg border-[1.5px] px-3 py-3 text-[13px] font-semibold text-navy transition-[transform,background-color,border-color] duration-150 ease-out-strong active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+              className={`inline-flex items-center justify-center gap-2 rounded-lg border-[1.5px] px-3 py-3 text-[13px] font-semibold text-navy transition-[scale,background-color,border-color] duration-150 ease-out-strong active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                 selected ? 'border-primary bg-primary-soft' : 'border-border bg-surface hover:border-navy/40'
               }`}
             >

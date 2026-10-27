@@ -3,7 +3,7 @@ export type ButtonVariant = 'primary' | 'secondary' | 'whatsapp' | 'social' | 'd
 
 const base =
   'inline-flex items-center justify-center gap-2.5 rounded-lg font-semibold ' +
-  'transition-[transform,background-color,border-color,opacity] duration-150 ease-out-strong ' +
+  'transition-[scale,background-color,border-color,opacity] duration-150 ease-out-strong ' +
   'active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 

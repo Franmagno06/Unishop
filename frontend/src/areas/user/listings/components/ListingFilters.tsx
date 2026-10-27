@@ -17,7 +17,7 @@ const chips: { value: ContactMode | undefined; label: string }[] = [
 ]
 
 const chipBase =
-  'cursor-pointer rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-[transform,background-color,border-color,color] duration-150 ease-out-strong active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+  'cursor-pointer rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-[scale,background-color,border-color,color] duration-150 ease-out-strong active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
 // Chips de forma de contato (Figma) e "Ordenar por" (RN-ANU-06, que o Figma ainda não desenha).
 // Os chips são botões que ligam e desligam (aria-pressed); só um fica ativo por vez.

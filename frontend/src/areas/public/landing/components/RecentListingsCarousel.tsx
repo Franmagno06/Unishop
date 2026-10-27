@@ -8,7 +8,7 @@ const CARDS_PER_PAGE = 2
 const pageCount = Math.ceil(recentListings.length / CARDS_PER_PAGE)
 
 const arrowButton =
-  'flex size-10 items-center justify-center rounded-full bg-navy transition-[transform,opacity] duration-150 ease-out-strong active:scale-[0.95] aria-disabled:pointer-events-none aria-disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+  'flex size-10 items-center justify-center rounded-full bg-navy transition-[scale,opacity] duration-150 ease-out-strong active:scale-[0.95] aria-disabled:pointer-events-none aria-disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
 // Carrossel do protótipo: 2 anúncios por página com uma prévia do próximo. Usa rolagem nativa com
 // encaixe (scroll-snap), então arrastar e o toque funcionam sem biblioteca. Visível ao visitante (RF001).

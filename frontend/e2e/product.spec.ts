@@ -50,6 +50,37 @@ test.describe('Produto · fluxo', () => {
     expect(consoleErrors).toEqual([])
   })
 
+  test('botão anima a escala ao pressionar', async ({ page }) => {
+    await loginAsStudent(page)
+    await page.goto('/produtos/1')
+    const transition = await page.getByRole('button', { name: /^Fazer pedido/ }).evaluate((el) => getComputedStyle(el).transitionProperty)
+    expect(transition).toContain('scale')
+  })
+
+  test('com movimento reduzido o pop-up só esmaece', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await loginAsStudent(page)
+    await page.goto('/produtos/1')
+    await page.getByRole('button', { name: /^Fazer pedido/ }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    expect(await dialog.evaluate((el) => getComputedStyle(el).transitionProperty)).toBe('opacity')
+  })
+
+  test('controles não selecionam texto ao segurar; conteúdo continua copiável', async ({ page }) => {
+    await loginAsStudent(page)
+    await page.goto('/produtos/1')
+    const order = page.getByRole('button', { name: /^Fazer pedido/ })
+    expect(await order.evaluate((el) => getComputedStyle(el).userSelect)).toBe('none')
+    const text = page.getByText(/Livro em ótimo estado/)
+    expect(await text.evaluate((el) => getComputedStyle(el).userSelect)).not.toBe('none')
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#ffffff')
+    await order.click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    expect(await dialog.locator('xpath=..').evaluate((el) => getComputedStyle(el).overscrollBehaviorY)).toBe('contain')
+  })
+
   test('anúncio publicado com 2 fotos: capa no card da categoria e as duas na galeria do produto', async ({ page }) => {
     await loginAsStudent(page)
     await page.getByRole('link', { name: '+ Anunciar item' }).click()

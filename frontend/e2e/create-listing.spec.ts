@@ -38,6 +38,9 @@ test.describe('Anunciar item · fluxo', () => {
     const dialog = page.getByRole('dialog', { name: 'Anúncio publicado!' })
     await expect(dialog).toBeVisible()
     await expect(dialog).toContainText('“Anúncio de teste e2e” já está visível para os alunos na categoria Livros e apostilas.')
+    const icon = await dialog.locator('span.bg-whatsapp').first().evaluate((el) => getComputedStyle(el).transitionProperty)
+    expect(icon).toContain('scale')
+    expect(icon).toContain('opacity')
 
     await dialog.getByRole('link', { name: 'Meu anúncio', exact: true }).click()
     await expect(page).toHaveURL('/categorias/1')

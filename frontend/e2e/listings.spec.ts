@@ -79,6 +79,13 @@ test.describe('Anúncios da categoria · fluxo', () => {
     await expect(page).toHaveURL(/\/produtos\/\d+$/)
   })
 
+  test('card e chip animam a escala ao pressionar', async ({ page }) => {
+    await page.goto('/categorias/1')
+    const transitionOf = (locator: ReturnType<Page['locator']>) => locator.evaluate((el) => getComputedStyle(el).transitionProperty)
+    expect(await transitionOf(cards(page).first())).toContain('scale')
+    expect(await transitionOf(page.getByRole('button', { name: 'Todos' }))).toContain('scale')
+  })
+
   test('os cards de uma mesma linha têm a mesma altura', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/categorias/1')

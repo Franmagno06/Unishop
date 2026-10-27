@@ -104,7 +104,7 @@ export function ProfileMenu({ role }: { role: Role }) {
           lastPointer.current = event.pointerType
         }}
         onClick={handleButtonClick}
-        className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-primary-soft text-[15px] font-bold text-navy transition-[transform,background-color] duration-150 ease-out-strong hover:bg-primary-soft/70 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-primary-soft text-[15px] font-bold text-navy transition-[scale,background-color] duration-150 ease-out-strong hover:bg-primary-soft/70 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         {avatarUrl ? (
           <img src={avatarUrl} alt="" className="size-full rounded-full object-cover" />

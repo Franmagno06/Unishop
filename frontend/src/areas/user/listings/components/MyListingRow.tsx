@@ -11,7 +11,7 @@ export function MyListingRow({ listing }: { listing: MyListing }) {
   return (
     <Link
       to={listingRoutes.manage(listing.id)}
-      className={`${cardClasses} flex items-center gap-4 rounded-xl p-4 transition-[transform,border-color,box-shadow] duration-150 ease-out-strong hover:border-primary/40 hover:shadow-sm active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:gap-5`}
+      className={`${cardClasses} flex items-center gap-4 rounded-xl p-4 transition-[scale,border-color,box-shadow] duration-150 ease-out-strong hover:border-primary/40 hover:shadow-sm active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:gap-5`}
     >
       {listing.imageUrl ? (
         <img

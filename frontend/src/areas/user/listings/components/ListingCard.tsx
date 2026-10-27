@@ -11,7 +11,7 @@ export function ListingCard({ listing }: { listing: ListingSummary }) {
   return (
     <Link
       to={`${ROUTES.products}/${listing.id}`}
-      className={`${cardClasses} flex flex-1 flex-col gap-2.5 rounded-[14px] px-4 pb-5 pt-4 transition-[transform,border-color,box-shadow] duration-150 ease-out-strong [contain-intrinsic-size:auto_315px] [content-visibility:auto] hover:border-primary/40 hover:shadow-sm active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`}
+      className={`${cardClasses} flex flex-1 flex-col gap-2.5 rounded-[14px] px-4 pb-5 pt-4 transition-[scale,border-color,box-shadow] duration-150 ease-out-strong [contain-intrinsic-size:auto_315px] [content-visibility:auto] hover:border-primary/40 hover:shadow-sm active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`}
     >
       {listing.imageUrl ? (
         <img
