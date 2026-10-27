@@ -34,7 +34,7 @@ export function OrderConfirmedPage() {
     <section className={sectionClasses}>
       <Card className="w-full max-w-[520px] p-6 sm:p-10">
         {missing ? (
-          <EmptyState title="Pedido não encontrado" action={<ButtonLink to={ROUTES.categories}>Ver categorias</ButtonLink>}>
+          <EmptyState title="Pedido não encontrado" action={<ButtonLink to={ROUTES.categories}>Categorias</ButtonLink>}>
             Este pedido não existe ou o endereço está incorreto.
           </EmptyState>
         ) : query.isError ? (
@@ -60,7 +60,7 @@ export function OrderConfirmedPage() {
         ) : isRefundedOrder(order) ? (
           <OrderRefundedCard order={order} />
         ) : (
-          <EmptyState title="Pedido sem pagamento" action={<ButtonLink to={ROUTES.categories}>Ver categorias</ButtonLink>}>
+          <EmptyState title="Pedido sem pagamento" action={<ButtonLink to={ROUTES.categories}>Categorias</ButtonLink>}>
             Este pedido não tem pagamento confirmado.
           </EmptyState>
         )}

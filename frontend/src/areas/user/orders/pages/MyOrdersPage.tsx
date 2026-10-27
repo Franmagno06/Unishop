@@ -65,7 +65,7 @@ export function MyOrdersPage() {
       ) : orders.data.length === 0 ? (
         <EmptyState
           title="Você ainda não fez nenhum pedido"
-          action={<ButtonLink to={ROUTES.categories}>Ver categorias</ButtonLink>}
+          action={<ButtonLink to={ROUTES.categories}>Categorias</ButtonLink>}
         >
           Quando você comprar ou reservar um item, ele aparece aqui.
         </EmptyState>
@@ -87,7 +87,7 @@ export function MyOrdersPage() {
         <ConfirmDialog
           title="Cancelar este pedido?"
           description={`O pedido de "${pending.order.listingTitle}" será cancelado e o vendedor deixa de esperar por você.`}
-          confirmLabel="Sim, cancelar pedido"
+          confirmLabel="Cancelar pedido"
           cancelLabel="Voltar"
           onConfirm={confirm}
           onCancel={close}

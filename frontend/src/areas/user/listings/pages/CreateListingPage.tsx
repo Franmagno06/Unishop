@@ -28,7 +28,7 @@ export function CreateListingPage() {
       {role === 'admin' ? (
         <EmptyState
           title="Administradores não anunciam"
-          action={<ButtonLink to={ROUTES.adminUsers}>Ir para o painel</ButtonLink>}
+          action={<ButtonLink to={ROUTES.adminUsers}>Painel</ButtonLink>}
         >
           A conta de administrador só modera o Unishop: não compra, não paga e não anuncia.
         </EmptyState>

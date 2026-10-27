@@ -18,7 +18,7 @@ export function DemoResetLinks({ email }: { email: string }) {
         Nenhum e-mail foi enviado de verdade. Use os botões abaixo no lugar do link do e-mail.
       </InfoAlert>
       <ButtonLink to={`${ROUTES.resetPassword}/${demoResetToken(email)}`} fullWidth>
-        Abrir link do e-mail (simulação)
+        Abrir link (simulação)
       </ButtonLink>
       <p className="flex flex-wrap gap-x-4 gap-y-1">
         <a href={`${ROUTES.resetPassword}/${DEMO_EXPIRED_TOKEN}`} className={smallLink}>

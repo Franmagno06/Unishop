@@ -14,7 +14,7 @@ describe('LandingPage · visitante', () => {
     renderPage()
 
     expect(screen.getByRole('heading', { level: 1, name: /O comércio da Unifor/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Criar minha conta com e-mail Unifor' })).toHaveAttribute('href', '/cadastro')
+    expect(screen.getByRole('link', { name: 'Criar conta' })).toHaveAttribute('href', '/cadastro')
     for (const name of ['Como funciona', 'Dúvidas frequentes', 'Anúncios recentes']) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument()
     }
@@ -27,18 +27,18 @@ describe('LandingPage · visitante', () => {
 })
 
 describe('LandingPage · usuário logado', () => {
-  it('troca "Criar minha conta" por "Ver categorias"', () => {
+  it('troca "Criar minha conta" por "Categorias"', () => {
     setToken('jwt', 'student')
     renderPage()
 
-    expect(screen.queryByRole('link', { name: 'Criar minha conta com e-mail Unifor' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Ver categorias' })).toHaveAttribute('href', '/categorias')
+    expect(screen.queryByRole('link', { name: 'Criar conta' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Categorias' })).toHaveAttribute('href', '/categorias')
   })
 
   it('vale também para o administrador', () => {
     setToken('jwt', 'admin')
     renderPage()
-    expect(screen.getByRole('link', { name: 'Ver categorias' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Categorias' })).toBeInTheDocument()
   })
 })
 

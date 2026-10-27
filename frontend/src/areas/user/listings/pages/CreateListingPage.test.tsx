@@ -44,7 +44,7 @@ function renderPage() {
 const png = (name = 'capa.png') => new File(['x'], name, { type: 'image/png' })
 
 async function ready() {
-  await screen.findByRole('button', { name: 'Publicar anúncio' })
+  await screen.findByRole('button', { name: 'Publicar' })
   // o select só tem as categorias depois de carregar
   await screen.findByRole('option', { name: 'Livros e apostilas' })
 }
@@ -114,7 +114,7 @@ describe('CreateListingPage · tela', () => {
     const user = userEvent.setup()
     await user.clear(screen.getByLabelText('Quantidade *'))
     await user.clear(screen.getByLabelText('WhatsApp *'))
-    await user.click(screen.getByRole('button', { name: 'Publicar anúncio' }))
+    await user.click(screen.getByRole('button', { name: 'Publicar' }))
 
     for (const message of [
       'Informe o nome do item.',
@@ -135,7 +135,7 @@ describe('CreateListingPage · tela', () => {
   it('marca o campo inválido para o leitor de tela', async () => {
     renderPage()
     await ready()
-    await userEvent.click(screen.getByRole('button', { name: 'Publicar anúncio' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Publicar' }))
     const title = screen.getByLabelText('Nome do item *')
     await waitFor(() => expect(title).toHaveAttribute('aria-invalid', 'true'))
   })
@@ -148,7 +148,7 @@ describe('CreateListingPage · tela', () => {
     await user.paste('100000')
     await user.clear(screen.getByLabelText('Quantidade *'))
     await user.paste('1000')
-    await user.click(screen.getByRole('button', { name: 'Publicar anúncio' }))
+    await user.click(screen.getByRole('button', { name: 'Publicar' }))
 
     expect(await screen.findByText(/no máximo R\$ 99\.999,99/)).toBeInTheDocument()
     expect(screen.getByText('A quantidade deve ser de 1 a 999.')).toBeInTheDocument()
@@ -159,7 +159,7 @@ describe('CreateListingPage · tela', () => {
     renderPage()
     await ready()
     const user = await fillValid()
-    await user.click(screen.getByRole('button', { name: 'Publicar anúncio' }))
+    await user.click(screen.getByRole('button', { name: 'Publicar' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Anúncio publicado!' })
     expect(within(dialog).getByText(/“Cálculo II — Stewart” já está visível para os alunos na categoria Livros e apostilas\./)).toBeInTheDocument()
@@ -180,7 +180,7 @@ describe('CreateListingPage · tela', () => {
     renderPage()
     await ready()
     const user = await fillValid({ title: 'Anúncio recém publicado' })
-    await user.click(screen.getByRole('button', { name: 'Publicar anúncio' }))
+    await user.click(screen.getByRole('button', { name: 'Publicar' }))
     await screen.findByRole('dialog')
 
     const first = (await getListings({ categoryId: 1 })).items[0]!
@@ -193,7 +193,7 @@ describe('CreateListingPage · tela', () => {
     renderPage()
     await ready()
     const user = await fillValid()
-    await user.click(screen.getByRole('button', { name: 'Publicar anúncio' }))
+    await user.click(screen.getByRole('button', { name: 'Publicar' }))
     await screen.findByRole('dialog')
 
     await user.click(screen.getByRole('button', { name: 'Fechar' }))
@@ -204,26 +204,26 @@ describe('CreateListingPage · tela', () => {
     expect(screen.getByLabelText('Quantidade *')).toHaveValue('1')
     expect(screen.getByLabelText('WhatsApp *')).toHaveValue('(85) 9 9999-0000')
     expect(screen.queryByRole('list', { name: 'Fotos escolhidas' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Publicar anúncio' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Publicar' })).toHaveFocus()
   })
 
   it('Esc também fecha o pop-up', async () => {
     renderPage()
     await ready()
     const user = await fillValid()
-    await user.click(screen.getByRole('button', { name: 'Publicar anúncio' }))
+    await user.click(screen.getByRole('button', { name: 'Publicar' }))
     await screen.findByRole('dialog')
 
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('"Ver meu anúncio" leva à lista da categoria', async () => {
+  it('"Meu anúncio" leva à lista da categoria', async () => {
     const router = renderPage()
     await ready()
     const user = await fillValid()
-    await user.click(screen.getByRole('button', { name: 'Publicar anúncio' }))
-    await user.click(await screen.findByRole('link', { name: 'Ver meu anúncio' }))
+    await user.click(screen.getByRole('button', { name: 'Publicar' }))
+    await user.click(await screen.findByRole('link', { name: 'Meu anúncio' }))
 
     expect(router.state.location.pathname).toBe('/categorias/1')
   })
@@ -234,7 +234,7 @@ describe('CreateListingPage · tela', () => {
     renderPage()
     await ready()
     const user = await fillValid()
-    await user.click(screen.getByRole('button', { name: 'Publicar anúncio' }))
+    await user.click(screen.getByRole('button', { name: 'Publicar' }))
 
     const busy = await screen.findByRole('button', { name: 'Publicando…' })
     expect(busy).toBeDisabled()
@@ -248,12 +248,12 @@ describe('CreateListingPage · tela', () => {
     renderPage()
     await ready()
     const user = await fillValid()
-    await user.click(screen.getByRole('button', { name: 'Publicar anúncio' }))
+    await user.click(screen.getByRole('button', { name: 'Publicar' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível publicar o anúncio agora')
     expect(screen.getByLabelText('Nome do item *')).toHaveValue('Cálculo II — Stewart')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Publicar anúncio' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Publicar' })).toBeEnabled()
   })
 
   it('sem conexão: mensagem própria', async () => {
@@ -261,7 +261,7 @@ describe('CreateListingPage · tela', () => {
     renderPage()
     await ready()
     const user = await fillValid()
-    await user.click(screen.getByRole('button', { name: 'Publicar anúncio' }))
+    await user.click(screen.getByRole('button', { name: 'Publicar' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Sem conexão com o servidor')
   })
 
@@ -270,7 +270,7 @@ describe('CreateListingPage · tela', () => {
     renderPage()
 
     expect(await screen.findByRole('heading', { name: 'Administradores não anunciam' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Ir para o painel' })).toHaveAttribute('href', '/admin/usuarios')
-    expect(screen.queryByRole('button', { name: 'Publicar anúncio' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Painel' })).toHaveAttribute('href', '/admin/usuarios')
+    expect(screen.queryByRole('button', { name: 'Publicar' })).not.toBeInTheDocument()
   })
 })

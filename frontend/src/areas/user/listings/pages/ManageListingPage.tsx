@@ -77,7 +77,7 @@ export function ManageListingPage() {
       {notFound ? (
         <EmptyState
           title="Anúncio não encontrado"
-          action={<ButtonLink to={ROUTES.profile}>Voltar ao perfil</ButtonLink>}
+          action={<ButtonLink to={ROUTES.profile}>Perfil</ButtonLink>}
         >
           Esse anúncio não existe, foi excluído ou não é seu.
         </EmptyState>
@@ -203,7 +203,7 @@ export function ManageListingPage() {
                 {listing.status !== 'sold' ? (
                   <ActionGroup hint="Encerra o anúncio e registra a venda no seu histórico.">
                     <Button variant="secondary" fullWidth onClick={() => setDialog('sold')}>
-                      Marcar como vendido
+                      Marcar vendido
                     </Button>
                   </ActionGroup>
                 ) : (
@@ -248,7 +248,7 @@ export function ManageListingPage() {
         <ConfirmDialog
           title="Excluir este anúncio?"
           description={`"${listing.title}" será removido permanentemente e deixará de aparecer para os alunos.`}
-          confirmLabel="Sim, excluir"
+          confirmLabel="Excluir"
           onConfirm={() =>
             actions.remove.mutate(undefined, {
               onSuccess: () => navigate(ROUTES.profile, { replace: true, state: { listingDeleted: true } }),

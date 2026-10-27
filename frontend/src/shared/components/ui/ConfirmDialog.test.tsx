@@ -13,7 +13,7 @@ function Harness({ onConfirm = vi.fn() }: { onConfirm?: () => void }) {
         <ConfirmDialog
           title="Excluir este anúncio?"
           description="Será removido."
-          confirmLabel="Sim, excluir"
+          confirmLabel="Excluir"
           onConfirm={onConfirm}
           onCancel={() => setOpen(false)}
         />
@@ -47,11 +47,11 @@ describe('ConfirmDialog', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Abrir' }))
 
     await userEvent.tab()
-    expect(screen.getByRole('button', { name: 'Sim, excluir' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Excluir' })).toHaveFocus()
     await userEvent.tab()
     expect(screen.getByRole('button', { name: 'Cancelar' })).toHaveFocus()
     await userEvent.tab({ shift: true })
-    expect(screen.getByRole('button', { name: 'Sim, excluir' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Excluir' })).toHaveFocus()
   })
 
   it('chama onConfirm só ao clicar em confirmar', async () => {
@@ -60,7 +60,7 @@ describe('ConfirmDialog', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Abrir' }))
 
     expect(onConfirm).not.toHaveBeenCalled()
-    await userEvent.click(screen.getByRole('button', { name: 'Sim, excluir' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Excluir' }))
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
 

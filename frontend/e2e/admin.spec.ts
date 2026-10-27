@@ -94,10 +94,10 @@ test.describe('Painel · usuários', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Detalhes do usuário' })).toBeVisible()
     await expect(page.getByText('carla.mendes@edu.unifor.br')).toBeVisible()
 
-    await page.getByRole('link', { name: 'Editar usuário' }).click()
+    await page.getByRole('link', { name: 'Editar', exact: true }).click()
     await expect(page.getByLabel('Nome *')).toHaveCount(0) // só o status é editável
     await page.getByLabel('Status da conta').selectOption('Suspensa')
-    await page.getByRole('button', { name: 'Salvar alterações' }).click()
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
 
     const dialog = page.getByRole('dialog', { name: 'Alterações salvas!' })
     await expect(dialog).toBeVisible()
@@ -110,7 +110,7 @@ test.describe('Painel · usuários', () => {
     await page.getByRole('button', { name: 'Excluir Ana Lima' }).click()
     const dialog = page.getByRole('dialog', { name: 'Excluir este usuário?' })
     await expect(dialog).toBeVisible()
-    await dialog.getByRole('button', { name: 'Sim, excluir' }).click()
+    await dialog.getByRole('button', { name: 'Excluir', exact: true }).click()
     await expect(dialog.getByText(/há pedido pago ou com retirada combinada em aberto/)).toBeVisible()
     await dialog.getByRole('button', { name: 'Cancelar' }).click()
     await expect(page.getByRole('row', { name: /Ana Lima/ })).toBeVisible()
@@ -120,7 +120,7 @@ test.describe('Painel · usuários', () => {
     await page.getByRole('button', { name: 'Excluir Pedro Alves' }).click()
     await page
       .getByRole('dialog', { name: 'Excluir este usuário?' })
-      .getByRole('button', { name: 'Sim, excluir' })
+      .getByRole('button', { name: 'Excluir', exact: true })
       .click()
     await expect(page.getByText('A conta de Pedro Alves foi excluída (anonimizada).')).toBeVisible()
     await expect(page.getByRole('row', { name: /Pedro Alves/ })).toHaveCount(0)
@@ -163,12 +163,12 @@ test.describe('Painel · produtos', () => {
   test('imagem e nome abrem os detalhes; editar muda só o status (Ativo ou Pausado)', async ({ page }) => {
     await page.getByRole('link', { name: 'Abrir Física I — Halliday, 10ª ed.' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Detalhes do produto' })).toBeVisible()
-    await page.getByRole('link', { name: 'Editar produto' }).click()
+    await page.getByRole('link', { name: 'Editar', exact: true }).click()
 
     await expect(page.getByLabel('Nome do produto *')).toHaveCount(0)
     await expect(page.getByLabel('Status')).toHaveValue('paused')
     await page.getByLabel('Status').selectOption('Ativo')
-    await page.getByRole('button', { name: 'Salvar alterações' }).click()
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
     await page.getByRole('dialog', { name: 'Alterações salvas!' }).getByRole('button', { name: 'Voltar' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Detalhes do produto' })).toBeVisible()
     await expect(page.getByText('Ativo', { exact: true })).toBeVisible()
@@ -177,14 +177,14 @@ test.describe('Painel · produtos', () => {
   test('excluir produto com pedido pago é recusado; sem pedido, tira da lista', async ({ page }) => {
     await page.getByRole('button', { name: /^Excluir Cálculo I/ }).click()
     const dialog = page.getByRole('dialog', { name: 'Excluir este produto?' })
-    await dialog.getByRole('button', { name: 'Sim, excluir' }).click()
+    await dialog.getByRole('button', { name: 'Excluir', exact: true }).click()
     await expect(dialog.getByText(/há pedido pago ou com retirada combinada em aberto/)).toBeVisible()
     await dialog.getByRole('button', { name: 'Cancelar' }).click()
 
     await page.getByRole('button', { name: /^Excluir Apostila de Anatomia/ }).click()
     await page
       .getByRole('dialog', { name: 'Excluir este produto?' })
-      .getByRole('button', { name: 'Sim, excluir' })
+      .getByRole('button', { name: 'Excluir', exact: true })
       .click()
     await expect(page.getByText('O produto “Apostila de Anatomia Humana” foi excluído.')).toBeVisible()
     await expect(page.getByRole('row', { name: /Apostila de Anatomia/ })).toHaveCount(0)

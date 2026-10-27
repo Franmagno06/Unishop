@@ -62,14 +62,14 @@ describe('Admin · lista de produtos (A03)', () => {
     await userEvent.click(await screen.findByRole('button', { name: /^Excluir Cálculo I/ }))
     const dialog = screen.getByRole('dialog', { name: 'Excluir este produto?' })
     expect(within(dialog).getByText(/o vendedor será notificado/)).toBeInTheDocument()
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Sim, excluir' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Excluir' }))
     expect(await within(dialog).findByText(/há pedido pago ou com retirada combinada em aberto/)).toBeInTheDocument()
   })
 
   it('excluir produto sem pendência o tira da lista e avisa', async () => {
     renderAt('/admin/produtos')
     await userEvent.click(await screen.findByRole('button', { name: /^Excluir Apostila de Anatomia/ }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Sim, excluir' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Excluir' }))
     expect(await screen.findByText('O produto “Apostila de Anatomia Humana” foi excluído.')).toBeInTheDocument()
     expect(screen.queryByRole('row', { name: /Apostila de Anatomia/ })).not.toBeInTheDocument()
   })
@@ -113,7 +113,7 @@ describe('Admin · editar produto (A05)', () => {
   it('salvar abre "Alterações salvas!" e o botão volta ao produto com o status novo', async () => {
     const router = renderAt('/admin/produtos/1/editar')
     await userEvent.selectOptions(await screen.findByLabelText('Status'), 'Pausado')
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Alterações salvas!' })
     await userEvent.click(within(dialog).getByRole('button', { name: 'Voltar' }))

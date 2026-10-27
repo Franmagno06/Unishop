@@ -84,9 +84,9 @@ export function AdminProductDetailPage() {
         actions={
           <>
             <Button variant="danger-outline" onClick={() => setDeleting(true)}>
-              Excluir produto
+              Excluir
             </Button>
-            <ButtonLink to={adminPaths.productEdit(product.id)}>Editar produto</ButtonLink>
+            <ButtonLink to={adminPaths.productEdit(product.id)}>Editar</ButtonLink>
           </>
         }
       />

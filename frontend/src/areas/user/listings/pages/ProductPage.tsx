@@ -91,7 +91,7 @@ export function ProductPage() {
       {notFound ? (
         <EmptyState
           title="Anúncio indisponível"
-          action={<ButtonLink to={ROUTES.categories}>Ver categorias</ButtonLink>}
+          action={<ButtonLink to={ROUTES.categories}>Categorias</ButtonLink>}
         >
           Este anúncio não existe mais, foi pausado ou o endereço está incorreto.
         </EmptyState>

@@ -57,7 +57,7 @@ export function ForgotPasswordPage() {
           {...register('email')}
         />
         <Button type="submit" fullWidth disabled={send.isPending}>
-          {send.isPending ? 'Enviando…' : 'Enviar link de redefinição'}
+          {send.isPending ? 'Enviando…' : 'Enviar link'}
         </Button>
       </form>
     </div>

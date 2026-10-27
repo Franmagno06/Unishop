@@ -112,9 +112,9 @@ export function AdminUserDetailPage() {
         actions={
           <>
             <Button variant="danger-outline" onClick={() => setDeleting(true)}>
-              Excluir usuário
+              Excluir
             </Button>
-            <ButtonLink to={adminPaths.userEdit(user.id)}>Editar usuário</ButtonLink>
+            <ButtonLink to={adminPaths.userEdit(user.id)}>Editar</ButtonLink>
           </>
         }
       />

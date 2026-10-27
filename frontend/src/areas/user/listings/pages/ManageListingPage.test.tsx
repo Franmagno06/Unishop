@@ -91,9 +91,9 @@ describe('Gerenciar anúncio (05d)', () => {
   it('marcar como vendido pede confirmação; vendido não pode ser reativado', async () => {
     renderPage('2')
     const user = userEvent.setup()
-    await screen.findByRole('button', { name: 'Marcar como vendido' })
+    await screen.findByRole('button', { name: 'Marcar vendido' })
 
-    await user.click(screen.getByRole('button', { name: 'Marcar como vendido' }))
+    await user.click(screen.getByRole('button', { name: 'Marcar vendido' }))
     const dialog = screen.getByRole('dialog', { name: 'Marcar como vendido?' })
     expect(dialog).toHaveAccessibleDescription(/Você não poderá reativá-lo/)
     await user.click(within(dialog).getByRole('button', { name: 'Confirmar venda' }))
@@ -101,7 +101,7 @@ describe('Gerenciar anúncio (05d)', () => {
     expect(await screen.findByText('Vendido')).toBeInTheDocument()
     expect(screen.getByText('Este anúncio foi vendido e não pode ser reativado.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reativar anúncio' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Marcar como vendido' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Marcar vendido' })).not.toBeInTheDocument()
   })
 
   it('excluir é bloqueado com pedido pago ou com retirada combinada em aberto (RN-ANU-09)', async () => {
@@ -111,7 +111,7 @@ describe('Gerenciar anúncio (05d)', () => {
 
     await user.click(screen.getAllByRole('button', { name: 'Excluir anúncio' })[0]!)
     const dialog = screen.getByRole('dialog', { name: 'Excluir este anúncio?' })
-    await user.click(within(dialog).getByRole('button', { name: 'Sim, excluir' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Excluir' }))
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(/pedidos pagos ou com retirada combinada em aberto/)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -123,7 +123,7 @@ describe('Gerenciar anúncio (05d)', () => {
     await screen.findByRole('heading', { level: 2, name: 'Calculadora HP 12C' })
 
     await user.click(screen.getByRole('button', { name: 'Excluir anúncio' }))
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Sim, excluir' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Excluir' }))
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/perfil'))
   })

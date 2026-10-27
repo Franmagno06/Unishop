@@ -3,7 +3,7 @@ import { CheckIcon } from '../../../../shared/components/ui/icons'
 import { ROUTES } from '../../../../shared/constants/routes'
 import { useDocumentTitle } from '../../../../shared/hooks/use-document-title'
 
-// RF004.7: confirmação final. Sem "Voltar": o caminho é "Ir para o login".
+// RF004.7: confirmação final. Sem "Voltar": o caminho é "Entrar".
 export function ResetSuccessPage() {
   useDocumentTitle('Senha redefinida')
 
@@ -19,7 +19,7 @@ export function ResetSuccessPage() {
         </p>
       </div>
        <ButtonLink to={ROUTES.login} state={{ afterReset: true }} fullWidth>
-        Ir para o login
+        Entrar
       </ButtonLink>
     </div>
   )

@@ -27,7 +27,7 @@ export function PublishedListingDialog({ listing, onClose }: PublishedListingDia
           </p>
           <div className="flex w-full flex-col gap-2.5">
             <ButtonLink to={`${ROUTES.categories}/${listing.categoryId}`} fullWidth>
-              Ver meu anúncio
+              Meu anúncio
             </ButtonLink>
             <Button variant="secondary" fullWidth onClick={onClose}>
               Fechar

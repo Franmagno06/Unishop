@@ -36,7 +36,7 @@ describe('AdminRoute (RN-ADM-01)', () => {
     renderAdmin()
     expect(await screen.findByRole('heading', { name: 'Acesso negado' })).toBeInTheDocument()
     expect(screen.queryByText('Painel de produtos')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Ir para as categorias' })).toHaveAttribute('href', '/categorias')
+    expect(screen.getAllByRole('link', { name: 'Categorias' }).at(-1)).toHaveAttribute('href', '/categorias')
   })
 
   it('administrador entra no painel', async () => {

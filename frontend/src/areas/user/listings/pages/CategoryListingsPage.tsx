@@ -73,7 +73,7 @@ export function CategoryListingsPage() {
       {notFound ? (
         <EmptyState
           title="Categoria não encontrada"
-          action={<ButtonLink to={ROUTES.categories}>Ver todas as categorias</ButtonLink>}
+          action={<ButtonLink to={ROUTES.categories}>Todas as categorias</ButtonLink>}
         >
           Essa categoria não existe ou o endereço está incorreto.
         </EmptyState>
@@ -129,7 +129,7 @@ export function CategoryListingsPage() {
                     Limpar filtros
                   </Button>
                 ) : (
-                  <ButtonLink to={ROUTES.categories}>Ver outras categorias</ButtonLink>
+                  <ButtonLink to={ROUTES.categories}>Outras categorias</ButtonLink>
                 )
               }
             >

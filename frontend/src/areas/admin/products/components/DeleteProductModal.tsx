@@ -17,7 +17,7 @@ export function DeleteProductModal({ product, onClose, onDeleted }: DeleteProduc
     <ConfirmDialog
       title="Excluir este produto?"
       description="O anúncio será removido da plataforma e o vendedor será notificado. Essa ação não pode ser desfeita."
-      confirmLabel="Sim, excluir"
+      confirmLabel="Excluir"
       onConfirm={() => remove.mutate(product.id, { onSuccess: onDeleted })}
       onCancel={onClose}
       pending={remove.isPending}

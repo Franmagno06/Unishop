@@ -9,7 +9,7 @@ export function AdminNotFoundPage() {
   return (
     <EmptyState
       title="Página não encontrada"
-      action={<ButtonLink to={ROUTES.adminUsers}>Ir para usuários</ButtonLink>}
+      action={<ButtonLink to={ROUTES.adminUsers}>Usuários</ButtonLink>}
     >
       O endereço não existe no painel admin.
     </EmptyState>

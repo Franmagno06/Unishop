@@ -167,7 +167,7 @@ export function ListingForm({ profileWhatsapp, onPublished }: ListingFormProps) 
         />
         {create.isError ? <ErrorAlert>{submitErrorMessage(create.error)}</ErrorAlert> : null}
         <Button type="submit" fullWidth disabled={create.isPending}>
-          {create.isPending ? 'Publicando…' : 'Publicar anúncio'}
+          {create.isPending ? 'Publicando…' : 'Publicar'}
         </Button>
         <p className="text-[13px] text-text-muted">* Campos obrigatórios</p>
       </section>

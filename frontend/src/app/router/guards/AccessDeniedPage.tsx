@@ -14,7 +14,7 @@ export function AccessDeniedPage() {
       <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col justify-center px-4 py-16">
         <EmptyState
           title="Acesso negado"
-          action={<ButtonLink to={ROUTES.categories}>Ir para as categorias</ButtonLink>}
+          action={<ButtonLink to={ROUTES.categories}>Categorias</ButtonLink>}
         >
           Esta área é só para administradores do Unishop.
         </EmptyState>

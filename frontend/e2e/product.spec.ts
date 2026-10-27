@@ -59,8 +59,8 @@ test.describe('Produto · fluxo', () => {
     await page.getByLabel('Descrição *').fill('Descrição do anúncio de teste com fotos.')
     await page.getByLabel('Preço (R$) *').fill('30')
     await page.getByLabel(/Arraste fotos/).setInputFiles([photo('primeira.png'), photo('segunda.png')])
-    await page.getByRole('button', { name: 'Publicar anúncio' }).click()
-    await page.getByRole('dialog').getByRole('link', { name: 'Ver meu anúncio' }).click()
+    await page.getByRole('button', { name: 'Publicar', exact: true }).click()
+    await page.getByRole('dialog').getByRole('link', { name: 'Meu anúncio', exact: true }).click()
 
     // a primeira foto aparece no card (era o bug: o card ficava sem imagem)
     const card = page.getByRole('link', { name: /Anúncio com fotos e2e/ })
@@ -80,7 +80,7 @@ test.describe('Produto · fluxo', () => {
     await loginAsStudent(page)
     await page.goto('/produtos/999999')
     await expect(page.getByRole('heading', { name: 'Anúncio indisponível' })).toBeVisible()
-    await page.getByRole('link', { name: 'Ver categorias' }).click()
+    await page.getByRole('link', { name: 'Categorias', exact: true }).click()
     await expect(page).toHaveURL('/categorias')
   })
 

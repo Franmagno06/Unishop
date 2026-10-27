@@ -28,7 +28,7 @@ export function DeleteUserModal({ user, onClose, onDeleted }: DeleteUserModalPro
     <ConfirmDialog
       title="Excluir este usuário?"
       description={describe(user.name, user.listingsCount)}
-      confirmLabel="Sim, excluir"
+      confirmLabel="Excluir"
       onConfirm={() => remove.mutate(user.id, { onSuccess: onDeleted })}
       onCancel={onClose}
       pending={remove.isPending}
