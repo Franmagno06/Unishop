@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { ArrowLink } from '../../../../shared/components/ui/ArrowLink'
 import { Button, ButtonLink } from '../../../../shared/components/ui/Button'
 import { ConfirmDialog } from '../../../../shared/components/ui/ConfirmDialog'
@@ -6,9 +7,18 @@ import { EmptyState } from '../../../../shared/components/ui/EmptyState'
 import { Skeleton } from '../../../../shared/components/ui/Skeleton'
 import { ROUTES } from '../../../../shared/constants/routes'
 import { useDocumentTitle } from '../../../../shared/hooks/use-document-title'
+import { CancelOrderDialog } from '../components/CancelOrderDialog'
 import { OrderCard } from '../components/OrderCard'
 import { useCancelOrder, useConfirmReceipt, useMyOrders } from '../hooks/use-orders'
 import type { BuyerOrder } from '../types/order.types'
+import { orderFilters, type OrderFilter } from '../utils/order-status'
+
+// Cor da bolinha de cada filtro, a mesma do selo do status.
+const dotTone: Record<string, string> = {
+  info: 'bg-primary',
+  done: 'bg-whatsapp-hover',
+  warning: 'bg-warning',
+}
 
 type Pending = { kind: 'cancel' | 'receipt'; order: BuyerOrder } | null
 
@@ -20,8 +30,21 @@ export function MyOrdersPage() {
   const cancel = useCancelOrder()
   const receipt = useConfirmReceipt()
   const [pending, setPending] = useState<Pending>(null)
+  const [params, setParams] = useSearchParams()
+  // O filtro vai na URL (/meus-pedidos?status=concluido): o link copiado e o "voltar" reabrem o mesmo filtro.
+  const filter: OrderFilter = orderFilters.find((item) => item.param === params.get('status'))?.value ?? 'all'
+  const activeFilter = orderFilters.find((item) => item.value === filter)!
+  const allOrders = orders.data ?? []
+  const visibleOrders = activeFilter.statuses
+    ? allOrders.filter((order) => activeFilter.statuses!.includes(order.status))
+    : allOrders
 
-  const action = pending?.kind === 'cancel' ? cancel : receipt
+  function selectFilter(next: OrderFilter) {
+    const param = orderFilters.find((item) => item.value === next)!.param
+    setParams(param ? { status: param } : {}, { replace: true })
+  }
+
+  const action = receipt
 
   function close() {
     cancel.reset()
@@ -44,8 +67,31 @@ export function MyOrdersPage() {
         </p>
       </div>
 
+      <div role="group" aria-label="Filtrar pedidos por status" className="flex flex-wrap gap-2">
+        {orderFilters.map((item) => {
+          const count = item.statuses
+            ? allOrders.filter((order) => item.statuses!.includes(order.status)).length
+            : allOrders.length
+          return (
+            <button
+              key={item.value}
+              type="button"
+              aria-pressed={filter === item.value}
+              onClick={() => selectFilter(item.value)}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-[13px] font-semibold text-navy transition-colors duration-150 hover:border-navy/40 aria-pressed:border-navy aria-pressed:bg-navy aria-pressed:text-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              {item.tone ? (
+                <span aria-hidden="true" className={`size-2 rounded-full ${dotTone[item.tone]} ring-1 ring-surface/60`} />
+              ) : null}
+              {item.label}
+              {orders.isSuccess ? <span className="font-normal opacity-70">({count})</span> : null}
+            </button>
+          )
+        })}
+      </div>
+
       <p role="status" className="sr-only">
-        {orders.isPending ? 'Carregando pedidos…' : orders.isSuccess ? `${orders.data.length} pedidos` : ''}
+        {orders.isPending ? 'Carregando pedidos…' : orders.isSuccess ? `${visibleOrders.length} pedidos` : ''}
       </p>
 
       {orders.isPending ? (
@@ -62,6 +108,10 @@ export function MyOrdersPage() {
             Confira sua conexão e tente de novo.
           </EmptyState>
         </div>
+      ) : allOrders.length > 0 && visibleOrders.length === 0 ? (
+        <EmptyState title="Nenhum pedido com esse status">
+          Escolha outro status ou veja todos os pedidos.
+        </EmptyState>
       ) : orders.data.length === 0 ? (
         <EmptyState
           title="Você ainda não fez nenhum pedido"
@@ -71,7 +121,7 @@ export function MyOrdersPage() {
         </EmptyState>
       ) : (
         <ul className="flex flex-col gap-6">
-          {orders.data.map((order) => (
+          {visibleOrders.map((order) => (
             <li key={order.id}>
               <OrderCard
                 order={order}
@@ -84,15 +134,12 @@ export function MyOrdersPage() {
       )}
 
       {pending?.kind === 'cancel' ? (
-        <ConfirmDialog
-          title="Cancelar este pedido?"
-          description={`O pedido de "${pending.order.listingTitle}" será cancelado e o vendedor deixa de esperar por você.`}
-          confirmLabel="Cancelar pedido"
-          cancelLabel="Voltar"
-          onConfirm={confirm}
+        <CancelOrderDialog
+          order={pending.order}
+          onConfirm={(reason) => cancel.mutate({ id: pending.order.id, reason }, { onSuccess: close })}
           onCancel={close}
-          pending={action.isPending}
-          errorMessage={action.isError ? 'Não foi possível cancelar agora. Atualize a página e tente de novo.' : undefined}
+          pending={cancel.isPending}
+          failed={cancel.isError}
         />
       ) : null}
       {pending?.kind === 'receipt' ? (

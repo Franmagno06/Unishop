@@ -1,6 +1,16 @@
 // Estados do pedido (Regras §4). No banco os valores são em português (`pendente`, `pago`...);
 // aqui seguem em inglês, como o resto do código. O mapeamento fica com o backend (bd.md §7).
-export type OrderStatus = 'pending' | 'paid' | 'pickup_arranged' | 'completed' | 'negotiating' | 'cancelled'
+// `refund_review` (Em análise) e `refund_approved` (Reembolso aprovado) vieram do pedido de reembolso
+// do comprador e ainda NÃO existem nas Regras §4 nem no banco: são provisórios, só da demonstração.
+export type OrderStatus =
+  | 'pending'
+  | 'paid'
+  | 'pickup_arranged'
+  | 'completed'
+  | 'negotiating'
+  | 'cancelled'
+  | 'refund_review'
+  | 'refund_approved'
 
 // Por que um pedido foi cancelado: vencimento (RN-PAG-12), estoque que acabou (RN-PAG-08) ou
 // anúncio que saiu do ar (RN-PAG-14). Os dois últimos acontecem depois do pagamento aprovado.
@@ -49,10 +59,25 @@ export type NewOrder = {
 // Forma de negociação do pedido: pagamento pelo site ou conversa pelo WhatsApp (RN-PED-04).
 export type Negotiation = 'site_payment' | 'whatsapp'
 
+// Como o pedido é pago. Pagamento na entrega é o pedido negociado pelo WhatsApp. Os dois valores
+// do site vêm do Mercado Pago (Pix e cartão).
+export type PaymentMethod = 'pix' | 'card' | 'on_delivery'
+
+// Motivos de cancelamento oferecidos ao comprador. A lista é uma sugestão da tela: o backend ainda
+// não define motivos de cancelamento (backend.md §9.5; o openapi.yaml não existe).
+export type BuyerCancelReason =
+  | 'late_delivery'
+  | 'negotiation_problems'
+  | 'no_response'
+  | 'changed_mind'
+  | 'ordered_by_mistake'
+  | 'other'
+
 // Pedido na visão do comprador (Meus pedidos, RN-PED-06). O pedido congela o produto, o preço e o
 // vendedor (RF017.12), por isso os dados do anúncio vêm dentro dele.
 export type BuyerOrder = {
   id: number
+  listingId: number
   code: string // "UNI-2026-0417" (RN-PED-03)
   listingTitle: string
   listingDescription: string
@@ -62,4 +87,13 @@ export type BuyerOrder = {
   negotiation: Negotiation
   createdAt: string // ISO (UTC)
   seller: { name: string; whatsapp: string } // WhatsApp só com dígitos
+  paymentMethod: PaymentMethod
+  // Prazo de entrega pedido para a tela de detalhes. Não está definido nas Regras (a retirada é
+  // sempre combinada pelo WhatsApp), por isso é dado de exemplo e pode vir vazio.
+  deliveryDeadline: string | null // ISO (UTC)
+  cancelReason: BuyerCancelReason | null
+  // O comprador avisou que não recebeu o reembolso aprovado (ausente = ainda não avisou).
+  refundNotReceivedReported?: boolean
+  // O comprador já avaliou o item deste pedido (ausente = ainda não avaliou).
+  reviewed?: boolean
 }
