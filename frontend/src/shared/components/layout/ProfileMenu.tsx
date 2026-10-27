@@ -121,7 +121,7 @@ export function ProfileMenu({ role }: { role: Role }) {
             role="group"
             aria-label="Minha conta"
             tabIndex={-1}
-            className="w-56 rounded-xl border border-border bg-surface p-1.5 shadow-lg transition duration-150 ease-out-strong focus:outline-none starting:-translate-y-1 starting:opacity-0 motion-reduce:transition-none"
+            className="w-56 rounded-xl border border-border bg-surface p-1.5 shadow-lg transition-[opacity,translate] duration-150 ease-out-strong focus:outline-none starting:-translate-y-1 starting:opacity-0 motion-reduce:transition-opacity"
           >
             <Link
               to={isAdmin ? ROUTES.adminUsers : ROUTES.profile}

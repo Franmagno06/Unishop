@@ -47,7 +47,7 @@ export function FaqAccordion() {
               role="region"
               aria-labelledby={buttonId}
               inert={!open}
-              className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out-strong motion-reduce:transition-none ${
+              className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out-strong motion-reduce:transition-opacity ${
                 open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
               }`}
             >

@@ -22,7 +22,7 @@ function AlertBox({
   return (
     <div
       role={role}
-      className={`flex gap-3 rounded-lg border border-l-4 p-4 transition-opacity duration-200 ease-out-strong starting:opacity-0 motion-reduce:transition-none ${tone}`}
+      className={`flex gap-3 rounded-lg border border-l-4 p-4 transition-opacity duration-200 ease-out-strong starting:opacity-0 ${tone}`}
     >
       {icon}
       <div className="flex min-w-0 flex-col gap-0.5 text-sm">

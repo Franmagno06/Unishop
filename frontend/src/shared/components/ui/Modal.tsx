@@ -95,7 +95,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-navy/45 p-4 transition-opacity duration-150 ease-out-strong starting:opacity-0 motion-reduce:transition-none"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-navy/45 p-4 transition-opacity duration-150 ease-out-strong starting:opacity-0 motion-reduce:transition-opacity"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !busyRef.current) onCloseRef.current()
       }}
@@ -107,7 +107,7 @@ export function Modal({
         aria-labelledby={title ? titleId : labelledBy}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
-        className="flex w-full max-w-[480px] flex-col gap-4 rounded-[20px] bg-surface p-6 shadow-[0_16px_48px_rgba(13,26,51,0.25)] transition duration-200 ease-out-strong focus:outline-none starting:translate-y-2 starting:scale-[0.98] starting:opacity-0 motion-reduce:transition-none sm:p-8"
+        className="flex w-full max-w-[480px] flex-col gap-4 rounded-[20px] bg-surface p-6 shadow-[0_16px_48px_rgba(13,26,51,0.25)] transition-[opacity,translate,scale] duration-200 ease-out-strong focus:outline-none starting:translate-y-2 starting:scale-[0.98] starting:opacity-0 motion-reduce:transition-opacity sm:p-8"
       >
         {icon ? <div aria-hidden="true">{icon}</div> : null}
         {title ? (
