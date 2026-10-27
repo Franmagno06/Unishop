@@ -17,6 +17,7 @@ import { formatWhatsapp } from '../../../../shared/utils/whatsapp'
 import { ListingStatsCards } from '../components/ListingStatsCards'
 import { ListingStatusBadge } from '../components/ListingStatusBadge'
 import { ReceivedOrdersList } from '../components/ReceivedOrdersList'
+import { ReviewsSection } from '../components/ReviewsSection'
 import { useListingActions, useManagedListing } from '../hooks/use-my-listings'
 
 type Dialog = 'sold' | 'delete' | null
@@ -156,6 +157,8 @@ export function ManageListingPage() {
                   onCompleteSale={(orderId) => actions.completeSale.mutate(orderId)}
                   onCloseNegotiation={(orderId) => actions.closeNegotiation.mutate(orderId)}
                 />
+
+                <ReviewsSection listingId={listing.id} />
               </div>
 
               <Card className="flex flex-col gap-4 p-6 sm:p-7">

@@ -53,14 +53,24 @@ export function hasToken(): boolean {
 export function setToken(value: string, newRole: Role = 'student'): void {
   token = value
   role = newRole
+  leaving = false
   write(TOKEN_KEY, value)
   write(ROLE_KEY, newRole)
   notify()
 }
 
-export function clearToken(): void {
+// Verdadeiro entre o "Sair" e o próximo login: o guard de área não deve tratar o logout como
+// "sessão ausente" e mandar ao login do admin guardando o destino.
+let leaving = false
+
+export function isLeaving(): boolean {
+  return leaving
+}
+
+export function clearToken(options: { leaving?: boolean } = {}): void {
   token = null
   role = null
+  leaving = options.leaving ?? false
   write(TOKEN_KEY, null)
   write(ROLE_KEY, null)
   notify()

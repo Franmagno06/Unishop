@@ -11,6 +11,7 @@ import { AdminSearch } from '../../shared/components/AdminSearch'
 import { StatsCards } from '../../shared/components/StatsCards'
 import { tableCard } from '../../shared/components/table-styles'
 import { DeleteUserModal } from '../components/DeleteUserModal'
+import { SupportRequestsSection } from '../components/SupportRequestsSection'
 import { UsersTable } from '../components/UsersTable'
 import { useUsers, useUserStats } from '../hooks/use-admin-users'
 import type { AdminUserRow, UserPresenceFilter } from '../types/user.types'
@@ -150,6 +151,8 @@ export function AdminUsersPage() {
           />
         </section>
       )}
+
+      <SupportRequestsSection />
 
       {deleting ? (
         <DeleteUserModal
