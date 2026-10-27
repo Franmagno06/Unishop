@@ -64,6 +64,20 @@ describe('Admin · lista de usuários (A01)', () => {
     expect(screen.getByLabelText('Buscar por nome ou e-mail')).toHaveValue('larissa')
   })
 
+  it('a busca aceita no máximo 100 caracteres', async () => {
+    renderAt('/admin/usuarios')
+    const field = await screen.findByLabelText('Buscar por nome ou e-mail')
+    await userEvent.click(field)
+    await userEvent.paste('a'.repeat(150))
+    expect((field as HTMLInputElement).value).toHaveLength(100)
+  })
+
+  it('?busca= maior que 100 vindo da URL é cortado', async () => {
+    renderAt('/admin/usuarios?busca=' + 'b'.repeat(300))
+    const field = await screen.findByLabelText('Buscar por nome ou e-mail')
+    expect((field as HTMLInputElement).value).toHaveLength(100)
+  })
+
   it('"Excluir" abre o pop-up com o foco em "Cancelar" e o anúncio do nome certo', async () => {
     renderAt('/admin/usuarios')
     await userEvent.click(await screen.findByRole('button', { name: 'Excluir Pedro Alves' }))

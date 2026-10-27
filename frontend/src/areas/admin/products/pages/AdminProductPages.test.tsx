@@ -47,6 +47,20 @@ describe('Admin · lista de produtos (A03)', () => {
     expect(screen.getByText('Mostrando 6 de 266 produtos')).toBeInTheDocument()
   })
 
+  it('a busca aceita no máximo 100 caracteres', async () => {
+    renderAt('/admin/produtos')
+    const field = await screen.findByLabelText('Buscar produto ou vendedor')
+    await userEvent.click(field)
+    await userEvent.paste('a'.repeat(150))
+    expect((field as HTMLInputElement).value).toHaveLength(100)
+  })
+
+  it('?busca= maior que 100 vindo da URL é cortado', async () => {
+    renderAt('/admin/produtos?busca=' + 'b'.repeat(300))
+    const field = await screen.findByLabelText('Buscar produto ou vendedor')
+    expect((field as HTMLInputElement).value).toHaveLength(100)
+  })
+
   it('o filtro de categoria vai para a URL e a lista só traz a categoria escolhida', async () => {
     const router = renderAt('/admin/produtos')
     await screen.findByRole('row', { name: /Cálculo I/ })

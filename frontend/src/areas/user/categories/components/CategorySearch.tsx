@@ -1,5 +1,6 @@
 import { useId, type ComponentProps } from 'react'
 import { inputClasses } from '../../../../shared/components/ui/field-styles'
+import { SEARCH_MAX_LENGTH } from '../../../../shared/constants/search'
 
 // Busca por categoria (RN-CAT-03). O rótulo existe para leitores de tela; a dica visual é o placeholder.
 export function CategorySearch(props: Omit<ComponentProps<'input'>, 'type' | 'id'>) {
@@ -16,6 +17,7 @@ export function CategorySearch(props: Omit<ComponentProps<'input'>, 'type' | 'id
         name="q"
         autoComplete="off"
         placeholder="Buscar item ou categoria…"
+        maxLength={SEARCH_MAX_LENGTH}
         className={inputClasses()}
         {...props}
       />

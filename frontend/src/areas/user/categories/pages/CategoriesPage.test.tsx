@@ -44,6 +44,21 @@ describe('CategoriesPage', () => {
     expect(screen.queryAllByRole('link')).toHaveLength(0)
   })
 
+  it('a busca aceita no máximo 100 caracteres', async () => {
+    renderPage()
+    await screen.findByRole('link', { name: /Livros e apostilas/ })
+    const field = screen.getByLabelText('Buscar item ou categoria')
+    await userEvent.click(field)
+    await userEvent.paste('a'.repeat(150))
+    expect((field as HTMLInputElement).value).toHaveLength(100)
+  })
+
+  it('?q= maior que 100 vindo da URL é cortado', async () => {
+    renderPage('/categorias?q=' + 'b'.repeat(300))
+    const field = screen.getByLabelText('Buscar item ou categoria')
+    expect((field as HTMLInputElement).value).toHaveLength(100)
+  })
+
   it('filtra pela busca e guarda o texto na URL (?q=)', async () => {
     const router = renderPage()
     await screen.findByRole('link', { name: /Livros e apostilas/ })

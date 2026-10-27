@@ -15,6 +15,7 @@ import { ProductsTable } from '../components/ProductsTable'
 import { useAdminCategories, useProducts, useProductStats } from '../hooks/use-admin-products'
 import type { AdminProduct } from '../types/product.types'
 import { inputClasses } from '../../../../shared/components/ui/field-styles'
+import { SEARCH_MAX_LENGTH } from '../../../../shared/constants/search'
 
 const number = new Intl.NumberFormat('pt-BR')
 
@@ -23,7 +24,7 @@ const number = new Intl.NumberFormat('pt-BR')
 export function AdminProductsPage() {
   useDocumentTitle('Produtos · Admin')
   const [params, setParams] = useSearchParams()
-  const urlSearch = params.get('busca') ?? ''
+  const urlSearch = (params.get('busca') ?? '').slice(0, SEARCH_MAX_LENGTH)
   const categoryParam = Number(params.get('categoria'))
   const categoryId = Number.isInteger(categoryParam) && categoryParam > 0 ? categoryParam : null
   const page = Math.max(1, Number(params.get('pagina')) || 1)

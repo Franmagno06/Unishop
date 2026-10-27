@@ -3,6 +3,7 @@ import { Button } from '../../../../shared/components/ui/Button'
 import { Card } from '../../../../shared/components/ui/Card'
 import { EmptyState } from '../../../../shared/components/ui/EmptyState'
 import { Skeleton } from '../../../../shared/components/ui/Skeleton'
+import { SEARCH_MAX_LENGTH } from '../../../../shared/constants/search'
 import { useDebounce } from '../../../../shared/hooks/use-debounce'
 import { useDocumentTitle } from '../../../../shared/hooks/use-document-title'
 import { CategoryCard } from '../components/CategoryCard'
@@ -22,7 +23,7 @@ export function CategoriesPage() {
   useDocumentTitle('Categorias')
 
   const [params, setParams] = useSearchParams()
-  const search = params.get('q') ?? ''
+  const search = (params.get('q') ?? '').slice(0, SEARCH_MAX_LENGTH)
   const debouncedSearch = useDebounce(search, 300)
   const { data: categories, isPending, isError, refetch } = useCategories(debouncedSearch)
 

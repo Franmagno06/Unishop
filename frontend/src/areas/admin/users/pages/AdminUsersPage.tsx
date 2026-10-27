@@ -11,6 +11,7 @@ import { AdminSearch } from '../../shared/components/AdminSearch'
 import { StatsCards } from '../../shared/components/StatsCards'
 import { tableCard } from '../../shared/components/table-styles'
 import { DeleteUserModal } from '../components/DeleteUserModal'
+import { SEARCH_MAX_LENGTH } from '../../../../shared/constants/search'
 import { UsersTable } from '../components/UsersTable'
 import { useUsers, useUserStats } from '../hooks/use-admin-users'
 import type { AdminUserRow, UserPresenceFilter } from '../types/user.types'
@@ -33,7 +34,7 @@ export function AdminUsersPage() {
   const [params, setParams] = useSearchParams()
   const presence = FILTER_BY_PARAM[params.get('status') ?? ''] ?? 'all'
   const page = Math.max(1, Number(params.get('pagina')) || 1)
-  const urlSearch = params.get('busca') ?? ''
+  const urlSearch = (params.get('busca') ?? '').slice(0, SEARCH_MAX_LENGTH)
 
   const [searchText, setSearchText] = useState(urlSearch)
   const debouncedSearch = useDebounce(searchText.trim(), 300)
