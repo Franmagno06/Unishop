@@ -103,7 +103,7 @@ test.describe('Pagamento · fluxo', () => {
     await page.getByRole('tab', { name: 'Pix' }).click()
     await page.getByRole('button', { name: 'Simular Pix expirado' }).click()
     await expect(page.getByRole('heading', { name: 'Pedido cancelado' })).toBeVisible()
-    await page.getByRole('link', { name: 'Fazer um novo pedido' }).click()
+    await page.getByRole('link', { name: 'Novo pedido', exact: true }).click()
     await expect(page).toHaveURL('/produtos/1')
   })
 

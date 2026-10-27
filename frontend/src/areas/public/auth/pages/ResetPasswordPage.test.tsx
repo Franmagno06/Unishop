@@ -222,7 +222,7 @@ describe('ResetSuccessPage', () => {
     expect(screen.getByText(/Sua senha foi alterada com sucesso/)).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Voltar' })).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('link', { name: 'Ir para o login' }))
+    await userEvent.click(screen.getByRole('link', { name: 'Entrar' }))
     expect(router.state.location.pathname).toBe('/login')
   })
 })

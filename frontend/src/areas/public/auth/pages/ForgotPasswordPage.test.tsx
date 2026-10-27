@@ -31,7 +31,7 @@ const failed = (status: number, code: string) =>
     headers: { 'Content-Type': 'application/json' },
   })
 
-const submit = () => userEvent.click(screen.getByRole('button', { name: 'Enviar link de redefinição' }))
+const submit = () => userEvent.click(screen.getByRole('button', { name: 'Enviar link' }))
 
 afterEach(() => vi.unstubAllGlobals())
 

@@ -23,7 +23,7 @@ describe('DemoResetLinks', () => {
     await renderWith(true)
 
     expect(screen.getByText('Modo de demonstração (sem servidor)')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Abrir link do e-mail (simulação)' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Abrir link (simulação)' })).toHaveAttribute(
       'href',
       '/redefinir-senha/demo.aluno.teste%40edu.unifor.br',
     )

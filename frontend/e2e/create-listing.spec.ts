@@ -33,13 +33,13 @@ test.describe('Anunciar item · fluxo', () => {
     await expect(page.getByLabel('WhatsApp *')).toHaveValue('(85) 9 9999-0000')
 
     await fillForm(page, 'Anúncio de teste e2e')
-    await page.getByRole('button', { name: 'Publicar anúncio' }).click()
+    await page.getByRole('button', { name: 'Publicar', exact: true }).click()
 
     const dialog = page.getByRole('dialog', { name: 'Anúncio publicado!' })
     await expect(dialog).toBeVisible()
     await expect(dialog).toContainText('“Anúncio de teste e2e” já está visível para os alunos na categoria Livros e apostilas.')
 
-    await dialog.getByRole('link', { name: 'Ver meu anúncio' }).click()
+    await dialog.getByRole('link', { name: 'Meu anúncio', exact: true }).click()
     await expect(page).toHaveURL('/categorias/1')
     await expect(page.getByText('49 anúncios de alunos da Unifor')).toBeVisible()
     await expect(page.getByRole('main').getByRole('heading', { level: 2 }).first()).toHaveText('Anúncio de teste e2e')
@@ -50,17 +50,17 @@ test.describe('Anunciar item · fluxo', () => {
     await loginAsStudent(page)
     await page.getByRole('link', { name: '+ Anunciar item' }).click()
 
-    await page.getByRole('button', { name: 'Publicar anúncio' }).click()
+    await page.getByRole('button', { name: 'Publicar', exact: true }).click()
     await expect(page.getByText('Informe o nome do item.')).toBeVisible()
     await expect(page.getByText('Envie pelo menos 1 foto.')).toBeVisible()
     await expect(page.getByLabel('Nome do item *')).toBeFocused()
 
     await fillForm(page, 'Teste de teclado')
-    await page.getByRole('button', { name: 'Publicar anúncio' }).click()
+    await page.getByRole('button', { name: 'Publicar', exact: true }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toBeHidden()
-    await expect(page.getByRole('button', { name: 'Publicar anúncio' })).toBeFocused()
+    await expect(page.getByRole('button', { name: 'Publicar', exact: true })).toBeFocused()
   })
 
   test('recusa foto acima de 4 MB e arquivo que não é imagem', async ({ page }) => {
@@ -81,7 +81,7 @@ test.describe('Anunciar item · fluxo', () => {
       await page.setViewportSize({ width, height: 900 })
       await loginAsStudent(page)
       await page.getByRole('link', { name: '+ Anunciar item' }).click()
-      await expect(page.getByRole('button', { name: 'Publicar anúncio' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Publicar', exact: true })).toBeVisible()
 
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
       expect(overflow).toBeLessThanOrEqual(0)

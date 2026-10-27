@@ -63,7 +63,7 @@ describe('Editar perfil (05b)', () => {
 
     await user.clear(screen.getByLabelText('Nome'))
     await user.type(screen.getByLabelText('WhatsApp'), '123')
-    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await user.click(screen.getByRole('button', { name: 'Salvar' }))
 
     expect(await screen.findByText('O nome precisa ter ao menos 3 caracteres.')).toBeInTheDocument()
     expect(screen.getByText('Informe o WhatsApp com DDD (10 ou 11 dígitos).')).toBeInTheDocument()
@@ -75,7 +75,7 @@ describe('Editar perfil (05b)', () => {
 
     await user.clear(screen.getByLabelText('Nome'))
     await user.type(screen.getByLabelText('Nome'), 'Maria Souza')
-    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await user.click(screen.getByRole('button', { name: 'Salvar' }))
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/perfil'))
     expect(await screen.findByRole('heading', { level: 1, name: 'Maria Souza' })).toBeInTheDocument()
@@ -88,7 +88,7 @@ describe('Editar perfil (05b)', () => {
 
     await user.clear(screen.getByLabelText('E-mail institucional'))
     await user.type(screen.getByLabelText('E-mail institucional'), 'novo.email@edu.unifor.br')
-    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await user.click(screen.getByRole('button', { name: 'Salvar' }))
 
     expect(await screen.findByText('Confirme o novo e-mail')).toBeInTheDocument()
     expect(screen.getByText(/novo\.email@edu\.unifor\.br/)).toBeInTheDocument()
@@ -101,7 +101,7 @@ describe('Editar perfil (05b)', () => {
 
     await user.clear(screen.getByLabelText('E-mail institucional'))
     await user.type(screen.getByLabelText('E-mail institucional'), 'aluno@gmail.com')
-    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await user.click(screen.getByRole('button', { name: 'Salvar' }))
 
     expect(await screen.findByText('Use seu e-mail institucional @edu.unifor.br.')).toBeInTheDocument()
   })
@@ -125,9 +125,9 @@ describe('Editar perfil (05b)', () => {
     const router = renderApp('/perfil/editar')
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('button', { name: 'Excluir meu perfil' }))
+    await user.click(screen.getByRole('button', { name: 'Excluir perfil' }))
     const dialog = screen.getByRole('dialog', { name: 'Excluir seu perfil?' })
-    const confirm = within(dialog).getByRole('button', { name: 'Sim, excluir perfil' })
+    const confirm = within(dialog).getByRole('button', { name: 'Excluir perfil' })
     expect(confirm).toBeDisabled()
 
     await user.type(within(dialog).getByLabelText('Digite EXCLUIR para confirmar'), 'excluir')
@@ -145,7 +145,7 @@ describe('Editar perfil (05b)', () => {
     renderApp('/perfil/editar')
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('button', { name: 'Excluir meu perfil' }))
+    await user.click(screen.getByRole('button', { name: 'Excluir perfil' }))
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancelar' }))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

@@ -82,7 +82,7 @@ describe('Admin · detalhes do usuário (A02)', () => {
     expect(screen.getByText('Engenharia Civil')).toBeInTheDocument()
     expect(screen.getByText('Logado agora')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Cálculo I — Guidorizzi/ })).toHaveAttribute('href', '/admin/produtos/1')
-    expect(screen.getByRole('link', { name: 'Editar usuário' })).toHaveAttribute('href', '/admin/usuarios/2/editar')
+    expect(screen.getByRole('link', { name: 'Editar' })).toHaveAttribute('href', '/admin/usuarios/2/editar')
   })
 
   it('usuário que não existe mostra "não encontrado", com saída para a lista', async () => {
@@ -93,16 +93,16 @@ describe('Admin · detalhes do usuário (A02)', () => {
 
   it('excluir quem tem pedido pago em aberto mostra o motivo e mantém o pop-up aberto', async () => {
     renderAt('/admin/usuarios/2')
-    await userEvent.click(await screen.findByRole('button', { name: 'Excluir usuário' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Excluir' }))
     const dialog = screen.getByRole('dialog', { name: 'Excluir este usuário?' })
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Sim, excluir' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Excluir' }))
     expect(await within(dialog).findByText(/há pedido pago ou com retirada combinada em aberto/)).toBeInTheDocument()
   })
 
   it('excluir quem não tem pendência volta à lista', async () => {
     const router = renderAt('/admin/usuarios/7')
-    await userEvent.click(await screen.findByRole('button', { name: 'Excluir usuário' }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Sim, excluir' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Excluir' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Excluir' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Usuários' })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/admin/usuarios')
   })
@@ -124,7 +124,7 @@ describe('Admin · editar usuário (A02b)', () => {
   it('salvar o status abre "Alterações salvas!" e o botão volta aos detalhes com a conta suspensa', async () => {
     const router = renderAt('/admin/usuarios/4/editar')
     await userEvent.selectOptions(await screen.findByLabelText('Status da conta'), 'Suspensa')
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Alterações salvas!' })
     await userEvent.click(within(dialog).getByRole('button', { name: 'Voltar' }))

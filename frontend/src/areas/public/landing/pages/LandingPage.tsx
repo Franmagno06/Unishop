@@ -55,9 +55,9 @@ export function LandingPage() {
               — sem depender de grupos dispersos que hoje alcançam menos de 5% dos alunos.
             </p>
             {isLoggedIn ? (
-              <ButtonLink to={ROUTES.categories}>Ver categorias</ButtonLink>
+              <ButtonLink to={ROUTES.categories}>Categorias</ButtonLink>
             ) : (
-              <ButtonLink to={ROUTES.register}>Criar minha conta com e-mail Unifor</ButtonLink>
+              <ButtonLink to={ROUTES.register}>Criar conta</ButtonLink>
             )}
           </div>
 

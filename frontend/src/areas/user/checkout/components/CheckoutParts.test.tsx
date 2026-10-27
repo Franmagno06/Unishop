@@ -258,7 +258,7 @@ describe('OrderPaidCard (Figma 10 · RN-PED-03)', () => {
     const contact = screen.getByRole('link', { name: /Contato do vendedor/ })
     expect(contact).toHaveAttribute('href', 'https://wa.me/5585999990000')
     expect(contact).toHaveAttribute('rel', 'noopener noreferrer')
-    expect(screen.getByRole('link', { name: 'Ver meus pedidos' })).toHaveAttribute('href', '/meus-pedidos')
+    expect(screen.getByRole('link', { name: 'Meus pedidos' })).toHaveAttribute('href', '/meus-pedidos')
     expect(screen.getByRole('link', { name: 'Continuar comprando' })).toHaveAttribute('href', '/categorias')
   })
 })

@@ -9,7 +9,7 @@ async function askForLink(page: Page, email = EMAIL) {
   // espera a tela nova (carregada sob demanda) antes de preencher, senão o campo ainda é o do login
   await expect(page.getByRole('heading', { level: 1, name: 'Esqueceu a senha?' })).toBeVisible()
   await page.getByLabel('E-mail institucional').fill(email)
-  await page.getByRole('button', { name: 'Enviar link de redefinição' }).click()
+  await page.getByRole('button', { name: 'Enviar link', exact: true }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Verifique seu e-mail' })).toBeVisible()
 }
 
@@ -38,7 +38,7 @@ test.describe('Recuperação de senha · fluxo completo', () => {
     await expect(page.getByText(/Ele expira em 30 minutos/)).toBeVisible()
 
     // o botão da simulação já vem clicável, sem conferir nada
-    await page.getByRole('link', { name: 'Abrir link do e-mail (simulação)' }).click()
+    await page.getByRole('link', { name: 'Abrir link (simulação)', exact: true }).click()
     await expect(page).toHaveURL(/\/redefinir-senha\/demo\./)
     await expect(page.getByRole('heading', { level: 1, name: 'Criar nova senha' })).toBeVisible()
 
@@ -46,7 +46,7 @@ test.describe('Recuperação de senha · fluxo completo', () => {
     await expect(page).toHaveURL('/senha-redefinida')
     await expect(page.getByRole('heading', { level: 1, name: 'Senha redefinida!' })).toBeVisible()
 
-    await page.getByRole('link', { name: 'Ir para o login' }).click()
+    await page.getByRole('link', { name: 'Entrar', exact: true }).click()
     await expect(page).toHaveURL('/login')
 
     // a senha antiga deixou de valer
@@ -70,9 +70,9 @@ test.describe('Recuperação de senha · fluxo completo', () => {
 
     await page.getByRole('link', { name: 'Esqueci minha senha' }).click()
     await askForLink(page)
-    await page.getByRole('link', { name: 'Abrir link do e-mail (simulação)' }).click()
+    await page.getByRole('link', { name: 'Abrir link (simulação)', exact: true }).click()
     await setNewPassword(page)
-    await page.getByRole('link', { name: 'Ir para o login' }).click()
+    await page.getByRole('link', { name: 'Entrar', exact: true }).click()
 
     await login(page, NEW_PASSWORD)
     await expect(page).toHaveURL('/categorias')
@@ -90,11 +90,11 @@ test.describe('Recuperação de senha · pedir o link', () => {
   test('e-mail vazio ou inválido mostra o erro e não avança', async ({ page }) => {
     await page.goto('/recuperar-senha')
 
-    await page.getByRole('button', { name: 'Enviar link de redefinição' }).click()
+    await page.getByRole('button', { name: 'Enviar link', exact: true }).click()
     await expect(page.getByText('Informe seu e-mail.')).toBeVisible()
 
     await page.getByLabel('E-mail institucional').fill('ana@')
-    await page.getByRole('button', { name: 'Enviar link de redefinição' }).click()
+    await page.getByRole('button', { name: 'Enviar link', exact: true }).click()
     await expect(page.getByText('Informe um e-mail válido.')).toBeVisible()
     await expect(page).toHaveURL('/recuperar-senha')
   })
@@ -119,7 +119,7 @@ test.describe('Recuperação de senha · nova senha', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/recuperar-senha')
     await askForLink(page)
-    await page.getByRole('link', { name: 'Abrir link do e-mail (simulação)' }).click()
+    await page.getByRole('link', { name: 'Abrir link (simulação)', exact: true }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Criar nova senha' })).toBeVisible()
   })
 
@@ -202,10 +202,10 @@ test.describe('Recuperação de senha · botão Voltar', () => {
     await expect(page).toHaveURL('/login')
   })
 
-  test('"Senha redefinida!" não tem Voltar, só "Ir para o login"', async ({ page }) => {
+  test('"Senha redefinida!" não tem Voltar, só "Entrar"', async ({ page }) => {
     await page.goto('/senha-redefinida')
     await expect(page.getByRole('link', { name: 'Voltar' })).toHaveCount(0)
-    await expect(page.getByRole('link', { name: 'Ir para o login' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Entrar', exact: true })).toBeVisible()
   })
 })
 

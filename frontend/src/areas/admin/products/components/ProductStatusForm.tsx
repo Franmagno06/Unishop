@@ -78,7 +78,7 @@ export function ProductStatusForm({ product, onSaved }: ProductStatusFormProps) 
               Cancelar
             </ButtonLink>
             <Button type="submit" className="flex-1" disabled={save.isPending}>
-              {save.isPending ? 'Salvando…' : 'Salvar alterações'}
+              {save.isPending ? 'Salvando…' : 'Salvar'}
             </Button>
           </div>
         </form>

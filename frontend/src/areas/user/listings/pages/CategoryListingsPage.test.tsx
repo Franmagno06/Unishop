@@ -240,7 +240,7 @@ describe('CategoryListingsPage · filtro por forma de contato', () => {
     renderPage()
 
     expect(await screen.findByText('Ainda não há anúncios nesta categoria.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Ver outras categorias' })).toHaveAttribute('href', '/categorias')
+    expect(screen.getByRole('link', { name: 'Outras categorias' })).toHaveAttribute('href', '/categorias')
   })
 })
 
@@ -296,7 +296,7 @@ describe('CategoryListingsPage · categoria que não existe', () => {
     renderPage(path)
 
     expect(await screen.findByRole('heading', { name: 'Categoria não encontrada' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Ver todas as categorias' })).toHaveAttribute('href', '/categorias')
+    expect(screen.getByRole('link', { name: 'Todas as categorias' })).toHaveAttribute('href', '/categorias')
     expect(cards()).toHaveLength(0)
   })
 

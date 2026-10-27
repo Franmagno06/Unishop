@@ -140,7 +140,7 @@ describe('ProductPage · outros estados', () => {
     async (path) => {
       renderPage(path)
       expect(await screen.findByRole('heading', { name: 'Anúncio indisponível' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Ver categorias' })).toHaveAttribute('href', '/categorias')
+      expect(screen.getAllByRole('link', { name: 'Categorias' }).at(-1)).toHaveAttribute('href', '/categorias')
       expect(screen.queryByRole('button', { name: /Fazer pedido/ })).not.toBeInTheDocument()
     },
   )

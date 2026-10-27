@@ -215,7 +215,7 @@ describe('PaymentPage · Pix', () => {
 
     expect(await screen.findByRole('heading', { name: 'Pedido cancelado' })).toBeInTheDocument()
     expect(screen.getByText(/prazo de 30 minutos/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Fazer um novo pedido' })).toHaveAttribute('href', '/produtos/1')
+    expect(screen.getByRole('link', { name: 'Novo pedido' })).toHaveAttribute('href', '/produtos/1')
     expect(screen.queryByLabelText('Código Pix copia e cola')).not.toBeInTheDocument()
   })
 
@@ -270,11 +270,11 @@ describe('OrderConfirmedPage · estados', () => {
     expect(await screen.findByRole('heading', { name: 'Categorias' })).toBeInTheDocument()
   })
 
-  it('"Ver meus pedidos" leva a /meus-pedidos', async () => {
+  it('"Meus pedidos" leva a /meus-pedidos', async () => {
     const order = await createOrder({ listingId: 1, quantity: 1 })
     await payWithCard(order.id, { number: TEST_CARDS.approved, holder: 'Aluno Teste', expiry: '12/99', cvv: '123' })
     renderApp(`/pedido-confirmado/${order.id}`)
-    await userEvent.click(await screen.findByRole('link', { name: 'Ver meus pedidos' }))
+    await userEvent.click(await screen.findByRole('link', { name: 'Meus pedidos' }))
     expect(where()).toBe('/meus-pedidos')
   })
 

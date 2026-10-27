@@ -25,7 +25,7 @@ export function DeleteAccountModal({ onCancel }: { onCancel: () => void }) {
     <ConfirmDialog
       title="Excluir seu perfil?"
       description="Seus dados pessoais serão anonimizados e seus anúncios saem do ar. Pedidos já pagos continuam no histórico da outra pessoa. Essa ação não pode ser desfeita."
-      confirmLabel="Sim, excluir perfil"
+      confirmLabel="Excluir perfil"
       onConfirm={() => remove.mutate()}
       onCancel={onCancel}
       pending={remove.isPending}

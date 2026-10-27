@@ -189,7 +189,7 @@ test.describe('Anúncios da categoria · teclado e erros', () => {
     await page.goto('/categorias/99')
     await expect(page.getByRole('heading', { name: 'Categoria não encontrada' })).toBeVisible()
 
-    await page.getByRole('link', { name: 'Ver todas as categorias' }).click()
+    await page.getByRole('link', { name: 'Todas as categorias', exact: true }).click()
     await expect(page).toHaveURL('/categorias')
   })
 

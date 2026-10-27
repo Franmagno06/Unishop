@@ -46,7 +46,7 @@ describe('CheckEmailPage', () => {
 
   it('não mostra a simulação do e-mail fora do modo de demonstração', () => {
     renderPage()
-    expect(screen.queryByText('Abrir link do e-mail (simulação)')).not.toBeInTheDocument()
+    expect(screen.queryByText('Abrir link (simulação)')).not.toBeInTheDocument()
     expect(screen.queryByText('Modo de demonstração (sem servidor)')).not.toBeInTheDocument()
   })
 

@@ -71,7 +71,7 @@ export function UserStatusForm({ user, onSaved }: { user: AdminUser; onSaved: ()
             Cancelar
           </ButtonLink>
           <Button type="submit" disabled={save.isPending}>
-            {save.isPending ? 'Salvando…' : 'Salvar alterações'}
+            {save.isPending ? 'Salvando…' : 'Salvar'}
           </Button>
         </div>
       </form>

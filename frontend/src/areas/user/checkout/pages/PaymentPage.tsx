@@ -142,11 +142,11 @@ export function PaymentPage() {
       <DemoEnvironmentNotice />
 
       {forbidden ? (
-        <EmptyState title="Acesso negado" action={<ButtonLink to={ROUTES.categories}>Ver categorias</ButtonLink>}>
+        <EmptyState title="Acesso negado" action={<ButtonLink to={ROUTES.categories}>Categorias</ButtonLink>}>
           Este pedido é de outra pessoa.
         </EmptyState>
       ) : notFound ? (
-        <EmptyState title="Pedido não encontrado" action={<ButtonLink to={ROUTES.categories}>Ver categorias</ButtonLink>}>
+        <EmptyState title="Pedido não encontrado" action={<ButtonLink to={ROUTES.categories}>Categorias</ButtonLink>}>
           Este pedido não existe ou o endereço está incorreto.
         </EmptyState>
       ) : query.isError ? (
@@ -169,7 +169,7 @@ export function PaymentPage() {
         // RN-PAG-04 e 12: pedido vencido é cancelado e a pessoa faz um novo; não há novo código.
         <EmptyState
           title="Pedido cancelado"
-          action={<ButtonLink to={`${ROUTES.products}/${order.listingId}`}>Fazer um novo pedido</ButtonLink>}
+          action={<ButtonLink to={`${ROUTES.products}/${order.listingId}`}>Novo pedido</ButtonLink>}
         >
           O prazo de 30 minutos para pagar acabou e o pedido foi cancelado. Nenhum valor foi cobrado.
         </EmptyState>

@@ -46,7 +46,7 @@ export function OrderPaidCard({ order }: { order: Order }) {
 
       <div className="flex w-full flex-col gap-3">
         <ButtonLink to={ROUTES.myOrders} fullWidth>
-          Ver meus pedidos
+          Meus pedidos
         </ButtonLink>
         <ButtonLink to={ROUTES.categories} variant="secondary" fullWidth>
           Continuar comprando

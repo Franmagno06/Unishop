@@ -331,7 +331,7 @@ No pop-up o aluno escolhe a **quantidade** (limitada ao estoque). Pelo pagamento
 
 ```text
 Anunciar item ▶ "Anúncio publicado!" ▶ Perfil (Meus anúncios) ▶ Gerenciar anúncio
-   ▶ Editar / Pausar / Reativar / Marcar como vendido / Excluir
+   ▶ Editar / Pausar / Reativar / Marcar vendido / Excluir
    ▶ Pedidos recebidos ▶ WhatsApp do comprador ▶ Combinar retirada (pago) · Concluir venda (negociação) · Encerrar negociação
 ```
 

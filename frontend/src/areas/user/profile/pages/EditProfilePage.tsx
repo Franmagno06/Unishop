@@ -121,7 +121,7 @@ export function EditProfilePage() {
               Cancelar
             </ButtonLink>
             <Button type="submit" disabled={save.isPending}>
-              {save.isPending ? 'Salvando…' : 'Salvar alterações'}
+              {save.isPending ? 'Salvando…' : 'Salvar'}
             </Button>
           </div>
         </form>
@@ -139,7 +139,7 @@ export function EditProfilePage() {
           poderá ser recuperada. Pedidos já pagos continuam no histórico da outra pessoa.
         </p>
         <Button variant="danger" onClick={() => setDeleting(true)}>
-          Excluir meu perfil
+          Excluir perfil
         </Button>
       </section>
 
