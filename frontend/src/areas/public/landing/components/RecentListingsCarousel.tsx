@@ -70,6 +70,9 @@ export function RecentListingsCarousel() {
   // Toque e caneta seguem com a rolagem nativa; só o botão principal do mouse arrasta.
   function handlePointerDown(event: ReactPointerEvent<HTMLUListElement>) {
     if (event.pointerType !== 'mouse' || event.button !== 0) return
+    // Defesa: limpa o que um arrasto anterior possa ter deixado.
+    event.currentTarget.style.scrollSnapType = ''
+    delete event.currentTarget.dataset.dragging
     dragRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -83,6 +86,18 @@ export function RecentListingsCarousel() {
     const drag = dragRef.current
     if (!drag || event.pointerId !== drag.pointerId) return
     const track = event.currentTarget
+
+    // Botão solto fora do carrossel antes do limiar (sem captura, o pointerup não chegou aqui):
+    // encerra o arrasto em vez de seguir o mouse só com o hover.
+    if ((event.buttons & 1) === 0) {
+      dragRef.current = null
+      if (drag.dragging) {
+        track.style.scrollSnapType = ''
+        delete track.dataset.dragging
+      }
+      return
+    }
+
     const delta = event.clientX - drag.startX
 
     if (!drag.dragging) {

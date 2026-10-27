@@ -108,6 +108,22 @@ test.describe('Carrossel de anúncios recentes', () => {
     expect(await settledScrollLeft(page)).toBe(0)
   })
 
+  test('soltar o botão fora do carrossel antes do arrasto não deixa o arrasto preso', async ({ page }) => {
+    const { x, y } = await firstCardCenter(page)
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.mouse.move(x - 2, y + 300, { steps: 10 })
+    await page.mouse.up()
+
+    // Passa por cima do carrossel sem botão apertado.
+    await page.mouse.move(x, y)
+    await page.mouse.move(x - 200, y, { steps: 10 })
+
+    expect(await settledScrollLeft(page)).toBe(0)
+    expect(await track(page).evaluate((el) => getComputedStyle(el).cursor)).toBe('grab')
+    expect(await track(page).evaluate((el) => el.style.scrollSnapType)).not.toBe('none')
+  })
+
   test('as setas continuam funcionando', async ({ page }) => {
     await page.getByRole('button', { name: 'Próximos anúncios' }).click()
 
