@@ -16,6 +16,7 @@ import { AdminPageHeading } from '../../shared/components/AdminPageHeading'
 import { ListingStatusBadge } from '../../shared/components/ListingStatusBadge'
 import { DeleteProductModal } from '../components/DeleteProductModal'
 import { ProductGallery } from '../components/ProductGallery'
+import { ProductReviews } from '../components/ProductReviews'
 import { useProductDetail } from '../hooks/use-admin-products'
 
 const number = new Intl.NumberFormat('pt-BR')
@@ -146,6 +147,8 @@ export function AdminProductDetailPage() {
           </dl>
         </Card>
       </div>
+
+      <ProductReviews productId={product.id} />
 
       {deleting ? (
         <DeleteProductModal

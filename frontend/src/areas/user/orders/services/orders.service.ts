@@ -1,6 +1,8 @@
 import { ApiError } from '../../../../shared/lib/api'
 import { getListingById } from '../../listings/services/listings.service'
-import type { BuyerOrder, CardPaymentInput, NewOrder, Order, PixCharge } from '../types/order.types'
+import { createReview } from '../../listings/services/reviews.service'
+import type { NewReview } from '../../listings/types/review.types'
+import type { BuyerCancelReason, BuyerOrder, CardPaymentInput, NewOrder, Order, PixCharge } from '../types/order.types'
 
 // Pedidos e pagamentos de exemplo (formato assumido de backend.md §9.5 e §9.6). Tudo fica em
 // memória e some ao recarregar a página. Quando a API existir, só este arquivo muda: o cartão vira
@@ -175,6 +177,7 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 let buyerOrders: BuyerOrder[] = [
   {
     id: 417,
+    listingId: 2,
     code: 'UNI-2026-0417',
     listingTitle: 'Cálculo I — Guidorizzi, vol. 1',
     listingDescription: 'Livro em ótimo estado, 5ª edição, sem rasuras e com poucas marcações a lápis.',
@@ -184,9 +187,13 @@ let buyerOrders: BuyerOrder[] = [
     negotiation: 'site_payment',
     createdAt: '2026-09-24T15:00:00Z',
     seller: { name: 'João Paulo', whatsapp: '85991234567' },
+    paymentMethod: 'pix',
+    deliveryDeadline: '2026-10-01T21:00:00Z',
+    cancelReason: null,
   },
   {
     id: 405,
+    listingId: 3,
     code: 'UNI-2026-0405',
     listingTitle: 'Física I — Halliday, 10ª ed.',
     listingDescription: 'Volume 1 completo, capa com leve desgaste. Acompanha lista de exercícios resolvidos.',
@@ -196,9 +203,29 @@ let buyerOrders: BuyerOrder[] = [
     negotiation: 'site_payment',
     createdAt: '2026-09-22T13:00:00Z',
     seller: { name: 'Pedro Cândido', whatsapp: '85998724657' },
+    paymentMethod: 'card',
+    deliveryDeadline: '2026-09-29T21:00:00Z',
+    cancelReason: null,
+  },
+  {
+    id: 390,
+    listingId: 5,
+    code: 'UNI-2026-0390',
+    listingTitle: 'Calculadora científica Casio fx-82',
+    listingDescription: 'Calculadora com capa, funcionando perfeitamente. Pilhas novas.',
+    imageUrl: null,
+    priceInCents: 3500,
+    status: 'negotiating',
+    negotiation: 'whatsapp',
+    createdAt: '2026-09-18T12:00:00Z',
+    seller: { name: 'Ana Souza', whatsapp: '85988887777' },
+    paymentMethod: 'on_delivery',
+    deliveryDeadline: null,
+    cancelReason: null,
   },
   {
     id: 371,
+    listingId: 7,
     code: 'UNI-2026-0371',
     listingTitle: 'Apostila de Anatomia Humana',
     listingDescription: 'Apostila completa do 1º semestre de Medicina, com esquemas coloridos e resumos.',
@@ -208,6 +235,41 @@ let buyerOrders: BuyerOrder[] = [
     negotiation: 'whatsapp',
     createdAt: '2026-09-15T17:00:00Z',
     seller: { name: 'Pedro Ferrari', whatsapp: '85987654321' },
+    paymentMethod: 'on_delivery',
+    deliveryDeadline: '2026-09-20T21:00:00Z',
+    cancelReason: null,
+  },
+  {
+    id: 380,
+    listingId: 6,
+    code: 'UNI-2026-0380',
+    listingTitle: 'Fone de ouvido Bluetooth JBL',
+    listingDescription: 'Fone com caixa de carregamento e cabo. Usado por poucos meses.',
+    imageUrl: null,
+    priceInCents: 8000,
+    status: 'refund_review',
+    negotiation: 'site_payment',
+    createdAt: '2026-09-16T14:00:00Z',
+    seller: { name: 'Lucas Prado', whatsapp: '85977776666' },
+    paymentMethod: 'card',
+    deliveryDeadline: '2026-09-21T21:00:00Z',
+    cancelReason: null,
+  },
+  {
+    id: 360,
+    listingId: 9,
+    code: 'UNI-2026-0360',
+    listingTitle: 'Camiseta do curso de Direito (M)',
+    listingDescription: 'Camiseta oficial da turma, tamanho M, sem uso.',
+    imageUrl: null,
+    priceInCents: 3000,
+    status: 'refund_approved',
+    negotiation: 'site_payment',
+    createdAt: '2026-09-10T11:00:00Z',
+    seller: { name: 'Marina Costa', whatsapp: '85966665555' },
+    paymentMethod: 'pix',
+    deliveryDeadline: '2026-09-15T21:00:00Z',
+    cancelReason: null,
   },
 ]
 
@@ -218,23 +280,72 @@ export async function getMyOrders(signal?: AbortSignal): Promise<BuyerOrder[]> {
   return [...buyerOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
-function update(id: number, allowedFrom: BuyerOrder['status'][], to: BuyerOrder['status']) {
+// GET /orders/:id (visão do comprador). `null` quando o pedido não existe.
+export async function getMyOrderById(id: number, signal?: AbortSignal): Promise<BuyerOrder | null> {
+  await wait(BUYER_DELAY_MS)
+  signal?.throwIfAborted()
+  const order = buyerOrders.find((item) => item.id === id)
+  return order ? { ...order } : null
+}
+
+function update(
+  id: number,
+  allowedFrom: BuyerOrder['status'][],
+  changes: Partial<BuyerOrder> & Pick<BuyerOrder, 'status'>,
+) {
   const order = buyerOrders.find((item) => item.id === id)
   if (!order) throw new ApiError(404, 'ORDER_NOT_FOUND', 'Pedido não encontrado.')
   if (!allowedFrom.includes(order.status)) {
     throw new ApiError(409, 'INVALID_ORDER_STATE', 'O pedido mudou de estado. Atualize a página.')
   }
-  buyerOrders = buyerOrders.map((item) => (item.id === id ? { ...item, status: to } : item))
+  buyerOrders = buyerOrders.map((item) => (item.id === id ? { ...item, ...changes } : item))
 }
 
-// RN-PED-12: o comprador cancela só pedido Pendente ou Em negociação.
-export async function cancelOrder(id: number): Promise<void> {
+// RN-PED-12: o comprador cancela pedido Pendente ou Em negociação, informando o motivo. Cancelar
+// pedido Pago (ou com retirada combinada) foi pedido para a tela de detalhes e gera reembolso: é
+// provisório, as Regras ainda não preveem isso.
+export async function cancelOrder(id: number, reason: BuyerCancelReason, details?: string): Promise<void> {
   await wait(BUYER_DELAY_MS)
-  update(id, ['pending', 'negotiating'], 'cancelled')
+  if (reason === 'other' && !details?.trim()) {
+    throw new ApiError(422, 'VALIDATION_ERROR', 'Descreva o motivo do cancelamento.')
+  }
+  update(id, ['pending', 'negotiating', 'paid', 'pickup_arranged'], {
+    status: 'cancelled',
+    cancelReason: reason,
+    cancelDetails: reason === 'other' ? details?.trim() : undefined,
+  })
 }
 
 // RN-PED-08: com a retirada combinada, o comprador confirma o recebimento e o pedido conclui.
 export async function confirmReceipt(id: number): Promise<void> {
   await wait(BUYER_DELAY_MS)
-  update(id, ['pickup_arranged'], 'completed')
+  update(id, ['pickup_arranged'], { status: 'completed' })
+}
+
+// Pedido de reembolso de pedido Concluído (provisório, fora das Regras): vai para análise do
+// suporte. A descrição e as fotos (ainda não enviadas) ficam com o suporte, não voltam à tela.
+export async function requestRefund(id: number, description: string): Promise<void> {
+  await wait(BUYER_DELAY_MS)
+  if (!description.trim()) {
+    throw new ApiError(422, 'VALIDATION_ERROR', 'Descreva o problema para pedir o reembolso.')
+  }
+  update(id, ['completed'], { status: 'refund_review' })
+}
+
+// "Não recebi reembolso": avisa o suporte de um reembolso aprovado que não chegou.
+export async function reportRefundNotReceived(id: number): Promise<void> {
+  await wait(BUYER_DELAY_MS)
+  update(id, ['refund_approved'], { status: 'refund_approved', refundNotReceivedReported: true })
+}
+
+// "Fazer avaliação": só o comprador de um pedido Concluído avalia o item, uma vez por pedido. A
+// avaliação saiu da tela do produto e fica aqui (provisório: as Regras ainda não definem avaliações).
+export async function reviewOrder(id: number, review: NewReview): Promise<void> {
+  const order = buyerOrders.find((item) => item.id === id)
+  if (!order) throw new ApiError(404, 'ORDER_NOT_FOUND', 'Pedido não encontrado.')
+  if (order.status !== 'completed' || order.reviewed) {
+    throw new ApiError(409, 'INVALID_ORDER_STATE', 'Este pedido não pode ser avaliado.')
+  }
+  await createReview(order.listingId, review)
+  buyerOrders = buyerOrders.map((item) => (item.id === id ? { ...item, reviewed: true } : item))
 }

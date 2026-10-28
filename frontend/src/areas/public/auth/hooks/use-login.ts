@@ -17,8 +17,10 @@ export function useLogin() {
     mutationFn: login,
     onSuccess: ({ data }) => {
       setToken(data.token, data.user.role)
+      // Aluno nunca volta a uma tela "/admin" (sobra de um logout do admin): vai às Categorias.
+      const studentFrom = from?.startsWith('/admin') ? undefined : from
       const destination =
-        data.user.role === 'admin' ? adminDestination(from) : (from ?? ROUTES.categories)
+        data.user.role === 'admin' ? adminDestination(from) : (studentFrom ?? ROUTES.categories)
       navigate(destination, { replace: true })
     },
   })

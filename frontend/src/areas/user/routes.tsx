@@ -62,6 +62,12 @@ export const userRoutes: RouteObject[] = [
         }),
       },
       {
+        path: 'meus-pedidos/:id',
+        lazy: async () => ({
+          Component: (await import('./orders/pages/OrderDetailsPage')).OrderDetailsPage,
+        }),
+      },
+      {
         path: 'anuncios/:id/gerenciar',
         lazy: async () => ({
           Component: (await import('./listings/pages/ManageListingPage')).ManageListingPage,

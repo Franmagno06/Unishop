@@ -21,6 +21,11 @@ export const ROUTES = {
   adminProducts: '/admin/produtos',
 } as const
 
+// Pedido do comprador (Meus pedidos → Detalhes do pedido).
+export const orderPaths = {
+  detail: (id: number) => `/meus-pedidos/${id}`,
+} as const
+
 // Rotas com parâmetro (anúncios do próprio aluno).
 export const listingRoutes = {
   manage: (id: number) => `/anuncios/${id}/gerenciar`,

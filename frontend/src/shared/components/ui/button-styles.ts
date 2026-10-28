@@ -1,5 +1,5 @@
 export type ButtonSize = 'md' | 'sm'
-export type ButtonVariant = 'primary' | 'secondary' | 'whatsapp' | 'social' | 'danger' | 'danger-outline'
+export type ButtonVariant = 'primary' | 'secondary' | 'whatsapp' | 'social' | 'danger' | 'danger-outline' | 'success'
 
 const base =
   'inline-flex items-center justify-center gap-2.5 rounded-lg font-semibold ' +
@@ -14,6 +14,7 @@ const variants: Record<ButtonVariant, string> = {
   social: 'border border-border bg-surface text-text hover:border-navy/40',
   // Do Figma ("Perigo" e "Perigo contorno"): ações destrutivas, como excluir perfil ou anúncio.
   danger: 'bg-danger text-surface hover:bg-danger-hover focus-visible:outline-danger',
+  success: 'bg-success text-surface hover:bg-success-hover focus-visible:outline-success',
   'danger-outline':
     'border-[1.5px] border-danger bg-surface text-danger hover:bg-danger-soft focus-visible:outline-danger',
 }

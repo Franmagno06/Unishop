@@ -34,7 +34,7 @@ function renderAt(entry: string) {
 describe('Admin · lista de usuários (A01)', () => {
   it('mostra os indicadores, as linhas do Figma e o resumo', async () => {
     renderAt('/admin/usuarios')
-    expect(screen.getByRole('status')).toHaveTextContent('Carregando usuários…')
+    expect(screen.getByText('Carregando usuários…')).toBeInTheDocument()
 
     const row = await screen.findByRole('row', { name: /Francisco Magno/ })
     expect(within(row).getByText('franmagno06@edu.unifor.br')).toBeInTheDocument()

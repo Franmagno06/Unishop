@@ -21,7 +21,11 @@
   --color-whatsapp-hover: #186540;
   --color-danger-hover: #a82020;
   --color-danger-soft: #fdecec;
+  --color-success: #1b7f4b;
+  --color-success-hover: #146339;
   --color-success-soft: #e8f5ee;
+  --color-warning: #8a5a00;
+  --color-warning-soft: #fff3cd;
 
   --font-sans: "Work Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Spectral", Georgia, serif;

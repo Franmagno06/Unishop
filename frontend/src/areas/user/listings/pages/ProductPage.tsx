@@ -16,6 +16,7 @@ import { parseListingId } from '../utils/listing-params'
 import { AdminOrderNotice, OrderPanel, OwnListingNotice } from '../components/OrderPanel'
 import { ImageGallery } from '../components/ImageGallery'
 import { OrderChoiceDialog } from '../components/OrderChoiceDialog'
+import { ReviewsSection } from '../components/ReviewsSection'
 import { SellerCard } from '../components/SellerCard'
 
 const sectionClasses = 'mx-auto flex max-w-[1440px] flex-col gap-6 px-4 pb-24 pt-8 sm:px-5 md:px-12 lg:px-[100px] lg:pt-12'
@@ -144,6 +145,8 @@ export function ProductPage() {
                 onOrder={handleOrder}
               />
             )}
+
+            <ReviewsSection listingId={data.id} />
           </div>
 
           <OrderChoiceDialog

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export type BadgeTone = 'info' | 'neutral' | 'success' | 'danger'
+export type BadgeTone = 'info' | 'neutral' | 'success' | 'done' | 'warning' | 'danger'
 
 // Cores do Figma: azul-claro (ativo), cinza (concluído) e verde (ATIVO do anúncio). O vermelho
 // (cancelado) não é desenhado: deriva do `--danger`.
@@ -8,6 +8,10 @@ const tones: Record<BadgeTone, string> = {
   info: 'bg-primary-soft text-navy',
   neutral: 'bg-border text-text-muted',
   success: 'bg-success-soft text-whatsapp',
+  // Pedido concluído: fundo verde-claro e texto num verde mais escuro que o do "ATIVO".
+  done: 'bg-success-soft text-whatsapp-hover',
+  // Em análise (reembolso pedido): amarelo.
+  warning: 'bg-warning-soft text-warning',
   danger: 'bg-danger-soft text-danger',
 }
 
