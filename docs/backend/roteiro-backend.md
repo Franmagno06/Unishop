@@ -1,10 +1,10 @@
 ---
 title: Roteiro de Implementação — Backend
 project: Unishop
-version: 0.4
+version: 0.5
 date: 2026-10-28
 status: proposta para aprovação do gestor
-changelog: "0.4 — passo zero com o grafo (graphify) em toda etapa. 0.3 — P2 decidido (banco em português, código e API em inglês por @map; seção 2.1); P9 (motivo do cancelamento sem coluna); seção 2.2 com o que o frontend ganhou nos commits 6be5b283, fb89e4d2 e ecb08f1d. 0.2 — integração com o frontend dentro de cada etapa (seção 4), chave de exemplos por área, etapas 6 e 7 integradas juntas, cartão por token falso até a Etapa 10"
+changelog: "0.5 — banco já existente (repositório clarammacedo/unishop) vira ponto de partida da Etapa 2, que deixa de criar do zero; seção 2.3 diz o que já existe, o que falta e em que etapa cada mudança entra; P10 e P11. 0.4 — passo zero com o grafo (graphify) em toda etapa. 0.3 — P2 decidido (banco em português, código e API em inglês por @map; seção 2.1); P9 (motivo do cancelamento sem coluna); seção 2.2 com o que o frontend ganhou nos commits 6be5b283, fb89e4d2 e ecb08f1d. 0.2 — integração com o frontend dentro de cada etapa (seção 4), chave de exemplos por área, etapas 6 e 7 integradas juntas, cartão por token falso até a Etapa 10"
 owners: Felipe Bessa (backend), Pedro Cândido (API), Ana Clara Macêdo (banco), Francisco Magno (integração)
 based_on: backend.md v0.3, bd.md v0.2, regras-de-negócio.md v0.4.1, api.md v0.3, deploy.md v0.3
 language: pt-BR
@@ -19,7 +19,7 @@ Este roteiro ordena **o que construir, em que sequência e como saber que acabou
 | Item | Estado |
 |---|---|
 | `backend/` | Existe um andaime: `package.json` com todas as dependências do `backend.md §3`, `tsconfig`, ESLint, Prettier, Vitest, `src/app.ts` (helmet, cors, compression, json, `GET /api/v1/health`), `src/config/env.ts` (Zod, todas as variáveis do §4), `src/dev-server.ts`, 1 teste de integração (`health`) e a trava `assert-test-db.ts` (testes só em banco `*_test`). |
-| Banco | `docker-compose.yml` (dev) e `docker-compose.test.yml` (porta 5433) existem. **Não há** `prisma/` (schema, migrações, seed). |
+| Banco | `docker-compose.yml` (dev) e `docker-compose.test.yml` (porta 5433) existem. **Não há** `prisma/` (schema, migrações, seed). O banco da Ana Clara **já existe** no repositório `clarammacedo/unishop` (dump de 07/10/2026, 7 tabelas); a Etapa 2 parte dele em vez de criar do zero. O que ele tem e o que falta está na seção 2.3. |
 | Faltam no `package.json` | `@vercel/functions` (`waitUntil`, `backend.md §11`) e um cliente HTTP/túnel para o webhook em dev (ngrok ou Cloudflare Tunnel, fora do npm). |
 | Frontend | Telas quase prontas, **sobre dados de exemplo**. Só o `auth.service.ts` já tem o caminho real (`api()`); os demais services são só exemplo em memória. O cliente `api()` não envia `multipart`. Detalhes e consequências na seção 4.1. |
 | `openapi.yaml` | Não existe. |
@@ -39,7 +39,9 @@ Resolver **antes** da etapa indicada. Nenhuma trava a Etapa 1.
 | P6 | Domínio próprio para o Resend (e talvez Google) | Etapa 10 | Grupo | Em dev usa Mailtrap; produção exige domínio verificado. |
 | P7 | **Prisma 7 × documentos.** O projeto instalou `prisma` e `@prisma/client` 7.10.1 com `@prisma/adapter-pg`; `bd.md`/`backend.md` descrevem `directUrl` no `schema.prisma`. Na versão 7 a URL de conexão sai do schema (arquivo `prisma.config.ts` + adapter). **A confirmar na Etapa 2**; se confirmado, corrigir `bd.md §11/§14` e `backend.md §3`. | Etapa 2 | Felipe + Ana Clara | Spike de 1 h no início da Etapa 2. |
 | P8 | **Funcionalidades do frontend sem regra nem tabela** (commits `6be5b283`, `fb89e4d2` e `ecb08f1d`, já mesclados com a `main` em `c02c16b3`). Lista completa na seção 2.2. As Regras v0.4.1 e o Banco v0.2 não as mencionam, e os próprios tipos do frontend dizem "provisório". | Etapa 12 (opcional) | Grupo | Decidir item a item: entra no MVP (então Regras → Banco → Backend, nessa ordem) ou fica como demonstração só no frontend. **Não implementar antes da decisão.** |
-| P9 | **Motivo do cancelamento feito pelo sistema.** A tela mostra por que o pedido foi cancelado (`expired`, `out_of_stock`, `listing_unavailable`; RN-PAG-08, 12, 14), mas a tabela `pedido` não tem coluna para isso. Pelo pagamento não dá para distinguir "estoque acabou" de "anúncio saiu do ar" (os dois viram `estorno_pendente`). **Isso é do MVP**, diferente da P8. | Etapa 2 | Ana Clara + Felipe | Acrescentar `pedido.motivo_cancelamento` (varchar, anulável, `CHECK` com os valores do sistema) no `bd.md` antes de gerar o `0_init`. Se a P8 aprovar os motivos do comprador, a mesma coluna recebe esses valores. |
+| P9 | **Motivo do cancelamento feito pelo sistema.** A tela mostra por que o pedido foi cancelado (`expired`, `out_of_stock`, `listing_unavailable`; RN-PAG-08, 12, 14), mas a tabela `pedido` não tem coluna para isso. Pelo pagamento não dá para distinguir "estoque acabou" de "anúncio saiu do ar" (os dois viram `estorno_pendente`). **Isso é do MVP**, diferente da P8. | Etapa 2 | Ana Clara + Felipe | Acrescentar `pedido.motivo_cancelamento` (varchar, anulável, `CHECK` com os valores do sistema) no `bd.md` e criá-la na **migração 3** da Etapa 2 (seção 2.3, item B). Se a P8 aprovar os motivos do comprador, a mesma coluna recebe esses valores na Etapa 12. |
+| P10 | **Conflito com uma decisão registrada.** `CLAUDE.md` e `bd.md §11` dizem "o dump de 07/10/2026 não é restaurado; o banco nasce só do Prisma". Francisco pediu em 28/10/2026 para **aproveitar o banco já criado**. **Decidido assim:** o dump entra como baseline `0_init` e o Prisma continua sendo a única via de evolução (nada de `psql` solto em ambiente compartilhado). | Etapa 2 | Francisco + Ana Clara | Na Etapa 2, corrigir `bd.md §11` (passo 1 e 4) e a frase do `CLAUDE.md`. Ana Clara confirma que o dump do repositório é a versão que ela considera final da v0.1. |
+| P11 | ~~Existe banco vivo?~~ **Respondido em 28/10/2026 (Francisco): não existe; só o script.** O repositório tem `Unishop_db.sql`, `unishop_db` (mesmo conteúdo, `pg_dump` 18.6, só estrutura, sem linhas) e `mer_unishop (2).drawio`. | — | — | Todo ambiente (dev, teste, preview, produção) nasce aplicando `0_init` e as migrações seguintes em banco vazio. Não há `migrate resolve` nem preenchimento de linhas antigas. |
 
 ### 2.1 Padrão de valores: banco × código e API
 
@@ -77,6 +79,57 @@ Conferido nos commits `6be5b283`, `fb89e4d2` e `ecb08f1d`. Nenhum item abaixo ex
 
 Sem impacto no backend: tela de detalhes do pedido (`/meus-pedidos/:id`, usa o `GET /orders/:id` que já está no roteiro), filtros por status em "Meus pedidos" (feitos na tela, sobre a lista que a API já devolve) e a correção do "Sair" do admin (`session.ts`, `AdminRoute.tsx`).
 
+### 2.3 O banco que já existe e o que falta nele
+
+**O que o repositório `clarammacedo/unishop` tem (conferido em 28/10/2026):** 7 tabelas (`usuario`, `categoria`, `anuncio`, `imagem_anuncio`, `pedido`, `pagamento`, `log_admin`), com chaves `GENERATED ALWAYS AS IDENTITY`, FKs nomeadas (`fk_<filha>_<pai>`), `categoria.nome` único, `usuario.email` único e valores padrão de status (`ativo`, `em_negociacao`, `aluno`, `ativa`). É a v0.1 do banco, **anterior** ao `bd.md` v0.2. Os nomes de tabela e coluna já são os do `bd.md`, então o `@map` do Prisma funciona sem renomear nada. Não há linhas de dados.
+
+**O ganho real de partir dele:** as tabelas, nomes, chaves e relações já foram desenhados e revistos pela Ana Clara, e a Etapa 2 não redesenha nada. O que **não** se evita é a diferença para a v0.2: o dump não tem `token_usuario`, nem cerca de 35 colunas, nem nenhum `CHECK` ou índice parcial. Dizer que o banco "está pronto" seria impreciso; ele é a base.
+
+**Como a migração fica** (Prisma continua sendo a única via, P10):
+
+| Migração | Conteúdo | Quando |
+|---|---|---|
+| `0_init` (baseline) | O `CREATE TABLE` do dump, sem `OWNER TO postgres` nem as linhas `\restrict`. Aplicado em todo ambiente, em banco vazio (P11: não há banco vivo) | Etapa 2 |
+| `1_v02_estrutura` (A) | Diferença entre o dump e o `bd.md §4`, revisada à mão | Etapa 2 |
+| `2_v02_regras` | O SQL do `bd.md §14` como está (`CHECK`, índices parciais, `lower(email)`, view, papéis) | Etapa 2 |
+| `3_motivo_cancelamento` (B) | Funcionalidade nova do MVP não prevista (P9) | Etapa 2 |
+| `4_avaliacao_suporte` (C) | Funcionalidades novas do frontend (P8) | Etapa 12, só se P8 aprovar |
+
+**A. Do dump para a v0.2** (fonte: `bd.md §13`; tipos e tamanhos exatos vêm do `bd.md §4`). Já é plano do grupo, não é funcionalidade nova.
+
+Como todo ambiente começa vazio (P11), as colunas `NOT NULL` entram direto, sem preenchimento de linhas antigas.
+
+| Tabela | O que falta no dump | Atenção ao aplicar |
+|---|---|---|
+| `usuario` | `data_aceite_termos`, `tentativas_login`, `bloqueado_ate`, `senha_alterada_em`, `google_sub`; `senha_hash` passa a aceitar `NULL`; índice em `lower(email)` | O `usuario_email_key` (único com maiúsculas) é substituído por `uq_usuario_email_lower`; Ana Clara confirma a remoção |
+| `anuncio` | `whatsapp`, `excluido_em`, `vendido_em`; `descricao` passa a obrigatória | — |
+| `imagem_anuncio` | `public_id` obrigatório; `ordem` única por anúncio | — |
+| `pedido` | `id_vendedor`, `nome_produto`, `imagem_url`, `quantidade`, `preco_unitario`, `taxa_servico`, `concluido_em`, `atualizado_em` | — |
+| `pagamento` | `data_expiracao`, `chave_idempotencia`, `data_criacao`, `tentativas_estorno`, `ultimo_erro`; **remover `pagamento_id_pedido_key`** (UNIQUE em `id_pedido`), porque a v0.2 guarda uma linha por tentativa | Sem isso, a segunda tentativa de pagamento do mesmo pedido falha |
+| `log_admin` | `detalhes jsonb` | — |
+| `token_usuario` | Tabela inteira, nova (RN-ACE-07, 10, RN-PER-02) | — |
+| Todas | Colunas `timestamp` viram `timestamptz` | Sem dados, é só trocar o tipo |
+
+**B. Funcionalidade nova do MVP que o banco ainda não tem** (**acontece na Etapa 2**, migração 3):
+
+| O quê | Por quê | Mudança |
+|---|---|---|
+| `pedido.motivo_cancelamento` | A tela mostra por que o sistema cancelou o pedido (P9; RN-PAG-08, 12, 14) | Coluna `varchar` anulável com `CHECK` nos valores `vencido`, `sem_estoque`, `anuncio_indisponivel` (nomes propostos, conversão em 2.1). Os jobs e a liquidação gravam o motivo ao cancelar |
+
+**C. Funcionalidades novas do frontend, ainda sem decisão do grupo** (**acontecem na Etapa 12**, migração 4, e nunca antes de a P8 ser aprovada e de Regras e `bd.md` serem atualizados). O desenho abaixo é **proposta** a partir dos tipos do frontend (`review.types.ts`, `support.types.ts`, `order.types.ts`), não decisão:
+
+| Item do frontend | Mudança proposta no banco | Observação |
+|---|---|---|
+| Avaliação de um item concluído | Tabela `avaliacao`: `id_avaliacao`, `id_pedido` (**único**: uma por pedido concluído, a confirmar), `id_anuncio`, `id_avaliador`, `nota` (0 a 5 em passos de 0,5, `CHECK`), `comentario`, `data_criacao` | Admin não avalia; só o comprador de pedido `concluido`. O nome do autor vem do join, sem coluna |
+| Solicitação de suporte (reembolso, cancelamento, outro) | Tabela `solicitacao_suporte`: `id_solicitacao`, `tipo` (`reembolso`/`cancelamento_pedido`/`outro`), `status` (`aberta`/`em_analise`/`resolvida`/`negada`), `id_usuario`, `id_pedido` anulável, `motivo`, `mensagem`, `id_admin` e `resolvido_em` anuláveis, `data_criacao` | Campos da resolução saem da leitura da `ResolveSupportDialog` quando a etapa começar |
+| Fotos anexadas ao pedido de reembolso | Tabela `foto_solicitacao`: `id_foto`, `id_solicitacao`, `url_imagem`, `public_id`, `ordem` | Mesmo padrão e limite de 4 MB por requisição de `imagem_anuncio` |
+| Estados `refund_review` e `refund_approved` do pedido | Dois valores novos no `CHECK` de `pedido.status_pedido` (propostas: `reembolso_em_analise`, `reembolso_aprovado`) e `pedido.reembolso_nao_recebido_em` (`timestamptz`, anulável) para o aviso de reembolso não recebido | Muda o RN-PED-12 (hoje pedido Pago não cancela). Exige decisão antes |
+| Motivos de cancelamento do comprador (`late_delivery`, `no_response`, `changed_mind`, "Outros") | O `CHECK` de `motivo_cancelamento` ganha os valores do comprador e entra `pedido.detalhe_cancelamento` (`text`, anulável) para o texto de "Outros" | Estende a coluna do item B |
+| Resolução de suporte pelo admin | `CHECK` de `log_admin.entidade` ganha `solicitacao_suporte` | Ação do admin continua gravando log na mesma transação (RN-ADM-10) |
+| Prazo de entrega (`deliveryDeadline`) | **Nenhuma coluna.** A API devolve `null` | Contradiz RN-PED-09 e 11 (retirada combinada por WhatsApp) |
+
+Sem mudança no banco: detalhes do pedido, filtros por status e a correção do "Sair" do admin (seção 2.2).
+
 ## 3. Visão geral das etapas
 
 Ordem por dependência: cada etapa deixa algo **rodando e testado**, e o frontend troca o mock correspondente (seção 4).
@@ -84,7 +137,7 @@ Ordem por dependência: cada etapa deixa algo **rodando e testado**, e o fronten
 | Etapa | Entrega | Depende de | Porte |
 |---|---|---|---|
 | 1 | Fundação da API: erros, logs, limites, config, testes | — | M |
-| 2 | Banco: Prisma, `0_init`, migração manual, seed | 1 | M |
+| 2 | Banco: adotar o dump existente como `0_init`, levar à v0.2, motivo do cancelamento, seed | 1, P10 | M |
 | 3 | Providers: interfaces + drivers falsos | 1 | M |
 | 4 | Auth e perfil básico | 2, 3, P1, P2 | G |
 | 5 | Categorias e anúncios | 4 | G |
@@ -94,7 +147,7 @@ Ordem por dependência: cada etapa deixa algo **rodando e testado**, e o fronten
 | 9 | Admin, exclusão e anonimização | 5, 6, 8 | G |
 | 10 | Integrações reais (Google, e-mail, Cloudinary, Mercado Pago) | 4–9, P3, P4, P6 | M |
 | 11 | Endurecimento, deploy e integração final | todas, P5 | G |
-| 12 | Avaliações e suporte (**só se P8 aprovar**) | 9 | M |
+| 12 | Avaliações e suporte, com a migração 4 do banco (**só se P8 aprovar**) | 9 | M |
 
 Marcos (todos verificados **no navegador**, frontend + API locais): **fim da 4** = cadastro, login e perfil reais; **fim da 5** = vitrine e anúncios reais; **fim da 7** = compra de ponta a ponta com provider falso; **fim da 9** = todas as rotas do §9 do backend.md prontas e o frontend sem dados de exemplo (salvo P8); **fim da 11** = produção.
 
@@ -169,18 +222,22 @@ Uma etapa só termina quando o fluxo dela funciona no navegador com a API real. 
 
 ## Etapa 2 — Banco de dados
 
-**Objetivo:** o banco do `bd.md` criado **só pelo Prisma** e testado em banco vazio.
+**Objetivo:** partir do banco que a Ana Clara já criou (repositório `clarammacedo/unishop`), levá-lo ao estado do `bd.md` v0.2 e acrescentar o que as funcionalidades novas pedem, tudo **só por migrações do Prisma** e testado em banco vazio. Não se desenha o banco de novo. O quadro completo de o que existe, o que falta e quando está na **seção 2.3**.
 
 **Entregas**
 - Spike P7 (Prisma 7: `prisma.config.ts`, adapter `pg`, conexão pooled × direta).
-- Antes de gerar o schema: coluna `pedido.motivo_cancelamento` (P9) no `bd.md` e correção da nota do `bd.md §7` sobre os valores (P2), ambas com o aval da Ana Clara.
-- `prisma/schema.prisma` com as 8 tabelas e `@map`/`@@map` (`bd.md §7`). Enums com nomes em inglês e cada valor com `@map` para o valor em português do banco, conforme a seção 2.1.
-- Migração `0_init` gerada + **migração manual** (`bd.md §14`: `CHECK`, índices parciais `uq_pedido_aberto` e `uq_pagamento_ativo`, índice em `lower(email)`, view `anuncio_visivel`, papéis).
+- Resolver P10 (corrigir `bd.md §11` e a frase do `CLAUDE.md`). A P11 já está respondida: não há banco vivo.
+- **Baseline `0_init`:** copiar a estrutura de `Unishop_db.sql` (sem `OWNER TO postgres` e sem `\restrict`). Subir um Postgres 18 vazio com ela, rodar `prisma db pull` e conferir o resultado contra o dump.
+- **Migração 1, `1_v02_estrutura`** (seção 2.3, item A): colunas, tipos, `token_usuario` e remoção do UNIQUE de `pagamento.id_pedido`. Revisada à mão, porque o Prisma gera o diff entre o schema e o banco, mas o `NOT NULL` em tabela com linhas precisa de preenchimento.
+- **Migração 2, `2_v02_regras`:** o SQL do `bd.md §14` sem alteração (`CHECK`, índices parciais `uq_pedido_aberto` e `uq_pagamento_ativo`, `lower(email)`, view `anuncio_visivel`, papéis).
+- **Migração 3, `3_motivo_cancelamento`** (item B, **funcionalidade nova**): `pedido.motivo_cancelamento` com `CHECK`. Atualizar o `bd.md §4.5 e §6` no mesmo PR, com o aval da Ana Clara. Correção da nota do `bd.md §7` sobre os valores (P2) junto.
+- `prisma/schema.prisma` com as 8 tabelas e `@map`/`@@map` (`bd.md §7`). Enums com nomes em inglês e cada valor com `@map` para o valor em português do banco (seção 2.1). Os nomes de tabela e coluna do dump já coincidem com o `bd.md`, então quase todo `@map` é de enum.
 - `prisma/seed.ts`: 6 categorias fixas e a conta admin (`ADMIN_EMAIL`/`ADMIN_PASSWORD`), idempotente (RN-CAT-01, RN-ADM-11).
 - `config/database.ts` (cliente único) e `db:reset` funcionando.
 - `/health/db` real.
+- Ana Clara registra no MER (`mer_unishop (2).drawio`, no repositório dela) as divergências do `bd.md §12`, incluindo `motivo_cancelamento`.
 
-**Testes obrigatórios:** os "testes rápidos de integridade (devem falhar)" do `bd.md §14` viram testes de integração (estoque negativo, 6ª imagem, e-mail duplicado em maiúsculas, dois pedidos abertos iguais, dois pagamentos ativos); seed rodado duas vezes não duplica; migração do zero em banco vazio.
+**Testes obrigatórios:** os "testes rápidos de integridade (devem falhar)" do `bd.md §14` viram testes de integração (estoque negativo, 6ª imagem, e-mail duplicado em maiúsculas, dois pedidos abertos iguais, dois pagamentos ativos); seed rodado duas vezes não duplica; **as quatro migrações aplicadas em sequência num banco vazio** dão o mesmo schema que o `schema.prisma`; segunda tentativa de pagamento no mesmo pedido é aceita (prova de que o UNIQUE antigo saiu); `motivo_cancelamento` recusa valor fora da lista.
 
 **Pronto quando:** `db:reset` + seed num banco vazio passam e a Ana Clara confere o schema contra o DER (divergências do `bd.md §12` anotadas).
 
@@ -314,7 +371,9 @@ Troca de driver por variável, **sem mudar service nem controller** (é o teste 
 
 ## Etapa 12 — Avaliações e suporte (condicional a P8)
 
-Só começa depois de o grupo decidir. Ordem obrigatória: **Regras de Negócio → Banco de Dados → Backend → `openapi.yaml` → código**, mais a skill correspondente revisada. Escopo a definir: tabela(s) de avaliação (um aluno avalia uma vez por pedido concluído?), solicitação de suporte/reembolso (quem decide o estorno? o `refundPayment` já existe), fotos anexas (limite de 4 MB por requisição se valer), motivos de cancelamento. **Nada disso está definido hoje**; os tipos do frontend são formato assumido.
+Só começa depois de o grupo decidir. Ordem obrigatória: **Regras de Negócio → Banco de Dados → Backend → `openapi.yaml` → código**, mais a skill correspondente revisada. Escopo a definir: avaliação (um aluno avalia uma vez por pedido concluído?), solicitação de suporte/reembolso (quem decide o estorno? o `refundPayment` já existe), fotos anexas (limite de 4 MB por requisição se valer), motivos de cancelamento. **Nada disso está definido hoje**; os tipos do frontend são formato assumido.
+
+**Banco nesta etapa (é aqui que ele muda por causa das funcionalidades novas):** migração `4_avaliacao_suporte`, com as tabelas `avaliacao`, `solicitacao_suporte` e `foto_solicitacao`, os dois estados novos de `pedido.status_pedido`, `pedido.reembolso_nao_recebido_em`, `pedido.detalhe_cancelamento`, os motivos do comprador no `CHECK` de `motivo_cancelamento` e `solicitacao_suporte` em `log_admin.entidade`. O desenho está na seção 2.3, item C. A migração **só é gerada depois** de a P8 aprovar cada item e de Regras e `bd.md` descreverem a mudança; item não aprovado fica de fora. Sendo aditiva, não mexe nas etapas 1 a 11, e o frontend segue com exemplos nessas telas até lá.
 
 ---
 
@@ -326,4 +385,4 @@ Só começa depois de o grupo decidir. Ordem obrigatória: **Regras de Negócio 
 
 ## 6. Primeiro passo sugerido
 
-Aprovar este roteiro, resolver **P7** (spike do Prisma 7) e iniciar a **Etapa 1** em TDD sobre o andaime existente, na `Branch-Do-Magno`, em commits pequenos. Em paralelo, levar a **P9** (coluna do motivo de cancelamento) e a correção do `bd.md §7` (P2) à Ana Clara, e preparar no frontend a chave de exemplos por área (seção 4.1), que é pequena e destrava a integração gradual. Cada etapa ganha, quando começar, o seu plano detalhado de tarefas (arquivo, assinatura, teste, comando de verificação) em `docs/superpowers/plans/`, para não congelar agora decisões que dependem do que as etapas anteriores revelarem.
+Aprovar este roteiro, resolver **P7** (spike do Prisma 7) e iniciar a **Etapa 1** em TDD sobre o andaime existente, na `Branch-Do-Magno`, em commits pequenos. Em paralelo, levar à Ana Clara a confirmação do dump como baseline (**P10**), a **P9** (coluna do motivo de cancelamento) e a correção do `bd.md §7` (P2), e preparar no frontend a chave de exemplos por área (seção 4.1), que é pequena e destrava a integração gradual. Cada etapa ganha, quando começar, o seu plano detalhado de tarefas (arquivo, assinatura, teste, comando de verificação) em `docs/superpowers/plans/`, para não congelar agora decisões que dependem do que as etapas anteriores revelarem.
