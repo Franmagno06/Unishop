@@ -38,7 +38,9 @@ function useOrderAction<TVariables>(action: (variables: TVariables) => Promise<v
 }
 
 export const useCancelOrder = () =>
-  useOrderAction(({ id, reason }: { id: number; reason: BuyerCancelReason }) => cancelOrder(id, reason))
+  useOrderAction(({ id, reason, details }: { id: number; reason: BuyerCancelReason; details?: string }) =>
+    cancelOrder(id, reason, details),
+  )
 export const useConfirmReceipt = () => useOrderAction(confirmReceipt)
 export const useRequestRefund = () =>
   useOrderAction(({ id, description }: { id: number; description: string }) => requestRefund(id, description))

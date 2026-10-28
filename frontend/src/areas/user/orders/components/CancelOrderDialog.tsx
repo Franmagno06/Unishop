@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { TextAreaField } from '../../../../shared/components/ui/TextAreaField'
 import { ConfirmDialog } from '../../../../shared/components/ui/ConfirmDialog'
 import type { BuyerCancelReason, BuyerOrder } from '../types/order.types'
 import { cancelReasonLabels, paidCancelReasons, unpaidCancelReasons } from '../utils/order-status'
@@ -7,7 +8,8 @@ type CancelOrderDialogProps = {
   order: BuyerOrder
   // Pedido já pago: outro texto e outra lista de motivos, e o reembolso é avisado depois.
   paid?: boolean
-  onConfirm: (reason: BuyerCancelReason) => void
+  // `details` só vem preenchido quando o motivo é "Outros".
+  onConfirm: (reason: BuyerCancelReason, details?: string) => void
   onCancel: () => void
   pending: boolean
   failed: boolean
@@ -17,7 +19,9 @@ type CancelOrderDialogProps = {
 // motivo; o motivo não vem marcado, para a escolha ser sempre consciente.
 export function CancelOrderDialog({ order, paid = false, onConfirm, onCancel, pending, failed }: CancelOrderDialogProps) {
   const [reason, setReason] = useState<BuyerCancelReason | null>(null)
+  const [details, setDetails] = useState('')
   const reasons = paid ? paidCancelReasons : unpaidCancelReasons
+  const needsDetails = reason === 'other'
 
   return (
     <ConfirmDialog
@@ -29,10 +33,10 @@ export function CancelOrderDialog({ order, paid = false, onConfirm, onCancel, pe
       }
       confirmLabel="Cancelar pedido"
       cancelLabel="Voltar"
-      onConfirm={() => reason && onConfirm(reason)}
+      onConfirm={() => reason && onConfirm(reason, needsDetails ? details.trim() : undefined)}
       onCancel={onCancel}
       pending={pending}
-      confirmDisabled={reason === null}
+      confirmDisabled={reason === null || (needsDetails && details.trim() === '')}
       errorMessage={failed ? 'Não foi possível cancelar agora. Atualize a página e tente de novo.' : undefined}
     >
       <fieldset className="flex flex-col gap-2">
@@ -54,6 +58,15 @@ export function CancelOrderDialog({ order, paid = false, onConfirm, onCancel, pe
           </label>
         ))}
       </fieldset>
+      {needsDetails ? (
+        <TextAreaField
+          label="Descreva o seu problema"
+          value={details}
+          onChange={(event) => setDetails(event.target.value)}
+          maxLength={500}
+          required
+        />
+      ) : null}
     </ConfirmDialog>
   )
 }

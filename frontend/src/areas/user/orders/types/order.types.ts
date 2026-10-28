@@ -92,6 +92,8 @@ export type BuyerOrder = {
   // sempre combinada pelo WhatsApp), por isso é dado de exemplo e pode vir vazio.
   deliveryDeadline: string | null // ISO (UTC)
   cancelReason: BuyerCancelReason | null
+  // Texto livre do comprador quando o motivo é "Outros".
+  cancelDetails?: string
   // O comprador avisou que não recebeu o reembolso aprovado (ausente = ainda não avisou).
   refundNotReceivedReported?: boolean
   // O comprador já avaliou o item deste pedido (ausente = ainda não avaliou).

@@ -304,9 +304,16 @@ function update(
 // RN-PED-12: o comprador cancela pedido Pendente ou Em negociação, informando o motivo. Cancelar
 // pedido Pago (ou com retirada combinada) foi pedido para a tela de detalhes e gera reembolso: é
 // provisório, as Regras ainda não preveem isso.
-export async function cancelOrder(id: number, reason: BuyerCancelReason): Promise<void> {
+export async function cancelOrder(id: number, reason: BuyerCancelReason, details?: string): Promise<void> {
   await wait(BUYER_DELAY_MS)
-  update(id, ['pending', 'negotiating', 'paid', 'pickup_arranged'], { status: 'cancelled', cancelReason: reason })
+  if (reason === 'other' && !details?.trim()) {
+    throw new ApiError(422, 'VALIDATION_ERROR', 'Descreva o motivo do cancelamento.')
+  }
+  update(id, ['pending', 'negotiating', 'paid', 'pickup_arranged'], {
+    status: 'cancelled',
+    cancelReason: reason,
+    cancelDetails: reason === 'other' ? details?.trim() : undefined,
+  })
 }
 
 // RN-PED-08: com a retirada combinada, o comprador confirma o recebimento e o pedido conclui.

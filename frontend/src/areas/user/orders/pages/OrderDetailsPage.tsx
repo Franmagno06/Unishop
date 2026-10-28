@@ -130,6 +130,9 @@ export function OrderDetailsPage() {
             {order.status === 'cancelled' && order.cancelReason ? (
               <Row label="Motivo do cancelamento">{cancelReasonLabels[order.cancelReason]}</Row>
             ) : null}
+            {order.status === 'cancelled' && order.cancelDetails ? (
+              <Row label="Descrição do problema">{order.cancelDetails}</Row>
+            ) : null}
           </dl>
 
           {canCancel ? (
@@ -195,9 +198,9 @@ export function OrderDetailsPage() {
             <CancelOrderDialog
               order={order}
               paid={refundable}
-              onConfirm={(reason) =>
+              onConfirm={(reason, details) =>
                 cancel.mutate(
-                  { id: order.id, reason },
+                  { id: order.id, reason, details },
                   { onSuccess: () => setDialog(refundable ? 'cancel-done' : null) },
                 )
               }

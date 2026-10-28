@@ -30,6 +30,19 @@ describe('Detalhes do pedido', () => {
     expect(screen.getByRole('button', { name: 'Cancelar pedido' })).toBeInTheDocument()
   })
 
+  it('"Outros" pede a descrição do problema antes de cancelar', async () => {
+    renderPage('/meus-pedidos/390')
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Cancelar pedido' }))
+    const dialog = screen.getByRole('dialog', { name: 'Cancelar este pedido?' })
+    expect(within(dialog).queryByRole('textbox')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('radio', { name: 'Outros' }))
+    const confirm = within(dialog).getByRole('button', { name: 'Cancelar pedido' })
+    expect(confirm).toBeDisabled()
+    await user.type(within(dialog).getByRole('textbox'), 'Vendedor sumiu')
+    expect(confirm).toBeEnabled()
+  })
+
   it('só confirma o cancelamento depois de marcar o motivo', async () => {
     renderPage('/meus-pedidos/390')
     const user = userEvent.setup()
@@ -74,7 +87,7 @@ describe('Detalhes do pedido', () => {
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'Cancelar pedido' }))
     const dialog = screen.getByRole('dialog', { name: 'Confirmar o cancelamento?' })
-    await user.click(within(dialog).getByRole('radio', { name: 'Outros' }))
+    await user.click(within(dialog).getByRole('radio', { name: 'Atraso na entrega' }))
     await user.click(within(dialog).getByRole('button', { name: 'Cancelar pedido' }))
     expect(await screen.findByText(/até 30 dias/)).toBeInTheDocument()
   })

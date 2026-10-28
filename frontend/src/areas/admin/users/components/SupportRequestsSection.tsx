@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { ErrorAlert } from '../../../../shared/components/ui/Alert'
 import { Avatar } from '../../../../shared/components/ui/Avatar'
@@ -8,7 +9,8 @@ import { adminPaths } from '../../../../shared/constants/routes'
 import { formatDate } from '../../../../shared/utils/format-date'
 import { tableCard } from '../../shared/components/table-styles'
 import { useSupportRequests, useUpdateSupportRequest } from '../hooks/use-support-requests'
-import type { SupportRequestStatus, SupportRequestType } from '../types/support.types'
+import { ResolveSupportDialog } from './ResolveSupportDialog'
+import type { SupportRequest, SupportRequestStatus, SupportRequestType } from '../types/support.types'
 
 const TYPE_LABEL: Record<SupportRequestType, string> = {
   refund: 'Reembolso',
@@ -19,15 +21,19 @@ const STATUS: Record<SupportRequestStatus, { label: string; tone: BadgeTone }> =
   open: { label: 'Aberta', tone: 'danger' },
   in_review: { label: 'Em análise', tone: 'warning' },
   resolved: { label: 'Resolvida', tone: 'done' },
+  denied: { label: 'Negada', tone: 'danger' },
 }
+
+const isClosed = (status: SupportRequestStatus) => status === 'resolved' || status === 'denied'
 
 // Suporte ao usuário (Usuários, abaixo da lista): pedidos de reembolso, cancelamento de pedido e
 // outros assuntos. O admin passa a solicitação para "Em análise" e depois a "Resolvida".
 export function SupportRequestsSection() {
   const requests = useSupportRequests()
   const update = useUpdateSupportRequest()
+  const [resolving, setResolving] = useState<SupportRequest | null>(null)
   const items = requests.data ?? []
-  const pending = items.filter((request) => request.status !== 'resolved').length
+  const pending = items.filter((request) => isClosed(request.status) === false).length
 
   return (
     <section aria-labelledby="support-title" className="flex flex-col gap-4 pt-4">
@@ -97,11 +103,14 @@ export function SupportRequestsSection() {
                     Em análise
                   </Button>
                 ) : null}
-                {request.status !== 'resolved' ? (
+                {!isClosed(request.status) ? (
                   <Button
                     size="sm"
                     disabled={update.isPending}
-                    onClick={() => update.mutate({ id: request.id, status: 'resolved' })}
+                    onClick={() => {
+                      update.reset()
+                      setResolving(request)
+                    }}
                   >
                     Resolver
                   </Button>
@@ -111,6 +120,18 @@ export function SupportRequestsSection() {
           ))}
         </ul>
       )}
+
+      {resolving ? (
+        <ResolveSupportDialog
+          request={resolving}
+          onDecide={(status) =>
+            update.mutate({ id: resolving.id, status }, { onSuccess: () => setResolving(null) })
+          }
+          onClose={() => setResolving(null)}
+          pending={update.isPending}
+          failed={update.isError}
+        />
+      ) : null}
     </section>
   )
 }

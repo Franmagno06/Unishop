@@ -6,6 +6,10 @@ import type { SupportRequest, SupportRequestStatus } from '../types/support.type
 // muda some ao recarregar. Quando a API existir, só este arquivo muda.
 const ago = (days: number) => new Date(DEMO_NOW - days * DAY).toISOString()
 
+// Foto de exemplo (SVG embutido) no lugar de um arquivo enviado pelo aluno.
+const photo = (label: string, color: string) =>
+  `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='320' height='240'><rect width='320' height='240' fill='${color}'/><text x='160' y='126' font-size='20' text-anchor='middle' fill='white' font-family='sans-serif'>${label}</text></svg>`)}`
+
 let requests: SupportRequest[] = [
   {
     id: 1,
@@ -16,6 +20,7 @@ let requests: SupportRequest[] = [
     userEmail: 'joao.pereira@edu.unifor.br',
     orderId: 9001,
     message: 'Paguei por Pix, mas o vendedor não responde há dois dias. Quero o reembolso.',
+    photos: [photo('Foto 1', '#64748b'), photo('Foto 2', '#475569')],
     createdAt: ago(0.2),
   },
   {
@@ -27,6 +32,8 @@ let requests: SupportRequest[] = [
     userEmail: 'larissa.moura@edu.unifor.br',
     orderId: 9002,
     message: 'Fiz o pedido sem querer e gostaria de cancelar antes de combinar a retirada.',
+    reason: 'Fiz o pedido por engano',
+    photos: [],
     createdAt: ago(1),
   },
   {
@@ -38,6 +45,7 @@ let requests: SupportRequest[] = [
     userEmail: 'carla.mendes@edu.unifor.br',
     orderId: 9010,
     message: 'O item veio diferente do anúncio (faltavam páginas). Peço o estorno.',
+    photos: [photo('Foto 1', '#7c3aed')],
     createdAt: ago(3),
   },
   {
@@ -49,6 +57,7 @@ let requests: SupportRequest[] = [
     userEmail: 'pedro.alves@edu.unifor.br',
     orderId: null,
     message: 'Não consigo alterar o WhatsApp do meu perfil. Aparece erro ao salvar.',
+    photos: [],
     createdAt: ago(4),
   },
   {
@@ -60,6 +69,8 @@ let requests: SupportRequest[] = [
     userEmail: 'bruno.sales@edu.unifor.br',
     orderId: 9005,
     message: 'O vendedor pediu para cancelar porque o item acabou.',
+    reason: 'Outros',
+    photos: [],
     createdAt: ago(8),
   },
 ]
@@ -67,7 +78,7 @@ let requests: SupportRequest[] = [
 export async function listSupportRequests(): Promise<SupportRequest[]> {
   await wait()
   // Abertas e em análise primeiro; dentro de cada grupo, as mais recentes no topo.
-  const rank = (status: SupportRequestStatus) => (status === 'resolved' ? 1 : 0)
+  const rank = (status: SupportRequestStatus) => (status === 'resolved' || status === 'denied' ? 1 : 0)
   return [...requests].sort(
     (a, b) => rank(a.status) - rank(b.status) || b.createdAt.localeCompare(a.createdAt),
   )
