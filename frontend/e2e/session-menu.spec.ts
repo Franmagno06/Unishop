@@ -217,8 +217,9 @@ test.describe('Cabeçalho · administrador logado', () => {
     await page.goto('/categorias')
     await avatar(page).hover()
     await page.getByRole('button', { name: 'Sair' }).click()
-    await expect(page).toHaveURL('/')
-    await expect(header(page).getByRole('link', { name: 'Entrar' })).toBeVisible()
+    // O admin sai direto para o login comum (use-logout.ts), e não para a tela inicial como o aluno.
+    await expect(page).toHaveURL('/login')
+    await expect(page.getByLabel('E-mail institucional')).toBeVisible()
   })
 
   test('com a sessão de admin aberta, /admin/login leva ao painel', async ({ page }) => {

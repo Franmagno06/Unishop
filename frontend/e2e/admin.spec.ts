@@ -47,11 +47,12 @@ test.describe('Entrada do administrador', () => {
     await expect(page.getByRole('heading', { name: 'Acesso negado' })).toBeVisible()
   })
 
-  test('"Sair" encerra a sessão e volta à tela inicial', async ({ page }) => {
+  // O admin sai do painel direto para o login comum (use-logout.ts: sem /admin/login nem destino guardado).
+  test('"Sair" encerra a sessão e leva ao login', async ({ page }) => {
     await loginAs(page, ADMIN)
     await expect(page).toHaveURL('/admin/usuarios')
     await page.getByRole('button', { name: 'Sair' }).first().click()
-    await expect(page).toHaveURL('/')
+    await expect(page).toHaveURL('/login')
   })
 })
 
@@ -101,6 +102,11 @@ test.describe('Painel · usuários', () => {
 
     const dialog = page.getByRole('dialog', { name: 'Alterações salvas!' })
     await expect(dialog).toBeVisible()
+    // O ícone de sucesso entra com escala suave, como nos outros pop-ups de sucesso.
+    const successIcon = dialog.locator('[aria-hidden="true"] > span').first()
+    const transitioned = await successIcon.evaluate((el) => getComputedStyle(el).transitionProperty)
+    expect(transitioned).toContain('scale')
+    expect(transitioned).toContain('opacity')
     await dialog.getByRole('button', { name: 'Voltar' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Detalhes do usuário' })).toBeVisible()
     await expect(page.getByText('Conta suspensa')).toBeVisible()
