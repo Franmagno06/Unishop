@@ -13,16 +13,24 @@ import { consoleMailProvider } from './shared/providers/mail/console.provider'
 import { createAuthService } from './modules/auth/auth.service'
 import { createAuthRoutes } from './modules/auth/auth.routes'
 import type { TokenRepository, UserRepository } from './modules/auth/auth.types'
+import { createPrismaProfileRepository } from './modules/users/users.repository'
+import { createUsersRoutes } from './modules/users/users.routes'
+import { createUsersService } from './modules/users/users.service'
+import type { ProfileRepository } from './modules/users/users.types'
 import { createAuthenticate } from './shared/middlewares/authenticate'
 import { errorHandler, notFoundHandler } from './shared/middlewares/error-handler'
 import { createRateLimiter } from './shared/middlewares/rate-limiter'
 import { requestId } from './shared/middlewares/request-id'
 import type { MailProvider } from './shared/providers/mail/mail.provider'
+import { createGoogleProvider } from './shared/providers/oauth/google.provider'
+import type { OAuthProvider } from './shared/providers/oauth/oauth.provider'
 
 export type AppDeps = {
   users: UserRepository
+  profiles: ProfileRepository
   tokens: TokenRepository
   mail: MailProvider
+  oauth: OAuthProvider
   now?: () => Date
 }
 
@@ -61,8 +69,14 @@ export function createApp(deps?: AppDeps) {
         ? (((_req, _res, next) => next()) satisfies express.RequestHandler)
         : createRateLimiter(10)
     const routes = createAuthRoutes(service, authenticate, limiter)
+    const usersService = createUsersService({
+      users: deps.users,
+      profiles: deps.profiles,
+      config: { allowedEmailDomain: env.ALLOWED_EMAIL_DOMAIN },
+    })
     app.use('/api/v1/auth', routes.auth)
     app.use('/api/v1/users', routes.users)
+    app.use('/api/v1/users', createUsersRoutes(usersService, authenticate))
   }
 
   app.use(notFoundHandler)
@@ -83,7 +97,9 @@ function pickMailProvider() {
 // Ponto único de composição: repositories reais (Prisma).
 export const app = createApp({
   users: createPrismaUserRepository(prisma),
+  profiles: createPrismaProfileRepository(prisma),
   tokens: createPrismaTokenRepository(prisma),
   mail: pickMailProvider(),
+  oauth: createGoogleProvider(env.GOOGLE_CLIENT_ID),
 })
 export default app // a Vercel usa este export; nada aqui chama listen

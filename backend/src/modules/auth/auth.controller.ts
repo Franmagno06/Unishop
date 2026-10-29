@@ -9,6 +9,12 @@ export function createAuthController(service: AuthService) {
     async login(req: Request, res: Response) {
       res.json({ data: await service.login(req.body) })
     },
+    async google(req: Request, res: Response) {
+      res.json({ data: await service.loginWithGoogle(req.body) })
+    },
+    async completeProfile(req: Request, res: Response) {
+      res.json({ data: await service.completeProfile(req.user!.id, req.body) })
+    },
     async forgotPassword(req: Request, res: Response) {
       await service.forgotPassword(req.body)
       res.status(202).end()

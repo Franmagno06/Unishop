@@ -9,6 +9,10 @@ export type UserRecord = {
   name: string
   email: string
   passwordHash: string | null
+  googleSub: string | null
+  course: string | null
+  whatsapp: string | null
+  photoUrl: string | null
   role: UserRole
   status: AccountStatus
   verified: boolean
@@ -27,8 +31,23 @@ export type NewUser = {
   termsAcceptedAt: Date
 }
 
+export type NewGoogleUser = { name: string; email: string; googleSub: string }
+
+export type ProfileCompletion = {
+  termsAcceptedAt: Date
+  course: string | null
+  whatsapp: string | null
+}
+
 export interface UserRepository {
   findById(id: number): Promise<UserRecord | null>
+  findByGoogleSub(googleSub: string): Promise<UserRecord | null>
+  /** Conta nova por Google: ativa, sem senha, verificada e sem aceite dos Termos (RN-ACE-14). */
+  createGoogle(data: NewGoogleUser): Promise<UserRecord>
+  /** Vincula o Google a uma conta existente e a marca como verificada (RN-ACE-14). */
+  linkGoogle(id: number, googleSub: string): Promise<void>
+  /** Grava o aceite dos Termos e, se vierem, curso e WhatsApp (RN-ACE-06, 14). */
+  completeProfile(id: number, data: ProfileCompletion): Promise<void>
   /** Sem diferenciar maiúsculas (RN-ACE-03). */
   findByEmail(email: string): Promise<UserRecord | null>
   create(data: NewUser): Promise<UserRecord>

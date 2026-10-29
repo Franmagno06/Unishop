@@ -1,7 +1,8 @@
-import { PASSWORD_RESET_MINUTES } from '../../config/constants'
+import { LIMITS, PASSWORD_RESET_MINUTES } from '../../config/constants'
 import type { Jwt } from '../../config/jwt'
 import { AppError } from '../../shared/errors/app-error'
 import type { MailProvider } from '../../shared/providers/mail/mail.provider'
+import type { OAuthProvider } from '../../shared/providers/oauth/oauth.provider'
 import {
   DUMMY_HASH,
   generateToken,
@@ -23,6 +24,7 @@ export type AuthDeps = {
   users: UserRepository
   tokens: TokenRepository
   mail: MailProvider
+  oauth: OAuthProvider
   jwt: Jwt
   config: AuthConfig
   now?: () => Date
@@ -35,6 +37,7 @@ export function createAuthService({
   users,
   tokens,
   mail,
+  oauth,
   jwt,
   config,
   now = () => new Date(),
@@ -107,6 +110,62 @@ export function createAuthService({
     return { token: jwt.sign(user), user: toPublic(user) }
   }
 
+  // RN-ACE-02, 14: só vale o que está dentro do token verificado. Conta nova nasce ativa, sem
+  // senha, verificada e sem aceite dos Termos (a tela "completar cadastro" grava depois).
+  async function loginWithGoogle(input: { idToken: string }) {
+    const identity = await oauth.verifyIdToken(input.idToken)
+    if (!identity.emailVerified) {
+      throw new AppError(403, 'EMAIL_NOT_VERIFIED', 'O Google não confirmou este e-mail.')
+    }
+    if (!identity.email.endsWith(`@${config.allowedEmailDomain}`)) {
+      throw new AppError(
+        403,
+        'EMAIL_DOMAIN_NOT_ALLOWED',
+        `Use seu e-mail institucional @${config.allowedEmailDomain}.`,
+      )
+    }
+
+    let user = await users.findByGoogleSub(identity.googleSub)
+    if (!user) {
+      const byEmail = await users.findByEmail(identity.email)
+      if (byEmail?.googleSub && byEmail.googleSub !== identity.googleSub) {
+        // O e-mail já está ligado a outra conta Google: não há como saber quem é o dono.
+        throw new AppError(401, 'INVALID_CREDENTIALS', 'Não foi possível entrar com o Google.')
+      }
+      if (byEmail) {
+        if (byEmail.status === 'active') await users.linkGoogle(byEmail.id, identity.googleSub)
+        user = { ...byEmail, googleSub: identity.googleSub, verified: true }
+      }
+    }
+    if (user && user.status !== 'active') {
+      throw new AppError(403, 'ACCOUNT_SUSPENDED', 'Sua conta está suspensa.')
+    }
+    user ??= await users.createGoogle({
+      name: identity.name.trim().slice(0, LIMITS.nameMax) || identity.email.split('@')[0]!,
+      email: identity.email,
+      googleSub: identity.googleSub,
+    })
+
+    return {
+      token: jwt.sign(user),
+      user: toPublic(user),
+      needsTermsAcceptance: user.termsAcceptedAt === null,
+    }
+  }
+
+  // RN-ACE-06, 14; RN-PER-07: o WhatsApp é guardado só com dígitos.
+  async function completeProfile(
+    userId: number,
+    input: { course?: string | undefined; whatsapp?: string | undefined },
+  ) {
+    await users.completeProfile(userId, {
+      termsAcceptedAt: now(),
+      course: input.course || null,
+      whatsapp: input.whatsapp || null,
+    })
+    return me(userId)
+  }
+
   // RN-ACE-10: mesma resposta exista ou não a conta; só envia se a conta existir e estiver ativa.
   async function forgotPassword(input: { email: string }) {
     const user = await users.findByEmail(normalize(input.email))
@@ -166,6 +225,15 @@ export function createAuthService({
     return { user: toPublic(user), needsTermsAcceptance: user.termsAcceptedAt === null }
   }
 
-  return { register, login, forgotPassword, resetPassword, changePassword, me }
+  return {
+    register,
+    login,
+    loginWithGoogle,
+    completeProfile,
+    forgotPassword,
+    resetPassword,
+    changePassword,
+    me,
+  }
 }
 export type AuthService = ReturnType<typeof createAuthService>

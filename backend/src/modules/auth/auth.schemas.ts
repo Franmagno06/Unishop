@@ -1,13 +1,8 @@
 import { z } from 'zod'
 import { LIMITS } from '../../config/constants'
+import { courseField, emailField as email, whatsappField } from '../../shared/schemas/profile-fields'
 
 // Espelha o frontend (auth.schemas.ts): o servidor valida de novo, o cliente nunca basta (RNF004).
-const email = z
-  .string()
-  .trim()
-  .min(1)
-  .max(LIMITS.emailMax)
-  .pipe(z.email('Informe um e-mail válido.'))
 
 export const newPassword = z
   .string()
@@ -51,3 +46,11 @@ export const changePasswordSchema = z
     path: ['confirmation'],
     message: 'As senhas não são iguais.',
   })
+
+export const googleLoginSchema = z.object({ idToken: z.string().min(1).max(5000) })
+
+export const completeProfileSchema = z.object({
+  acceptTerms: z.literal(true, { error: 'Aceite os Termos e a Política para continuar.' }),
+  course: courseField.optional(),
+  whatsapp: whatsappField.optional(),
+})

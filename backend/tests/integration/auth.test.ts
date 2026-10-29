@@ -2,7 +2,13 @@ import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createApp } from '../../src/app'
 import { hashPassword } from '../../src/shared/utils/hash'
-import { createFakeMail, createFakeTokens, createFakeUsers } from '../helpers/fakes'
+import {
+  createFakeMail,
+  createFakeOAuth,
+  createFakeProfiles,
+  createFakeTokens,
+  createFakeUsers,
+} from '../helpers/fakes'
 
 const PASSWORD = 'Senha123'
 const valid = {
@@ -17,6 +23,7 @@ let clock = new Date('2026-10-29T12:00:00Z')
 let users: ReturnType<typeof createFakeUsers>
 let tokens: ReturnType<typeof createFakeTokens>
 let mail: ReturnType<typeof createFakeMail>
+let google: ReturnType<typeof createFakeOAuth>
 let app: ReturnType<typeof createApp>
 
 beforeEach(() => {
@@ -24,7 +31,15 @@ beforeEach(() => {
   users = createFakeUsers()
   tokens = createFakeTokens()
   mail = createFakeMail()
-  app = createApp({ users: users.repo, tokens: tokens.repo, mail: mail.provider, now: () => clock })
+  google = createFakeOAuth()
+  app = createApp({
+    users: users.repo,
+    profiles: createFakeProfiles(users.rows).repo,
+    tokens: tokens.repo,
+    mail: mail.provider,
+    oauth: google.provider,
+    now: () => clock,
+  })
 })
 
 const api = () => request(app)
@@ -194,6 +209,161 @@ describe('GET /auth/me e authenticate', () => {
     const other = await api().post('/api/v1/users/me/password').set(auth).send({})
     expect(other.status).toBe(403)
     expect(other.body.error.code).toBe('TERMS_NOT_ACCEPTED')
+  })
+})
+
+describe('POST /auth/google', () => {
+  const identity = {
+    googleSub: 'sub-1',
+    email: 'ana@edu.unifor.br',
+    emailVerified: true,
+    name: 'Ana Souza',
+  }
+  const googleLogin = () => api().post('/api/v1/auth/google').send({ idToken: 'token-do-google' })
+
+  it('RN-ACE-14: primeiro acesso cria conta ativa, sem senha, verificada e sem aceite dos Termos', async () => {
+    google.set(identity)
+    const res = await googleLogin()
+    expect(res.status).toBe(200)
+    expect(res.body.data).toMatchObject({
+      user: { name: 'Ana Souza', role: 'student' },
+      needsTermsAcceptance: true,
+    })
+    expect(res.body.data.token).toEqual(expect.any(String))
+    expect(users.rows[0]).toMatchObject({
+      passwordHash: null,
+      verified: true,
+      termsAcceptedAt: null,
+      googleSub: 'sub-1',
+    })
+  })
+
+  it('RN-ACE-14: segundo acesso entra na mesma conta (pelo google_sub), sem duplicar', async () => {
+    google.set(identity)
+    await googleLogin()
+    const res = await googleLogin()
+    expect(res.status).toBe(200)
+    expect(users.rows).toHaveLength(1)
+  })
+
+  it('RN-ACE-14: conta de e-mail e senha existente é vinculada ao Google e marcada verificada', async () => {
+    await register()
+    users.rows[0]!.verified = false
+    google.set(identity)
+    const res = await googleLogin()
+    expect(res.status).toBe(200)
+    expect(res.body.data.needsTermsAcceptance).toBe(false)
+    expect(users.rows).toHaveLength(1)
+    expect(users.rows[0]).toMatchObject({ googleSub: 'sub-1', verified: true })
+    expect((await login()).status).toBe(200) // a senha continua valendo
+  })
+
+  it('RN-ACE-02: e-mail fora de @edu.unifor.br dá 403 e não cria conta', async () => {
+    google.set({ ...identity, email: 'ana@gmail.com' })
+    const res = await googleLogin()
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe('EMAIL_DOMAIN_NOT_ALLOWED')
+    expect(users.rows).toHaveLength(0)
+  })
+
+  it('RN-ACE-14: e-mail não verificado pelo Google dá 403 EMAIL_NOT_VERIFIED', async () => {
+    google.set({ ...identity, emailVerified: false })
+    const res = await googleLogin()
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe('EMAIL_NOT_VERIFIED')
+  })
+
+  it('RN-ACE-12: conta suspensa dá 403 ACCOUNT_SUSPENDED, inclusive na vinculação por e-mail', async () => {
+    await register()
+    users.rows[0]!.status = 'suspended'
+    google.set(identity)
+    const res = await googleLogin()
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe('ACCOUNT_SUSPENDED')
+    expect(users.rows[0]?.googleSub).toBeNull()
+  })
+
+  it('e-mail já ligado a outra conta Google não é reaproveitado (401)', async () => {
+    await register()
+    users.rows[0]!.googleSub = 'outro-sub'
+    google.set(identity)
+    expect((await googleLogin()).status).toBe(401)
+  })
+
+  it('token inválido dá 401 TOKEN_INVALID; corpo sem idToken dá 400', async () => {
+    google.set(null)
+    const res = await googleLogin()
+    expect(res.status).toBe(401)
+    expect(res.body.error.code).toBe('TOKEN_INVALID')
+    expect((await api().post('/api/v1/auth/google').send({})).status).toBe(400)
+  })
+
+  it('usa só o nome e o e-mail de dentro do token, nunca os do corpo', async () => {
+    google.set(identity)
+    await api()
+      .post('/api/v1/auth/google')
+      .send({ idToken: 'x', email: 'outro@edu.unifor.br', name: 'Fulano' })
+    expect(users.rows[0]).toMatchObject({ email: 'ana@edu.unifor.br', name: 'Ana Souza' })
+  })
+})
+
+describe('POST /users/me/complete-profile', () => {
+  const identity = {
+    googleSub: 'sub-1',
+    email: 'ana@edu.unifor.br',
+    emailVerified: true,
+    name: 'Ana Souza',
+  }
+  const complete = (token: string, body: object) =>
+    api()
+      .post('/api/v1/users/me/complete-profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send(body)
+
+  async function firstGoogleAccess() {
+    google.set(identity)
+    const res = await api().post('/api/v1/auth/google').send({ idToken: 'x' })
+    return res.body.data.token as string
+  }
+
+  it('RN-ACE-06, 14: grava o aceite dos Termos e libera as rotas privadas', async () => {
+    const token = await firstGoogleAccess()
+    const res = await complete(token, { acceptTerms: true })
+    expect(res.status).toBe(200)
+    expect(res.body.data.needsTermsAcceptance).toBe(false)
+    expect(users.rows[0]?.termsAcceptedAt).toEqual(clock)
+  })
+
+  it('RN-PER-07: curso e WhatsApp opcionais; o WhatsApp é guardado só com dígitos', async () => {
+    const token = await firstGoogleAccess()
+    await complete(token, {
+      acceptTerms: true,
+      course: 'Ciência da Computação',
+      whatsapp: '(85) 9 9999-0000',
+    })
+    expect(users.profiles.get(1)).toMatchObject({
+      course: 'Ciência da Computação',
+      whatsapp: '85999990000',
+    })
+  })
+
+  it('RN-PER-07: WhatsApp com formato inválido dá 400', async () => {
+    const token = await firstGoogleAccess()
+    const res = await complete(token, { acceptTerms: true, whatsapp: '123' })
+    expect(res.status).toBe(400)
+  })
+
+  it('RN-ACE-06: sem aceite (false ou ausente) dá 400 e não grava nada', async () => {
+    const token = await firstGoogleAccess()
+    expect((await complete(token, { acceptTerms: false })).status).toBe(400)
+    expect((await complete(token, {})).status).toBe(400)
+    expect(users.rows[0]?.termsAcceptedAt).toBeNull()
+  })
+
+  it('exige login (401)', async () => {
+    expect(
+      (await api().post('/api/v1/users/me/complete-profile').send({ acceptTerms: true })).status,
+    ).toBe(401)
   })
 })
 

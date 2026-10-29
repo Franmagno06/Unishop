@@ -26,6 +26,10 @@ function toRecord(row: User): UserRecord {
     name: row.name,
     email: row.email,
     passwordHash: row.passwordHash,
+    googleSub: row.googleSub,
+    course: row.course,
+    whatsapp: row.whatsapp,
+    photoUrl: row.photoUrl,
     role,
     status,
     verified: row.verified,
@@ -42,6 +46,41 @@ export function createPrismaUserRepository(db: Db): UserRepository {
     async findById(id) {
       const row = await db.user.findUnique({ where: { id } })
       return row ? toRecord(row) : null
+    },
+
+    async findByGoogleSub(googleSub) {
+      const row = await db.user.findUnique({ where: { googleSub } })
+      return row ? toRecord(row) : null
+    },
+
+    async createGoogle(data) {
+      try {
+        const row = await db.user.create({
+          data: { name: data.name, email: data.email, googleSub: data.googleSub, verified: true },
+        })
+        return toRecord(row)
+      } catch (err) {
+        if ((err as { code?: string }).code === 'P2002') {
+          throw new AppError(409, 'EMAIL_ALREADY_REGISTERED', 'Este e-mail já está cadastrado.')
+        }
+        throw err
+      }
+    },
+
+    async linkGoogle(id, googleSub) {
+      await db.user.update({ where: { id }, data: { googleSub, verified: true } })
+    },
+
+    // Curso e WhatsApp só entram se vieram; nunca apagam o que já existe.
+    async completeProfile(id, data) {
+      await db.user.update({
+        where: { id },
+        data: {
+          termsAcceptedAt: data.termsAcceptedAt,
+          ...(data.course !== null && { course: data.course }),
+          ...(data.whatsapp !== null && { whatsapp: data.whatsapp }),
+        },
+      })
     },
 
     // Consulta por lower(email) para usar o índice uq_usuario_email_lower (RN-ACE-03).

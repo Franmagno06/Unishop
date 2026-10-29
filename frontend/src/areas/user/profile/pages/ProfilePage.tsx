@@ -1,12 +1,12 @@
 import { useLocation } from 'react-router'
-import { InfoAlert, SuccessAlert } from '../../../../shared/components/ui/Alert'
+import { ErrorAlert, InfoAlert, SuccessAlert } from '../../../../shared/components/ui/Alert'
 import { Avatar } from '../../../../shared/components/ui/Avatar'
 import { Button, ButtonLink } from '../../../../shared/components/ui/Button'
 import { Card } from '../../../../shared/components/ui/Card'
 import { EmptyState } from '../../../../shared/components/ui/EmptyState'
 import { Skeleton } from '../../../../shared/components/ui/Skeleton'
 import { ROUTES } from '../../../../shared/constants/routes'
-import { useCurrentUser } from '../../../../shared/hooks/use-current-user'
+import { useCurrentUserState } from '../../../../shared/hooks/use-current-user'
 import { useDocumentTitle } from '../../../../shared/hooks/use-document-title'
 import { MyListingRow } from '../../listings/components/MyListingRow'
 import { useMyListings } from '../../listings/hooks/use-my-listings'
@@ -18,7 +18,8 @@ type PageState = (ProfileNotice & { listingDeleted?: boolean }) | null
 // e do link "Meus anúncios" do cabeçalho. Dados de exemplo; sem guard até a API.
 export function ProfilePage() {
   useDocumentTitle('Meu perfil')
-  const user = useCurrentUser()
+  const { user, status, reload } = useCurrentUserState()
+  const loaded = status === 'loaded'
   const listings = useMyListings()
   const state = useLocation().state as PageState
 
@@ -33,6 +34,15 @@ export function ProfilePage() {
           continua valendo.
         </InfoAlert>
       ) : null}
+      {status === 'error' ? (
+        <ErrorAlert title="Não foi possível carregar seus dados">
+          Confira sua conexão e{' '}
+          <button type="button" onClick={reload} className="font-semibold underline">
+            tente de novo
+          </button>
+          .
+        </ErrorAlert>
+      ) : null}
       {state?.listingDeleted ? (
         <SuccessAlert title="Anúncio excluído">O anúncio foi removido e não aparece mais para os alunos.</SuccessAlert>
       ) : null}
@@ -40,10 +50,12 @@ export function ProfilePage() {
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
         <Card className="flex flex-col items-center gap-5 p-8 lg:w-[380px] lg:shrink-0">
           <Avatar name={user.name} imageUrl={user.avatarUrl} className="size-24 text-[32px]" />
-          <h1 className="break-words text-center font-display text-[26px] font-bold text-navy">
-            {user.name}
+          <h1 className="wrap-break-word text-center font-display text-[26px] font-bold text-navy">
+            {loaded ? user.name : <Skeleton className="mx-auto h-8 w-48" />}
           </h1>
-          <p className="break-all text-center text-[15px] text-text-muted">{user.email}</p>
+          <p className="break-all text-center text-[15px] text-text-muted">
+            {loaded ? user.email : <Skeleton className="mx-auto h-5 w-56" />}
+          </p>
           <hr className="w-full border-border" />
           <ButtonLink to={ROUTES.createListing} fullWidth>
             + Anunciar item
