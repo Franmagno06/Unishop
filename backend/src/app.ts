@@ -70,11 +70,20 @@ export function createApp(deps?: AppDeps) {
   return app
 }
 
-// Ponto único de composição: repositories reais (Prisma). O e-mail ainda é o provider de console;
-// Resend/Mailtrap entram com o MAIL_DRIVER (api.md §6.3), e o console não pode ir para produção.
+// O provider de console imprime o link de redefinição no log: só vale em desenvolvimento e teste.
+// Fora deles a API não sobe até existir um provider real (Resend/Mailtrap, api.md §6.3).
+function pickMailProvider() {
+  const local = env.APP_ENV === 'development' || env.APP_ENV === 'test'
+  if (env.MAIL_DRIVER !== 'console' || !local) {
+    throw new Error(`MAIL_DRIVER "${env.MAIL_DRIVER}" sem provider em APP_ENV "${env.APP_ENV}".`)
+  }
+  return consoleMailProvider
+}
+
+// Ponto único de composição: repositories reais (Prisma).
 export const app = createApp({
   users: createPrismaUserRepository(prisma),
   tokens: createPrismaTokenRepository(prisma),
-  mail: consoleMailProvider,
+  mail: pickMailProvider(),
 })
 export default app // a Vercel usa este export; nada aqui chama listen
