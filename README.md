@@ -120,7 +120,7 @@ SPA em React que consome uma API REST em Node.js/Express (`/api/v1`), sem sessã
  └───┬───────────┬────────────┬───────────┬────────┘
      ▼           ▼            ▼           ▼
  PostgreSQL   Google      Mercado      Resend e Cloudinary
- (Neon)       (login)     Pago         (e-mails e imagens)
+ (Supabase)       (login)     Pago         (e-mails e imagens)
                           (cartão e Pix)
                             ▲
                             └── webhook: o gateway avisa quando o pagamento é aprovado
@@ -128,7 +128,7 @@ SPA em React que consome uma API REST em Node.js/Express (`/api/v1`), sem sessã
  Agendadores (Vercel Cron e cron-job.org) ──▶ GET /api/v1/internal/jobs/:name  (com CRON_SECRET)
 ```
 
-> Decididos pelo grupo: **Mercado Pago** (pagamento), **Vercel + Neon** (hospedagem e banco), **Resend** (e-mail; Mailtrap em desenvolvimento), **Cloudinary** (imagens) e **Google** (login social). Os segredos ficam só no backend ("backend-cofre"). O código acessa todos os serviços por interfaces (providers), o que permite trocá-los sem mexer nas regras de negócio.
+> Decididos pelo grupo: **Mercado Pago** (pagamento), **Vercel + Supabase** (hospedagem e banco), **Resend** (e-mail; Mailtrap em desenvolvimento), **Cloudinary** (imagens) e **Google** (login social). Os segredos ficam só no backend ("backend-cofre"). O código acessa todos os serviços por interfaces (providers), o que permite trocá-los sem mexer nas regras de negócio.
 
 ### Camadas do backend
 
@@ -164,7 +164,7 @@ Os documentos técnicos foram alinhados em conjunto pelo grupo em 16/10/2026. As
 |---|---|
 | Frontend | Vite, React Router, TanStack Query, React Hook Form + Zod, Vitest, Testing Library e Playwright |
 | Backend | Estrutura route/controller/service/repository, Prisma (ORM), Zod, bcrypt, jsonwebtoken, node-cron (só em desenvolvimento), pino, helmet, Vitest + Supertest |
-| Hospedagem e banco | Vercel (frontend e API) e Neon (PostgreSQL 18, plano gratuito de 1 GB) |
+| Hospedagem e banco | Vercel (frontend e API) e Supabase (PostgreSQL, plano gratuito de 500 MB) |
 | Pagamento | Mercado Pago (cartão por token e Pix com webhook), em modo de teste |
 | E-mail | Resend (produção, com domínio próprio) e Mailtrap (desenvolvimento) |
 | Imagens | Cloudinary (Cloudflare R2 fica como alternativa) |
@@ -322,7 +322,7 @@ Detalhes completos em [Documentação do Banco de Dados](docs/BancoDeDados/bd.md
 | [docs/skills/skills.md](docs/skills/skills.md) | O que são as skills do Claude Code, as instaladas no projeto e como usá-las |
 | [CLAUDE.md](CLAUDE.md) | Contexto, regras de idioma e prioridades de fontes para o Claude Code |
 | [docs/api/api.md](docs/api/api.md) | APIs externas (Google, Mercado Pago, Resend, Cloudinary, Turnstile e outras), arquitetura de segurança "backend-cofre", providers, variáveis e ADRs 001 a 009 (v0.3). O contrato `openapi.yaml` ainda não existe |
-| [docs/deploy/deploy.md](docs/deploy/deploy.md) | Deploy na Vercel + Neon: ambientes, segredos, CORS, jobs, backup, atualização e reversão (v0.3) |
+| [docs/deploy/deploy.md](docs/deploy/deploy.md) | Deploy na Vercel + Supabase: ambientes, segredos, CORS, jobs, backup, atualização e reversão (v0.3) |
 
 Precedência entre os documentos técnicos (quando dois discordam, corrige-se o de menor precedência): Regras de Negócio, Banco de Dados, Backend e Frontend, API e Deploy. Em caso de conflito entre fontes em geral, vale esta ordem: (1) PDF do trabalho, (2) decisões do grupo, (3) documentos técnicos em `docs/`, (4) protótipos no Figma.
 
@@ -338,7 +338,7 @@ Precedência entre os documentos técnicos (quando dois discordam, corrige-se o 
 - Login do admin: mesma tela do aluno, rota separada, redirecionamento ao painel admin.
 - Login social: Google entra no MVP; Apple fica de fora (custo anual e possível e-mail de retransmissão fora do domínio institucional).
 - Gateway de pagamento: Mercado Pago, com credenciais de teste também em produção.
-- Hospedagem: Vercel (frontend e API) com banco PostgreSQL 18 no Neon; guia em [Deploy](docs/deploy/deploy.md).
+- Hospedagem: Vercel (frontend e API) com banco PostgreSQL 18 no Supabase; guia em [Deploy](docs/deploy/deploy.md).
 - ORM: Prisma. Imagens: Cloudinary. E-mail: Resend (Mailtrap em desenvolvimento), que também é o canal de notificação.
 - JWT de 2 horas, sem refresh token.
 - Imagem de até 4 MB, uma por requisição (desvio do PDF confirmado em 16/10/2026).
@@ -355,7 +355,7 @@ Confirmação de e-mail por link (atrás da chave `EMAIL_VERIFICATION_REQUIRED`)
 - Domínio próprio, necessário para o Resend verificar o envio de e-mail (e, se preciso, para o login do Google).
 - Testar se o e-mail `@edu.unifor.br` entrega `email_verified` no login com Google.
 - Prova de conceito do Pix de teste do Mercado Pago e escolha entre Payments API e Orders API.
-- Confirmar no painel do Neon como criar os três papéis do banco; testar a migração em um banco vazio; atualizar o MER.
+- Confirmar no painel do Supabase como criar os três papéis do banco; testar a migração em um banco vazio; atualizar o MER.
 - Conferir no PDF os RNF012 a RNF016 e se commits de outros autores são bloqueados no plano Hobby da Vercel.
 - Escrever os Termos de uso e a Política de privacidade; o grupo confirmar os limites de campos e a lista de itens proibidos (Regras de Negócio, seção 9).
 

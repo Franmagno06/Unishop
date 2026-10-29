@@ -7,8 +7,11 @@ import { Button, ButtonLink } from '../../../../shared/components/ui/Button'
 import { Card } from '../../../../shared/components/ui/Card'
 import { Field } from '../../../../shared/components/ui/Field'
 import { ROUTES } from '../../../../shared/constants/routes'
-import { useCurrentUser } from '../../../../shared/hooks/use-current-user'
+import { Skeleton } from '../../../../shared/components/ui/Skeleton'
+import { useCurrentUserState } from '../../../../shared/hooks/use-current-user'
 import { useDocumentTitle } from '../../../../shared/hooks/use-document-title'
+import { ApiError } from '../../../../shared/lib/api'
+import type { CurrentUser } from '../../../../shared/lib/current-user'
 import { formatWhatsapp, onlyDigits } from '../../../../shared/utils/whatsapp'
 import { AvatarUploader } from '../components/AvatarUploader'
 import { DeleteAccountModal } from '../components/DeleteAccountModal'
@@ -17,10 +20,38 @@ import { profileSchema, type ProfileValues } from '../schemas/profile.schemas'
 
 // RF013 · RN-PER-01 a 03, 05 e 07 (Figma 05b). Nome, curso, WhatsApp e foto valem ao salvar; o
 // e-mail novo só vale depois de confirmado no novo endereço (RN-PER-02), então a tela avisa e o
-// e-mail atual segue valendo. Dados de exemplo; sem guard até a API.
+// e-mail atual segue valendo. O formulário só monta depois que o perfil chega do servidor: o React
+// Hook Form lê os valores iniciais uma única vez.
 export function EditProfilePage() {
   useDocumentTitle('Editar perfil')
-  const user = useCurrentUser()
+  const { user, status, reload } = useCurrentUserState()
+
+  if (status === 'loaded') return <EditProfileForm user={user} />
+
+  return (
+    <section className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-4 pb-20 pt-8 sm:px-5 md:pt-12">
+      <ArrowLink to={ROUTES.profile}>Voltar ao perfil</ArrowLink>
+      <h1 className="font-display text-4xl font-bold text-navy md:text-[40px]">Editar perfil</h1>
+      {status === 'error' ? (
+        <>
+          <ErrorAlert title="Não foi possível carregar seu perfil">
+            Confira sua conexão e tente de novo.
+          </ErrorAlert>
+          <Button onClick={reload}>Tentar de novo</Button>
+        </>
+      ) : (
+        <>
+          <p role="status" className="sr-only">
+            Carregando seu perfil…
+          </p>
+          <Skeleton className="h-96 w-full" />
+        </>
+      )}
+    </section>
+  )
+}
+
+function EditProfileForm({ user }: { user: CurrentUser }) {
   const save = useUpdateProfile()
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [photoError, setPhotoError] = useState<string>()
@@ -66,7 +97,9 @@ export function EditProfilePage() {
         <form noValidate onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
           {save.isError ? (
             <ErrorAlert title="Não foi possível salvar">
-              Confira sua conexão e tente de novo.
+              {save.error instanceof ApiError && save.error.status < 500
+                ? save.error.message
+                : 'Confira sua conexão e tente de novo.'}
             </ErrorAlert>
           ) : null}
 
@@ -112,8 +145,8 @@ export function EditProfilePage() {
           </div>
 
           <p className="text-[13px] text-text-muted">
-            Ao trocar o e-mail, enviaremos um link de confirmação para o novo endereço
-            @edu.unifor.br. O WhatsApp novo passa a valer para todos os seus anúncios ativos.
+            O e-mail precisa ser @edu.unifor.br. O WhatsApp novo passa a valer para todos os seus
+            anúncios ativos.
           </p>
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

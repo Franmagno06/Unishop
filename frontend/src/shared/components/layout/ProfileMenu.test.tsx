@@ -2,7 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { resetCurrentUser, setCurrentUser } from '../../lib/current-user'
 import { clearToken, getToken, setToken, type Role } from '../../lib/session'
 import { ProfileMenu } from './ProfileMenu'
 
@@ -35,7 +36,20 @@ function renderMenu(role: Role = 'student') {
 const avatar = () => screen.getByRole('button', { name: 'Minha conta' })
 const menuOpen = () => avatar().getAttribute('aria-expanded') === 'true'
 
-afterEach(() => clearToken())
+beforeEach(() =>
+  setCurrentUser({
+    name: 'Aluno Teste',
+    email: 'aluno.teste@edu.unifor.br',
+    course: '',
+    whatsapp: '',
+    avatarUrl: null,
+  }),
+)
+
+afterEach(() => {
+  clearToken()
+  resetCurrentUser()
+})
 
 describe('ProfileMenu · aparência', () => {
   it('é um avatar com as iniciais do aluno ("AT"), fechado no começo', () => {
