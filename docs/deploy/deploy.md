@@ -424,7 +424,7 @@ Em **Settings → Deployment Protection**, mantenha a proteção do ambiente *Pr
 
 ### 7.1 Criar o banco
 
-1. No painel do Supabase, crie **dois projetos**: `unishop-prod` (produção) e `unishop-dev` (desenvolvimento e preview). O plano gratuito permite 2 projetos ativos. Use o Supabase **só como banco**: o projeto não usa Auth, Storage, Realtime nem a API automática (PostgREST) do Supabase (a autenticação é o JWT do backend); a RLS fica ligada nas tabelas, sem políticas (decisão de Francisco, 29/10; ver pendência no CLAUDE.md).
+1. No painel do Supabase, crie **dois projetos**: `unishop-prod` (produção) e `unishop-dev` (desenvolvimento e preview). O plano gratuito permite 2 projetos ativos. Use o Supabase **só como banco**: o projeto não usa Auth, Storage, Realtime nem a API automática (PostgREST) do Supabase (a autenticação é o JWT do backend); a RLS fica ligada nas tabelas, com política só para `unishop_app` e `unishop_backup` (decisão de Francisco, 29/10, e política por papel confirmada em 30/10; ver 7.5).
 2. Escolha a região do banco **mais próxima da região das funções** da Vercel, para reduzir a latência de cada consulta.
 3. Confira a **versão do PostgreSQL** em *Database → Settings*; este guia assume a 18 (pendência 13).
 4. No botão **Connect** de cada projeto, aba **ORM → Prisma**, copie as duas URLs. Cadastre-as à mão no painel da Vercel (a integração da Marketplace usa outros nomes de variável): `DATABASE_URL` (Transaction pooler, porta 6543, com `?pgbouncer=true&connection_limit=1&uselibpqcompat=true&sslmode=require`) e `DATABASE_URL_UNPOOLED` (Session pooler, porta 5432, ou conexão direta, com `?uselibpqcompat=true&sslmode=require`). A senha vai **sem os colchetes** do modelo `[YOUR-PASSWORD]`, e os valores do `.env` ficam entre aspas. Escape na senha os caracteres reservados (`&`, `#`, `?`, espaço). **A conexão direta do Supabase é só IPv6** (IPv4 exige um complemento pago); redes e runners sem IPv6 devem usar o **Session pooler**, que é IPv4 em todos os planos. Copie o host pelo Connect, sem montá-lo à mão.
@@ -469,6 +469,69 @@ O endereço do Supabase é público, protegido por **TLS** e senha (use `uselibp
 - **Nunca** coloque a `DATABASE_URL` no frontend, em logs nem em prints.
 - Restringir o acesso por IP não ajuda: as funções da Vercel não têm IP fixo; portanto essa mitigação não está disponível. Como a API conecta como `unishop_app`, que não é o `postgres`, uma credencial vazada tem alcance menor.
 - A exceção à regra 4 foi **aceita pelo grupo** e fica registrada aqui e na seção 17.3 (pendência 2).
+
+### 7.5 Papéis e RLS no Supabase: passo a passo
+
+A RLS fica ligada nas 8 tabelas, com política só para `unishop_app` (leitura e escrita) e `unishop_backup` (leitura); `anon` e `authenticated` não têm política nem privilégio (decisão de Francisco, 30/10/2026). Faça tudo primeiro no `unishop-dev` e só depois no `unishop-prod`. Os comandos SQL rodam no *SQL Editor* do projeto, como `postgres`. As senhas vêm do gerenciador de segredos, nunca do repositório.
+
+1. **Criar os papéis** (uma vez por projeto; o `psql` e o SQL Editor aceitam o mesmo texto):
+
+   ```sql
+   CREATE ROLE unishop_migrator LOGIN PASSWORD '<senha gerada 1>';
+   CREATE ROLE unishop_app      LOGIN PASSWORD '<senha gerada 2>';
+   CREATE ROLE unishop_backup   LOGIN PASSWORD '<senha gerada 3>';
+   ```
+
+2. **Dar a posse ao `unishop_migrator`** (só no `unishop-prod` e em qualquer banco cujas tabelas foram criadas fora do Prisma; em banco vazio criado por `migrate deploy` com o `unishop_migrator` isso já acontece). Sem ser dono, ele não consegue rodar o `ENABLE ROW LEVEL SECURITY` nem as próximas migrações:
+
+   ```sql
+   GRANT unishop_migrator TO postgres;   -- o Supabase exige ser membro do papel para trocar o dono
+   DO $$
+   DECLARE r record;
+   BEGIN
+     FOR r IN SELECT c.relname, c.relkind FROM pg_class c
+              JOIN pg_namespace n ON n.oid = c.relnamespace
+              WHERE n.nspname = 'public' AND c.relkind IN ('r', 'v')
+     LOOP
+       EXECUTE format('ALTER %s public.%I OWNER TO unishop_migrator',
+                      CASE r.relkind WHEN 'v' THEN 'VIEW' ELSE 'TABLE' END, r.relname);
+     END LOOP;
+   END $$;
+   ```
+
+   Se o Supabase recusar a troca de dono, deixe o `postgres` como dono, pule o passo 4 (`migrate deploy`) e use a alternativa do passo 4, registrando a exceção na seção 17.3.
+
+3. **Permissões**: rode o bloco "Papéis e permissões" do `docs/BancoDeDados/bd.md` (`GRANT` para `unishop_app` e `unishop_backup`, `ALTER DEFAULT PRIVILEGES` e `REVOKE` de `anon` e `authenticated`). Confira que `anon` e `authenticated` ficaram sem privilégio:
+
+   ```sql
+   SELECT grantee, table_name, privilege_type FROM information_schema.role_table_grants
+   WHERE table_schema = 'public' AND grantee IN ('anon', 'authenticated');   -- deve voltar vazio
+   ```
+
+4. **Aplicar a RLS** (migração `2_rls_politicas`). Os papéis do passo 1 já têm de existir, senão a migração liga a RLS mas não cria as políticas.
+   - Da sua máquina, com `DATABASE_URL_UNPOOLED` do `unishop_migrator` (Session pooler, porta 5432): `npx prisma migrate deploy`. No `unishop-dev` vazio ele roda as três migrações; no `unishop-prod` só a 2, porque `0_init` e `1_regras_manuais` já estão registradas.
+   - Alternativa, se o dono for o `postgres`: cole o conteúdo de `backend/prisma/migrations/2_rls_politicas/migration.sql` no SQL Editor e registre com `npx prisma migrate resolve --applied 2_rls_politicas`.
+
+5. **Conferir**:
+
+   ```sql
+   -- as 8 tabelas com RLS ligada (só _prisma_migrations pode ficar de fora)
+   SELECT c.relname, c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public' AND c.relkind = 'r' ORDER BY 1;
+
+   -- 16 políticas: app_all e backup_select em cada tabela
+   SELECT tablename, policyname, roles, cmd FROM pg_policies WHERE schemaname = 'public' ORDER BY 1, 2;
+   ```
+
+6. **Testar o login de cada papel pelo pooler.** O usuário é `papel.ref-do-projeto`. Use `psql` com `sslmode=require`; a senha vem do gerenciador de segredos:
+   - `unishop_migrator` (Session pooler, porta 5432): `SELECT count(*) FROM usuario;` funciona e um `CREATE TABLE teste_ddl (id int); DROP TABLE teste_ddl;` também.
+   - `unishop_app` (Transaction pooler, porta 6543): `SELECT count(*) FROM categoria;` (6 depois do seed) e `BEGIN; UPDATE categoria SET nome = nome; ROLLBACK;`, que tem de responder `UPDATE 6` (`UPDATE 0` significa política faltando). Um `CREATE TABLE` tem de falhar com "permission denied".
+   - `unishop_backup` (Session pooler, porta 5432): `SELECT count(*) FROM categoria;` e depois `pg_dump` de um schema com dados. Compare a contagem de linhas de cada tabela do dump com a do banco; dump vazio sem erro é o sintoma de política faltando. Um `UPDATE` tem de falhar.
+   - `anon` e `authenticated`: com a chave pública do projeto, uma chamada à Data API (`/rest/v1/usuario`) tem de voltar vazia ou negada. Se o painel permitir, desligue a Data API.
+
+7. **Registrar o resultado**: troque a pendência 14 da seção 17.3, a pendência 1 do `bd.md` e a pendência da RLS no `CLAUDE.md` por "testado em <data> por <nome>" ou apague-as.
+
+**Tabela nova no futuro:** a migração que a cria leva também o `ENABLE ROW LEVEL SECURITY` e as duas políticas (acrescente o nome na lista da `2_rls_politicas` só se a tabela entrar nela; senão, repita o bloco na migração nova).
 
 ## 8. Domínio e HTTPS
 
@@ -915,7 +978,7 @@ A decisão "uma única instância da API" do Backend §14 **deixa de valer** na 
 | 11 | **Nome da tabela de categorias** no teste de restauração | Ana Clara confirma no documento de Banco de Dados |
 | 12 | **Papéis do banco no Supabase:** criar `unishop_migrator`, `unishop_app` e `unishop_backup` pelo SQL Editor e testar o login de cada um pelo pooler (`papel.ref-do-projeto`) | Francisco ou Ana Clara confirma antes do primeiro deploy; se não der, um papel só e a exceção registrada aqui |
 | 13 | **Versão do PostgreSQL no Supabase:** os documentos assumem a 18 (imagem do Docker, `pg_dump`, workflow) | Conferir em *Database → Settings* ao criar os projetos; se for outra, ajustar os documentos |
-| 14 | **RLS ligada sem políticas × papéis `unishop_*`:** o Francisco ligou a RLS nas 8 tabelas; `unishop_app` e `unishop_backup` (não donos) ficam sem acesso, e o `pg_dump` sairia vazio sem erro | Proposta redigida (CLAUDE.md): política `TO unishop_app USING (true) WITH CHECK (true)` e uma de `SELECT` para `unishop_backup` em cada tabela, nenhuma para `anon` e `authenticated`; aguarda o Francisco e o teste no Supabase |
+| 14 | **RLS ligada × papéis `unishop_*`:** a RLS está ligada nas 8 tabelas e `unishop_app` e `unishop_backup` (não donos) ficam sem acesso se não houver política; o `pg_dump` sairia vazio sem erro | Decidido por Francisco em 30/10/2026: política `app_all` para `unishop_app` e `backup_select` para `unishop_backup` em cada tabela, nenhuma para `anon` e `authenticated` (migração `2_rls_politicas`). Falta aplicar e testar no Supabase, pelo passo a passo da 7.5 |
 
 ### 17.4 O que cada pessoa confirma
 

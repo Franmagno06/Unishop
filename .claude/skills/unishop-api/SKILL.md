@@ -3,7 +3,7 @@ name: unishop-api
 description: APIs externas e segurança do Unishop (Google Identity, Mercado Pago, Resend/Mailtrap, Cloudinary, WhatsApp wa.me, Turnstile, Supabase (só o banco), Sentry, UptimeRobot, GitHub Actions), modelo "backend-cofre", providers, webhook assinado, segredos e variáveis de ambiente. Use SEMPRE que o usuário integrar, trocar, testar ou revisar qualquer serviço externo, mexer em `shared/providers`, `config/env.ts`, `.env`, chaves, tokens, webhook, assinatura HMAC, idempotência, estorno, timeout/retry, drivers mock, travas de produção, custos e limites gratuitos ou ADRs, mesmo que não diga "API externa" ou "Unishop".
 metadata:
   author: unishop-team
-  version: "0.3.0"
+  version: "0.3.1"
 ---
 
 # APIs externas e segurança do Unishop
@@ -68,7 +68,7 @@ Google 5 s · Mercado Pago cobrar 15 s (retry só com a mesma chave de idempotê
 - **Previews da Vercel não recebem webhook** (a URL é única por aplicação). Teste de pagamento: local com túnel (ngrok/Cloudflare Tunnel) ou produção.
 - **Tarefas depois da resposta** (`waitUntil`/`await`): ver `unishop-deploy`.
 - **Login com Google é MVP** (ADR-003). O servidor confere o domínio e o `email_verified`; o e-mail `@edu.unifor.br` pode não vir verificado pelo Google (pendência 3), então teste com uma conta real. Google em `vercel.app` pode ser recusado como origem autorizada; teste cedo. Apple fica fora do MVP.
-- **Banco:** Supabase gratuito, só como banco (500 MB, 2 projetos, pausa em 1 semana, sem backup nem branching; versão do PostgreSQL a conferir) com três papéis: `DATABASE_URL` (Transaction pooler, porta 6543, `unishop_app`), `DATABASE_URL_UNPOOLED` (Session pooler ou direta, porta 5432, `unishop_migrator`, só migração e seed) e `DATABASE_URL_BACKUP` (`unishop_backup`, somente leitura, só como segredo do GitHub). Todas são credenciais privadas. Não há chave `anon` nem `service_role` no projeto: não use o SDK do Supabase.
+- **Banco:** Supabase gratuito, só como banco (500 MB, 2 projetos, pausa em 1 semana, sem backup nem branching; versão do PostgreSQL a conferir) com três papéis: `DATABASE_URL` (Transaction pooler, porta 6543, `unishop_app`), `DATABASE_URL_UNPOOLED` (Session pooler ou direta, porta 5432, `unishop_migrator`, só migração e seed) e `DATABASE_URL_BACKUP` (`unishop_backup`, somente leitura, só como segredo do GitHub). Todas são credenciais privadas. A RLS está ligada com política só para `unishop_app` e `unishop_backup`. Não há chave `anon` nem `service_role` no projeto: não use o SDK do Supabase.
 - **Saúde:** `GET /health` leve (monitor UptimeRobot) e `GET /health/db` (confere o banco).
 - Login do admin e do aluno usam o mesmo endpoint; o perfil vem na resposta.
 

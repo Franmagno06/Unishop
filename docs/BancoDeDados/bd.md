@@ -807,7 +807,7 @@ Backups e pontos de restauração feitos antes da anonimização guardam os dado
 
 O banco **não** é restaurado a partir do dump no Supabase. A estrutura é criada e evoluída por **uma só via**, as migrações do Prisma, para desenvolvimento, preview e produção terem o mesmo schema.
 
-**Estado do `unishop-prod` em 30/10/2026:** o banco já existia com a estrutura (montada fora do Prisma). Depois de conferir que ele bate com o `schema.prisma` e com o SQL da migração manual, as migrações `0_init` e `1_regras_manuais` foram registradas com `prisma migrate resolve --applied`, e `prisma migrate status` passou a dizer que o schema está atualizado. Ainda **não existem** os papéis `unishop_migrator`, `unishop_app` e `unishop_backup` (a migração manual não os cria; ver "Papéis e permissões"), e a conexão atual usa o `postgres`.
+**Estado do `unishop-prod` em 30/10/2026:** o banco já existia com a estrutura (montada fora do Prisma). Depois de conferir que ele bate com o `schema.prisma` e com o SQL da migração manual, as migrações `0_init` e `1_regras_manuais` foram registradas com `prisma migrate resolve --applied`, e `prisma migrate status` passou a dizer que o schema está atualizado. Ainda **não existem** os papéis `unishop_migrator`, `unishop_app` e `unishop_backup` (a migração manual não os cria; ver "Papéis e permissões"), e a conexão atual usa o `postgres`. A migração `2_rls_politicas` (RLS com política por papel) ainda não foi aplicada nele.
 
 1. **Baseline (`0_init`).** Com o `schema.prisma` descrevendo as 8 tabelas (nomes pelo mapeamento da seção 7), gerar a migração inicial a partir do zero:
 
@@ -1083,7 +1083,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE unishop_migrator IN SCHEMA public
   REVOKE ALL ON SEQUENCES FROM anon, authenticated;
 ```
 
-**Só no Supabase:** rode o bloco acima em `unishop-prod` e em `unishop-dev`, e confirme depois da migração que `anon` e `authenticated` não têm privilégio em nenhuma tabela (`SELECT grantee, table_name, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'public' AND grantee IN ('anon','authenticated');` deve voltar vazio). Se o painel permitir, desligue também a *Data API* (PostgREST) do projeto, porque o Unishop não a usa. Ativar RLS nas tabelas é uma camada extra opcional: como `unishop_app` não é dono das tabelas, o RLS sem política o bloquearia; só ative com uma política `TO unishop_app USING (true)` e teste antes.
+**Só no Supabase:** rode o bloco acima em `unishop-prod` e em `unishop-dev`, e confirme depois da migração que `anon` e `authenticated` não têm privilégio em nenhuma tabela (`SELECT grantee, table_name, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'public' AND grantee IN ('anon','authenticated');` deve voltar vazio). Se o painel permitir, desligue também a *Data API* (PostgREST) do projeto, porque o Unishop não a usa. **A RLS fica ligada nas 8 tabelas, com política por papel** (decisão de Francisco, 30/10/2026): como `unishop_app` e `unishop_backup` não são donos das tabelas, a RLS sem política os bloquearia (o `unishop_app` sem acesso e o `pg_dump` do `unishop_backup` vazio, sem erro). A migração `2_rls_politicas` cria, em cada tabela, `app_all` (`FOR ALL TO unishop_app USING (true) WITH CHECK (true)`) e `backup_select` (`FOR SELECT TO unishop_backup USING (true)`); `anon` e `authenticated` não têm política nem privilégio. O dono da tabela (`unishop_migrator`) ignora a RLS, então **não use `FORCE ROW LEVEL SECURITY`**. A view `anuncio_visivel` roda com os direitos do dono, então o filtro de visibilidade é o dela; não ponha `security_invoker` nela sem rever as políticas. **Toda tabela nova** leva `ENABLE ROW LEVEL SECURITY` e as duas políticas na migração que a cria. Para conferir se alguma ficou sem RLS: `SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind = 'r' AND NOT c.relrowsecurity;` (só `_prisma_migrations` pode aparecer). Passo a passo no Supabase em `deploy.md` §7.5.
 
 ### Como conferir depois de rodar
 
@@ -1142,7 +1142,7 @@ INSERT INTO public.pagamento (id_pedido, forma_pagamento, status_pagamento) VALU
 
 | # | Pendência | Proposta |
 |---|---|---|
-| 1 | Criação dos papéis no Supabase pelo SQL Editor, teste de login de cada um pelo pooler (`papel.ref-do-projeto`) e revogação do acesso de `anon` e `authenticated` | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |
+| 1 | Criação dos papéis no Supabase pelo SQL Editor, teste de login de cada um pelo pooler (`papel.ref-do-projeto`), revogação do acesso de `anon` e `authenticated` e aplicação da RLS com política por papel (migração `2_rls_politicas`; passo a passo no Deploy §7.5) | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |
 | 2 | Regras que o banco não garante: admin não compra, dono não compra o próprio anúncio, mínimo de 1 imagem, admin não remove o último admin | Backend (`authorizeRole`, `OWN_LISTING`, transação). Triggers são opcionais |
 | 3 | Busca por texto no nome do anúncio | `ILIKE` no MVP; `pg_trgm` se a busca ficar lenta |
 | 4 | Atualizar o MER conforme a seção 12 | Ajuste no `.drawio` (fora desta entrega) |
