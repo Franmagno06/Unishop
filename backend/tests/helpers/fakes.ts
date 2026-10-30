@@ -226,7 +226,7 @@ export function createFakeListings(
     incrementViews: async (id) => void views.set(id, (views.get(id) ?? 0) + 1),
     categoryExists: async () => true,
     findByOwner: async () => details,
-    update: async () => undefined,
+    update: async () => true,
     changeStatus: async () => true,
     softDelete: async () => 'ok',
     countOrders: async () => 0,

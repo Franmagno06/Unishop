@@ -8,7 +8,7 @@ import { paginationSchema } from '../../shared/utils/pagination'
 // centavos aqui. O resto do código só conhece centavos.
 const priceField = z
   .string()
-  .regex(/^\d+(\.\d{1,2})?$/, 'Informe o valor em reais, por exemplo 20 ou 20.50.')
+  .regex(/^\d{1,7}(\.\d{1,2})?$/, 'Informe o valor em reais, por exemplo 20 ou 20.50.')
   .transform(decimalToCents)
 
 // RN-ANU-05 a 07. Filtros opcionais; busca de até 100 caracteres (Regras §9).

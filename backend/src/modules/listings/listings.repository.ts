@@ -79,42 +79,47 @@ function whereOf(filters: ListFilters): Prisma.ListingWhereInput {
 const lockListing = (tx: Prisma.TransactionClient, id: number) =>
   tx.$queryRaw`SELECT id_anuncio FROM anuncio WHERE id_anuncio = ${id} FOR UPDATE`
 
+const detailInclude = {
+  category: { select: { name: true } },
+  images: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
+  user: { select: { id: true, name: true, course: true, verified: true, accountStatus: true } },
+} satisfies Prisma.ListingInclude
+
+type DetailRow = Prisma.ListingGetPayload<{ include: typeof detailInclude }>
+
+const toDetail = (row: DetailRow): ListingDetailRecord => {
+  const status = STATUS[row.status]
+  // O CHECK do banco só deixa ativo, pausado e vendido: outro valor é dado corrompido, não "pausado".
+  if (!status) throw new Error(`Status de anúncio desconhecido: ${row.status}`)
+  return {
+    id: row.id,
+    title: row.name,
+    description: row.description,
+    priceInCents: decimalToCents(row.price),
+    quantity: row.quantity,
+    whatsapp: row.whatsapp,
+    status,
+    categoryId: row.categoryId,
+    categoryName: row.category.name,
+    publishedAt: row.publishedAt,
+    deletedAt: row.deletedAt,
+    views: row.views,
+    contacts: row.contacts,
+    images: row.images,
+    owner: {
+      id: row.user.id,
+      name: row.user.name,
+      course: row.user.course,
+      verified: row.user.verified,
+      accountActive: row.user.accountStatus === 'ativa',
+    },
+  }
+}
+
 export function createPrismaListingRepository(db: Db): ListingRepository {
   async function findById(id: number): Promise<ListingDetailRecord | null> {
-    const row = await db.listing.findUnique({
-      where: { id },
-      include: {
-        category: { select: { name: true } },
-        images: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
-        user: {
-          select: { id: true, name: true, course: true, verified: true, accountStatus: true },
-        },
-      },
-    })
-    if (!row) return null
-    return {
-      id: row.id,
-      title: row.name,
-      description: row.description,
-      priceInCents: decimalToCents(row.price),
-      quantity: row.quantity,
-      whatsapp: row.whatsapp,
-      status: STATUS[row.status] ?? 'paused',
-      categoryId: row.categoryId,
-      categoryName: row.category.name,
-      publishedAt: row.publishedAt,
-      deletedAt: row.deletedAt,
-      views: row.views,
-      contacts: row.contacts,
-      images: row.images,
-      owner: {
-        id: row.user.id,
-        name: row.user.name,
-        course: row.user.course,
-        verified: row.user.verified,
-        accountActive: row.user.accountStatus === 'ativa',
-      },
-    }
+    const row = await db.listing.findUnique({ where: { id }, include: detailInclude })
+    return row ? toDetail(row) : null
   }
 
   return {
@@ -151,16 +156,17 @@ export function createPrismaListingRepository(db: Db): ListingRepository {
     async findByOwner(ownerId) {
       const rows = await db.listing.findMany({
         where: { userId: ownerId, deletedAt: null },
-        select: { id: true },
+        include: detailInclude,
         orderBy: ORDER.recent,
       })
-      const records = await Promise.all(rows.map((r) => findById(r.id)))
-      return records.filter((r): r is ListingDetailRecord => r !== null)
+      return rows.map(toDetail)
     },
 
+    // Só edita anúncio ativo ou pausado, na própria condição do UPDATE: um mark-sold que chegou antes
+    // (quantidade 0, vendido) não é desfeito por um PATCH em paralelo. `false` = nenhuma linha mudou.
     async update(id, patch) {
-      await db.listing.update({
-        where: { id },
+      const { count } = await db.listing.updateMany({
+        where: { id, deletedAt: null, status: { in: [DB_STATUS.active, DB_STATUS.paused] } },
         data: {
           ...(patch.title !== undefined && { name: patch.title }),
           ...(patch.description !== undefined && { description: patch.description }),
@@ -170,6 +176,7 @@ export function createPrismaListingRepository(db: Db): ListingRepository {
           ...(patch.categoryId !== undefined && { categoryId: patch.categoryId }),
         },
       })
+      return count === 1
     },
 
     // UPDATE condicional: se outra requisição já trocou o estado, nenhuma linha muda. Vendido zera as

@@ -85,7 +85,8 @@ export interface ListingRepository {
   ): Promise<{ id: number; url: string; position: number } | 'full'>
   /** "Meus anúncios": todos os status, menos os excluídos, do mais novo (RF012.5). */
   findByOwner(ownerId: number): Promise<ListingDetailRecord[]>
-  update(id: number, patch: ListingPatch): Promise<void>
+  /** `false` se o anúncio já não está ativo nem pausado (por exemplo, vendido por outra requisição). */
+  update(id: number, patch: ListingPatch): Promise<boolean>
   /** Troca o estado só se ainda estiver em um dos de origem; `false` se outra requisição chegou antes. */
   changeStatus(id: number, from: ListingStatus[], to: ListingStatus): Promise<boolean>
   /** Exclusão lógica; `blocked` com pedido Pago ou em Retirada combinada em aberto (RN-ANU-09). */

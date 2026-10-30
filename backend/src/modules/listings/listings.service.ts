@@ -100,6 +100,7 @@ export function createListingsService({ listings, users, storage }: ListingsDeps
   // RN-ANU-03, 04: até 5 imagens, uma por requisição.
   async function addImage(userId: number, id: number, image: Buffer) {
     const listing = await loadOwned(userId, id)
+    if (listing.status === 'sold') throw soldListing()
     if (listing.images.length >= IMAGE_LIMITS.maxPerListing) throw tooManyImages()
 
     const stored = await storage.upload({ buffer: image, folder: STORAGE_FOLDER })
@@ -115,7 +116,8 @@ export function createListingsService({ listings, users, storage }: ListingsDeps
 
   // RN-ANU-03, 04: o anúncio mantém pelo menos 1 imagem.
   async function removeImage(userId: number, id: number, imageId: number) {
-    await loadOwned(userId, id)
+    const listing = await loadOwned(userId, id)
+    if (listing.status === 'sold') throw soldListing()
     const removed = await listings.removeImage(id, imageId)
     if (removed === 'not_found') throw notFound('Imagem não encontrada.')
     if (removed === 'last') {
@@ -145,13 +147,11 @@ export function createListingsService({ listings, users, storage }: ListingsDeps
   // RN-ANU-04. Anúncio vendido é final para o dono, então não se edita.
   async function update(userId: number, id: number, patch: ListingPatch) {
     const listing = await loadOwned(userId, id)
-    if (listing.status === 'sold') {
-      throw new AppError(409, 'INVALID_STATE', 'Um anúncio vendido não pode ser editado.')
-    }
+    if (listing.status === 'sold') throw soldListing()
     if (patch.categoryId !== undefined && !(await listings.categoryExists(patch.categoryId))) {
       throw invalid('categoryId', 'Categoria inexistente.')
     }
-    await listings.update(id, patch)
+    if (!(await listings.update(id, patch))) throw soldListing()
     return toOwnerView((await listings.findById(id))!)
   }
 
@@ -197,6 +197,10 @@ export function createListingsService({ listings, users, storage }: ListingsDeps
   }
 }
 export type ListingsService = ReturnType<typeof createListingsService>
+
+// Vendido é final para o dono (RN-ANU-04): nem os dados nem a galeria mudam.
+const soldListing = () =>
+  new AppError(409, 'INVALID_STATE', 'Um anúncio vendido não pode ser alterado.')
 
 const tooManyImages = () =>
   new AppError(409, 'INVALID_STATE', 'O anúncio já tem o máximo de 5 imagens.')
