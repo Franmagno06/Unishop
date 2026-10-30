@@ -12,6 +12,10 @@ import { prisma } from './shared/database/prisma'
 import { consoleMailProvider } from './shared/providers/mail/console.provider'
 import { createAuthService } from './modules/auth/auth.service'
 import { createAuthRoutes } from './modules/auth/auth.routes'
+import { createPrismaCategoryRepository } from './modules/categories/categories.repository'
+import { createCategoriesRoutes } from './modules/categories/categories.routes'
+import { createCategoriesService } from './modules/categories/categories.service'
+import type { CategoryRepository } from './modules/categories/categories.types'
 import type { TokenRepository, UserRepository } from './modules/auth/auth.types'
 import { createPrismaProfileRepository } from './modules/users/users.repository'
 import { createUsersRoutes } from './modules/users/users.routes'
@@ -31,6 +35,7 @@ export type AppDeps = {
   tokens: TokenRepository
   mail: MailProvider
   oauth: OAuthProvider
+  categories?: CategoryRepository
   now?: () => Date
 }
 
@@ -77,6 +82,10 @@ export function createApp(deps?: AppDeps) {
     app.use('/api/v1/auth', routes.auth)
     app.use('/api/v1/users', routes.users)
     app.use('/api/v1/users', createUsersRoutes(usersService, authenticate))
+    if (deps.categories) {
+      const categoriesService = createCategoriesService({ categories: deps.categories })
+      app.use('/api/v1/categories', createCategoriesRoutes(categoriesService, authenticate))
+    }
   }
 
   app.use(notFoundHandler)
@@ -101,5 +110,6 @@ export const app = createApp({
   tokens: createPrismaTokenRepository(prisma),
   mail: pickMailProvider(),
   oauth: createGoogleProvider(env.GOOGLE_CLIENT_ID),
+  categories: createPrismaCategoryRepository(prisma),
 })
 export default app // a Vercel usa este export; nada aqui chama listen

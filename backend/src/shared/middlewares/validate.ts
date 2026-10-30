@@ -10,3 +10,14 @@ export const validateBody =
     req.body = result.data
     next()
   }
+
+// Valida a query string. Express 5 deixa `req.query` somente leitura, então o resultado tratado
+// fica em `req.validatedQuery`.
+export const validateQuery =
+  (schema: z.ZodType): RequestHandler =>
+  (req, _res, next) => {
+    const result = schema.safeParse(req.query)
+    if (!result.success) return next(result.error)
+    req.validatedQuery = result.data
+    next()
+  }

@@ -1,3 +1,4 @@
+import type { CategoryRepository } from '../../src/modules/categories/categories.types'
 import { AppError } from '../../src/shared/errors/app-error'
 import type { ProfileRepository } from '../../src/modules/users/users.types'
 import type {
@@ -191,4 +192,13 @@ export function createFakeProfiles(userRows: UserRecord[]) {
     },
   }
   return { repo, listings }
+}
+
+// Categorias em memória: cada linha já traz a contagem de anúncios visíveis (a regra de visibilidade
+// é testada no banco, em tests/db).
+export function createFakeCategories(
+  rows: { id: number; name: string; activeListingCount: number }[],
+) {
+  const repo: CategoryRepository = { listWithCounts: async () => rows.map((r) => ({ ...r })) }
+  return { repo }
 }
