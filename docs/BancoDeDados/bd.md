@@ -768,7 +768,7 @@ Três papéis, cada um com a menor permissão possível:
 | `unishop_app` | A API em execução, usa `DATABASE_URL` (conexão com pooler) | `SELECT`, `INSERT`, `UPDATE`, `DELETE` nas tabelas; **sem** permissão de alterar estrutura |
 | `unishop_backup` | Cópia de segurança agendada, usa `DATABASE_URL_BACKUP` | Somente leitura (`SELECT`) |
 
-- TLS obrigatório em todas as conexões (`sslmode=require`). O banco não é exposto à internet além do acesso do provedor (exceção documentada no Deploy); a lista de IPs não serve com a Vercel (sem IP fixo). **No Supabase**, as roles `anon` e `authenticated` do provedor recebem acesso às tabelas do schema `public` por padrão (para a API automática dele): a seção "Papéis e permissões" manda revogar esse acesso, porque o Unishop só acessa o banco pelo backend.
+- TLS obrigatório em todas as conexões (`uselibpqcompat=true&sslmode=require` na URL; só `sslmode=require` faz o driver `pg` verificar o certificado e falhar no pooler do Supabase). O banco não é exposto à internet além do acesso do provedor (exceção documentada no Deploy); a lista de IPs não serve com a Vercel (sem IP fixo). **No Supabase**, as roles `anon` e `authenticated` do provedor recebem acesso às tabelas do schema `public` por padrão (para a API automática dele): a seção "Papéis e permissões" manda revogar esse acesso, porque o Unishop só acessa o banco pelo backend.
 - Dados reais de produção nunca vão para desenvolvimento nem para preview (LGPD). Cada ambiente tem seu próprio banco (projeto Supabase `unishop-prod`; `unishop-dev` para desenvolvimento e preview; Docker local), criado **vazio** a partir do schema. O plano gratuito não tem branches; se um dia houver branching, o branch de desenvolvimento nunca é derivado do de produção.
 - `DATABASE_URL` e as demais strings de conexão são segredos: nunca no Git.
 
@@ -806,6 +806,8 @@ Backups e pontos de restauração feitos antes da anonimização guardam os dado
 ### Caminho único: Prisma
 
 O banco **não** é restaurado a partir do dump no Supabase. A estrutura é criada e evoluída por **uma só via**, as migrações do Prisma, para desenvolvimento, preview e produção terem o mesmo schema.
+
+**Estado do `unishop-prod` em 30/10/2026:** o banco já existia com a estrutura (montada fora do Prisma). Depois de conferir que ele bate com o `schema.prisma` e com o SQL da migração manual, as migrações `0_init` e `1_regras_manuais` foram registradas com `prisma migrate resolve --applied`, e `prisma migrate status` passou a dizer que o schema está atualizado. Ainda **não existem** os papéis `unishop_migrator`, `unishop_app` e `unishop_backup` (a migração manual não os cria; ver "Papéis e permissões"), e a conexão atual usa o `postgres`.
 
 1. **Baseline (`0_init`).** Com o `schema.prisma` descrevendo as 8 tabelas (nomes pelo mapeamento da seção 7), gerar a migração inicial a partir do zero:
 
