@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:db": "docker compose -f ../docker-compose.test.yml up -d --wait && vitest run -c vitest.db.config.ts",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset"
