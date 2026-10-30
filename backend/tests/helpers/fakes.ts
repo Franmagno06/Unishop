@@ -180,6 +180,9 @@ export function createFakeProfiles(userRows: UserRecord[]) {
         }
       }
     },
+    async setPhoto(id, url) {
+      find(id).photoUrl = url
+    },
     async anonymize(id) {
       const user = find(id)
       Object.assign(user, {
@@ -222,6 +225,11 @@ export function createFakeListings(
     findById: async (id) => details.find((d) => d.id === id) ?? null,
     incrementViews: async (id) => void views.set(id, (views.get(id) ?? 0) + 1),
     categoryExists: async () => true,
+    findByOwner: async () => details,
+    update: async () => undefined,
+    changeStatus: async () => true,
+    softDelete: async () => 'ok',
+    countOrders: async () => 0,
     createWithImage: async () => {
       throw new Error('fora do escopo deste fake')
     },

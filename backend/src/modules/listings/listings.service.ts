@@ -3,8 +3,14 @@ import { AppError, forbidden, notFound } from '../../shared/errors/app-error'
 import type { StorageProvider } from '../../shared/providers/storage/storage.provider'
 import { buildMeta, type Pagination } from '../../shared/utils/pagination'
 import type { UserRepository } from '../auth/auth.types'
-import { toDetailView, toSummaryView } from './listings.serializer'
-import type { ListFilters, ListingDetailRecord, ListingRepository } from './listings.types'
+import { assertCanTransition, type ListingAction } from './listings.rules'
+import { toDetailView, toOwnerView, toSummaryView } from './listings.serializer'
+import type {
+  ListFilters,
+  ListingDetailRecord,
+  ListingPatch,
+  ListingRepository,
+} from './listings.types'
 
 export type ListingsDeps = {
   listings: ListingRepository
@@ -118,7 +124,77 @@ export function createListingsService({ listings, users, storage }: ListingsDeps
     await storage.remove(removed.publicId).catch(() => undefined)
   }
 
-  return { list, recent, get, create, addImage, removeImage }
+  // RF012.5
+  async function mine(userId: number) {
+    return (await listings.findByOwner(userId)).map(toOwnerView)
+  }
+
+  // RN-ANU-08: indicadores contados pelo backend.
+  async function management(userId: number, id: number) {
+    const listing = await loadOwned(userId, id)
+    return {
+      listing: toOwnerView(listing),
+      indicators: {
+        views: listing.views,
+        contacts: listing.contacts,
+        orders: await listings.countOrders(id),
+      },
+    }
+  }
+
+  // RN-ANU-04. Anúncio vendido é final para o dono, então não se edita.
+  async function update(userId: number, id: number, patch: ListingPatch) {
+    const listing = await loadOwned(userId, id)
+    if (listing.status === 'sold') {
+      throw new AppError(409, 'INVALID_STATE', 'Um anúncio vendido não pode ser editado.')
+    }
+    if (patch.categoryId !== undefined && !(await listings.categoryExists(patch.categoryId))) {
+      throw invalid('categoryId', 'Categoria inexistente.')
+    }
+    await listings.update(id, patch)
+    return toOwnerView((await listings.findById(id))!)
+  }
+
+  // RN-ANU-04, 05, RF017.7 a 9. A troca é condicional no banco: duas ações ao mesmo tempo não se atropelam.
+  async function changeStatus(userId: number, id: number, action: ListingAction) {
+    const listing = await loadOwned(userId, id)
+    const { from, to } = assertCanTransition(action, listing.status)
+    // RN-ADM-05: conta suspensa não reativa anúncio (o login já barra; esta é a segunda trava).
+    if (action === 'reactivate' && !listing.owner.accountActive) {
+      throw new AppError(403, 'ACCOUNT_SUSPENDED', 'Sua conta está suspensa.')
+    }
+    if (!(await listings.changeStatus(id, from, to))) {
+      throw new AppError(409, 'INVALID_STATE', 'O estado do anúncio mudou. Atualize a página.')
+    }
+    return toOwnerView((await listings.findById(id))!)
+  }
+
+  // RN-ANU-09: exclusão lógica. Os pedidos Pendente e Em negociação serão cancelados quando o módulo
+  // de pedidos existir; as imagens ficam, porque o pedido congela a URL da imagem (RN-PED-01).
+  async function remove(userId: number, id: number) {
+    await loadOwned(userId, id)
+    if ((await listings.softDelete(id)) === 'blocked') {
+      throw new AppError(
+        409,
+        'HAS_OPEN_PAID_ORDERS',
+        'Há pedido pago ou com retirada combinada em aberto. Conclua a entrega antes de excluir.',
+      )
+    }
+  }
+
+  return {
+    list,
+    recent,
+    get,
+    create,
+    addImage,
+    removeImage,
+    mine,
+    management,
+    update,
+    changeStatus,
+    remove,
+  }
 }
 export type ListingsService = ReturnType<typeof createListingsService>
 

@@ -69,6 +69,19 @@ export const createListingBodySchema = z.object({
   whatsapp: whatsappField.optional(),
 })
 
+// PATCH: os mesmos campos do cadastro, todos opcionais, mas pelo menos um. Status, dono e contadores
+// não entram aqui (chaves desconhecidas são descartadas): o estado muda pelas rotas de ação (RN-ANU-04).
+// O WhatsApp do anúncio é obrigatório, então não pode ser esvaziado.
+export const updateListingBodySchema = createListingBodySchema
+  .omit({ whatsapp: true })
+  .partial()
+  .extend({
+    whatsapp: whatsappField.refine((v) => v !== '', 'Informe o WhatsApp com DDD.').optional(),
+  })
+  .refine((body) => Object.values(body).some((v) => v !== undefined), {
+    message: 'Informe ao menos um campo para alterar.',
+  })
+
 // RF001.4: o tamanho do carrossel não está definido nos documentos; padrão 10, máximo 20.
 export const recentQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(20).default(10),

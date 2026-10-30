@@ -89,10 +89,14 @@ export function createApp(deps?: AppDeps) {
       users: deps.users,
       profiles: deps.profiles,
       config: { allowedEmailDomain: env.ALLOWED_EMAIL_DOMAIN },
+      ...(deps.storage && { storage: deps.storage }),
     })
     app.use('/api/v1/auth', routes.auth)
     app.use('/api/v1/users', routes.users)
-    app.use('/api/v1/users', createUsersRoutes(usersService, authenticate))
+    app.use(
+      '/api/v1/users',
+      createUsersRoutes(usersService, authenticate, { avatar: Boolean(deps.storage) }),
+    )
     if (deps.categories) {
       const categoriesService = createCategoriesService({ categories: deps.categories })
       app.use('/api/v1/categories', createCategoriesRoutes(categoriesService, authenticate))

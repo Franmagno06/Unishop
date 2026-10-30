@@ -5,7 +5,9 @@ import {
   listingIdParamSchema,
   type createListingBodySchema,
   type listListingsQuerySchema,
+  type updateListingBodySchema,
 } from './listings.schemas'
+import type { ListingAction } from './listings.rules'
 import type { ListingsService } from './listings.service'
 
 export function createListingsController(service: ListingsService) {
@@ -29,6 +31,30 @@ export function createListingsController(service: ListingsService) {
     async addImage(req: Request, res: Response) {
       const { id } = listingIdParamSchema.parse(req.params)
       res.status(201).json({ data: await service.addImage(req.user!.id, id, req.file!.buffer) })
+    },
+    async mine(req: Request, res: Response) {
+      res.json({ data: await service.mine(req.user!.id) })
+    },
+    async management(req: Request, res: Response) {
+      const { id } = listingIdParamSchema.parse(req.params)
+      res.json({ data: await service.management(req.user!.id, id) })
+    },
+    async update(req: Request, res: Response) {
+      const { id } = listingIdParamSchema.parse(req.params)
+      const patch = req.body as z.output<typeof updateListingBodySchema>
+      res.json({ data: await service.update(req.user!.id, id, patch) })
+    },
+    // Uma fábrica para as três ações de estado: pause, reactivate e mark-sold.
+    action(action: ListingAction) {
+      return async (req: Request, res: Response) => {
+        const { id } = listingIdParamSchema.parse(req.params)
+        res.json({ data: await service.changeStatus(req.user!.id, id, action) })
+      }
+    },
+    async remove(req: Request, res: Response) {
+      const { id } = listingIdParamSchema.parse(req.params)
+      await service.remove(req.user!.id, id)
+      res.status(204).end()
     },
     async removeImage(req: Request, res: Response) {
       const { id, imageId } = imageParamsSchema.parse(req.params)

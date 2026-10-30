@@ -26,6 +26,8 @@ export type ListingDetailRecord = {
   categoryName: string
   publishedAt: Date
   deletedAt: Date | null
+  views: number
+  contacts: number
   images: { id: number; url: string; position: number }[]
   owner: {
     id: number
@@ -54,6 +56,10 @@ export type NewListingData = {
   whatsapp: string
 }
 
+export type ListingPatch = {
+  [K in keyof Omit<NewListingData, 'ownerId'>]?: NewListingData[K] | undefined
+}
+
 /** Imagem já enviada ao storage, pronta para ser registrada no banco. */
 export type StoredImage = { url: string; publicId: string }
 
@@ -77,6 +83,15 @@ export interface ListingRepository {
     listingId: number,
     image: StoredImage,
   ): Promise<{ id: number; url: string; position: number } | 'full'>
+  /** "Meus anúncios": todos os status, menos os excluídos, do mais novo (RF012.5). */
+  findByOwner(ownerId: number): Promise<ListingDetailRecord[]>
+  update(id: number, patch: ListingPatch): Promise<void>
+  /** Troca o estado só se ainda estiver em um dos de origem; `false` se outra requisição chegou antes. */
+  changeStatus(id: number, from: ListingStatus[], to: ListingStatus): Promise<boolean>
+  /** Exclusão lógica; `blocked` com pedido Pago ou em Retirada combinada em aberto (RN-ANU-09). */
+  softDelete(id: number): Promise<'ok' | 'blocked'>
+  /** Pedidos recebidos pelo anúncio, de qualquer estado (RN-ANU-08). */
+  countOrders(id: number): Promise<number>
   /** Remove e renumera para a principal continuar na ordem 1; o anúncio mantém pelo menos 1 imagem. */
   removeImage(
     listingId: number,

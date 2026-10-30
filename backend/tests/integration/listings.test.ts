@@ -38,6 +38,8 @@ const detail = (over: Partial<ListingDetailRecord> = {}): ListingDetailRecord =>
   categoryName: 'Livros e apostilas',
   publishedAt: new Date('2026-10-01T12:00:00Z'),
   deletedAt: null,
+  views: 0,
+  contacts: 0,
   images: [
     { id: 1, url: 'http://x/uploads/a.png', position: 1 },
     { id: 2, url: 'http://x/uploads/b.png', position: 2 },

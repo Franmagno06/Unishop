@@ -1,14 +1,17 @@
 import type { UserRecord, UserRepository } from '../auth/auth.types'
 import { AppError } from '../../shared/errors/app-error'
+import type { StorageProvider } from '../../shared/providers/storage/storage.provider'
 import type { MyProfile, ProfilePatch, ProfileRepository } from './users.types'
 
 export type UsersDeps = {
   users: UserRepository
   profiles: ProfileRepository
   config: { allowedEmailDomain: string }
+  /** Sem storage a rota de foto não é montada. */
+  storage?: StorageProvider
 }
 
-export function createUsersService({ users, profiles, config }: UsersDeps) {
+export function createUsersService({ users, profiles, config, storage }: UsersDeps) {
   async function load(userId: number): Promise<UserRecord> {
     const user = await users.findById(userId)
     if (!user) throw new AppError(401, 'UNAUTHENTICATED', 'Faça login para continuar.')
@@ -69,6 +72,21 @@ export function createUsersService({ users, profiles, config }: UsersDeps) {
     return me(userId)
   }
 
+  // RN-PER-05: JPG ou PNG de até 4 MB (o middleware de upload já conferiu). Vale para aluno e admin.
+  // A foto antiga fica no storage: o banco guarda só a URL, sem o publicId para apagá-la.
+  async function setAvatar(userId: number, image: Buffer) {
+    if (!storage) throw new Error('Foto de perfil sem StorageProvider.')
+    await load(userId)
+    const stored = await storage.upload({ buffer: image, folder: 'avatars' })
+    try {
+      await profiles.setPhoto(userId, stored.url)
+    } catch (err) {
+      await storage.remove(stored.publicId).catch(() => undefined)
+      throw err
+    }
+    return me(userId)
+  }
+
   // RN-PER-06. Ainda não confere pedidos pagos em aberto (409 HAS_OPEN_PAID_ORDERS): entra com os pedidos.
   async function deleteAccount(userId: number) {
     const user = await load(userId)
@@ -82,6 +100,6 @@ export function createUsersService({ users, profiles, config }: UsersDeps) {
     await profiles.anonymize(userId)
   }
 
-  return { me, updateProfile, deleteAccount }
+  return { me, updateProfile, setAvatar, deleteAccount }
 }
 export type UsersService = ReturnType<typeof createUsersService>

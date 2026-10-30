@@ -18,6 +18,12 @@ const STATUS: Record<string, ListingStatus> = {
   vendido: 'sold',
 }
 
+const DB_STATUS: Record<ListingStatus, string> = {
+  active: 'ativo',
+  paused: 'pausado',
+  sold: 'vendido',
+}
+
 const ORDER: Record<ListingSort, Prisma.ListingOrderByWithRelationInput[]> = {
   recent: [{ publishedAt: 'desc' }, { id: 'desc' }],
   price_asc: [{ price: 'asc' }, { publishedAt: 'desc' }, { id: 'desc' }],
@@ -98,6 +104,8 @@ export function createPrismaListingRepository(db: Db): ListingRepository {
       categoryName: row.category.name,
       publishedAt: row.publishedAt,
       deletedAt: row.deletedAt,
+      views: row.views,
+      contacts: row.contacts,
       images: row.images,
       owner: {
         id: row.user.id,
@@ -138,6 +146,60 @@ export function createPrismaListingRepository(db: Db): ListingRepository {
 
     async incrementViews(id) {
       await db.listing.update({ where: { id }, data: { views: { increment: 1 } } })
+    },
+
+    async findByOwner(ownerId) {
+      const rows = await db.listing.findMany({
+        where: { userId: ownerId, deletedAt: null },
+        select: { id: true },
+        orderBy: ORDER.recent,
+      })
+      const records = await Promise.all(rows.map((r) => findById(r.id)))
+      return records.filter((r): r is ListingDetailRecord => r !== null)
+    },
+
+    async update(id, patch) {
+      await db.listing.update({
+        where: { id },
+        data: {
+          ...(patch.title !== undefined && { name: patch.title }),
+          ...(patch.description !== undefined && { description: patch.description }),
+          ...(patch.priceInCents !== undefined && { price: centsToDecimal(patch.priceInCents) }),
+          ...(patch.quantity !== undefined && { quantity: patch.quantity }),
+          ...(patch.whatsapp !== undefined && { whatsapp: patch.whatsapp }),
+          ...(patch.categoryId !== undefined && { categoryId: patch.categoryId }),
+        },
+      })
+    },
+
+    // UPDATE condicional: se outra requisição já trocou o estado, nenhuma linha muda. Vendido zera as
+    // unidades que sobraram e grava a data (RF017.9, RN-EST-06).
+    async changeStatus(id, from, to) {
+      const { count } = await db.listing.updateMany({
+        where: { id, deletedAt: null, status: { in: from.map((s) => DB_STATUS[s]) } },
+        data: {
+          status: DB_STATUS[to],
+          ...(to === 'sold' && { quantity: 0, soldAt: new Date() }),
+        },
+      })
+      return count === 1
+    },
+
+    // RN-ANU-09: a trava no anúncio e a conferência dos pedidos ficam na mesma transação.
+    async softDelete(id) {
+      return db.$transaction(async (tx) => {
+        await lockListing(tx, id)
+        const open = await tx.order.count({
+          where: { listingId: id, status: { in: ['pago', 'retirada_combinada'] } },
+        })
+        if (open > 0) return 'blocked' as const
+        await tx.listing.update({ where: { id }, data: { deletedAt: new Date() } })
+        return 'ok' as const
+      })
+    },
+
+    countOrders(id) {
+      return db.order.count({ where: { listingId: id } })
     },
 
     async categoryExists(id) {

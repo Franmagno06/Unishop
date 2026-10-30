@@ -9,6 +9,8 @@ export type ProfilePatch = {
 export interface ProfileRepository {
   /** Uma transação curta: grava o perfil e, se o WhatsApp mudou, copia para os anúncios ativos (RN-PER-03). */
   updateProfile(id: number, patch: ProfilePatch): Promise<void>
+  /** Grava a URL da foto de perfil (RN-PER-05). */
+  setPhoto(id: number, url: string): Promise<void>
   /** Exclusão lógica (RN-PER-06): apaga os dados pessoais e marca a conta como excluída. */
   anonymize(id: number): Promise<void>
 }

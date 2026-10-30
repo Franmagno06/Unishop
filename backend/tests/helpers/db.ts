@@ -58,3 +58,28 @@ export function createListing(userId: number, overrides: Partial<ListingData> = 
     } as ListingData,
   })
 }
+
+type OrderData = Parameters<typeof testDb.order.create>[0]['data']
+
+// Pedido direto no banco, para testar o que depende dele (exclusão, indicadores) sem o módulo de pedidos.
+export function createOrder(
+  listingId: number,
+  buyerId: number,
+  sellerId: number,
+  overrides: Partial<OrderData> = {},
+) {
+  return testDb.order.create({
+    data: {
+      listingId,
+      buyerId,
+      sellerId,
+      negotiationType: 'whatsapp',
+      status: 'em_negociacao',
+      productName: 'Produto de teste',
+      quantity: 1,
+      unitPrice: '10.00',
+      totalAmount: '10.00',
+      ...overrides,
+    } as OrderData,
+  })
+}
