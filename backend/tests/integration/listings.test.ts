@@ -10,6 +10,7 @@ import {
   createFakeMail,
   createFakeOAuth,
   createFakeProfiles,
+  createFakeStorage,
   createFakeTokens,
   createFakeUsers,
 } from '../helpers/fakes'
@@ -74,6 +75,7 @@ function build(details: ListingDetailRecord[], summaries: ListingSummaryRecord[]
     mail: createFakeMail().provider,
     oauth: createFakeOAuth().provider,
     listings: fake.repo,
+    storage: createFakeStorage().provider,
   })
 }
 

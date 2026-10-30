@@ -2,6 +2,7 @@ import compression from 'compression'
 import cors from 'cors'
 import express from 'express'
 import helmet from 'helmet'
+import { resolve } from 'node:path'
 import { env } from './config/env'
 import { createJwt } from './config/jwt'
 import {
@@ -32,6 +33,8 @@ import { requestId } from './shared/middlewares/request-id'
 import type { MailProvider } from './shared/providers/mail/mail.provider'
 import { createGoogleProvider } from './shared/providers/oauth/google.provider'
 import type { OAuthProvider } from './shared/providers/oauth/oauth.provider'
+import { createLocalStorageProvider } from './shared/providers/storage/local.provider'
+import type { StorageProvider } from './shared/providers/storage/storage.provider'
 
 export type AppDeps = {
   users: UserRepository
@@ -41,6 +44,9 @@ export type AppDeps = {
   oauth: OAuthProvider
   categories?: CategoryRepository
   listings?: ListingRepository
+  storage?: StorageProvider
+  /** Pasta servida em /uploads. Só com o driver local (desenvolvimento e teste). */
+  uploadsDir?: string
   now?: () => Date
 }
 
@@ -92,14 +98,46 @@ export function createApp(deps?: AppDeps) {
       app.use('/api/v1/categories', createCategoriesRoutes(categoriesService, authenticate))
     }
     if (deps.listings) {
-      const listingsService = createListingsService({ listings: deps.listings })
+      if (!deps.storage) throw new Error('Os anúncios precisam de um StorageProvider.')
+      const listingsService = createListingsService({
+        listings: deps.listings,
+        users: deps.users,
+        storage: deps.storage,
+      })
       app.use('/api/v1/listings', createListingsRoutes(listingsService, authenticate))
     }
+  }
+
+  // Imagens do driver local. O Helmet manda `same-origin`, o que impediria o front (outra porta)
+  // de exibir a imagem; a pasta só tem fotos de anúncio, que são públicas na vitrine.
+  if (deps?.uploadsDir) {
+    app.use(
+      '/uploads',
+      (_req, res, next) => {
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin')
+        next()
+      },
+      express.static(deps.uploadsDir),
+    )
   }
 
   app.use(notFoundHandler)
   app.use(errorHandler)
   return app
+}
+
+// O driver local grava no disco do servidor: só vale em desenvolvimento e teste (api.md §6.4).
+// Fora deles a API não sobe até existir o provider da Cloudinary (Etapa 10).
+const UPLOADS_DIR = resolve(process.cwd(), 'uploads')
+function pickStorageProvider() {
+  const local = env.APP_ENV === 'development' || env.APP_ENV === 'test'
+  if (env.STORAGE_DRIVER !== 'local' || !local) {
+    throw new Error(
+      `STORAGE_DRIVER "${env.STORAGE_DRIVER}" sem provider em APP_ENV "${env.APP_ENV}".`,
+    )
+  }
+  const apiUrl = env.API_PUBLIC_URL ?? `http://localhost:${env.PORT}`
+  return createLocalStorageProvider({ dir: UPLOADS_DIR, baseUrl: `${apiUrl}/uploads` })
 }
 
 // O provider de console imprime o link de redefinição no log: só vale em desenvolvimento e teste.
@@ -121,5 +159,7 @@ export const app = createApp({
   oauth: createGoogleProvider(env.GOOGLE_CLIENT_ID),
   categories: createPrismaCategoryRepository(prisma),
   listings: createPrismaListingRepository(prisma),
+  storage: pickStorageProvider(),
+  uploadsDir: UPLOADS_DIR,
 })
 export default app // a Vercel usa este export; nada aqui chama listen

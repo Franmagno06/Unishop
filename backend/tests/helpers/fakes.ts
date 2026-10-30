@@ -1,3 +1,4 @@
+import type { StorageProvider } from '../../src/shared/providers/storage/storage.provider'
 import type { CategoryRepository } from '../../src/modules/categories/categories.types'
 import type {
   ListingDetailRecord,
@@ -15,10 +16,7 @@ import type {
   UserRecord,
   UserRepository,
 } from '../../src/modules/auth/auth.types'
-import type {
-  MailProvider,
-  PasswordResetMail,
-} from '../../src/shared/providers/mail/mail.provider'
+import type { MailProvider, PasswordResetMail } from '../../src/shared/providers/mail/mail.provider'
 import type { GoogleIdentity, OAuthProvider } from '../../src/shared/providers/oauth/oauth.provider'
 
 // Repositories em memória: testam as regras sem banco. Os testes contra o banco real entram
@@ -223,6 +221,35 @@ export function createFakeListings(
     findRecent: async (limit) => summaries.slice(0, limit),
     findById: async (id) => details.find((d) => d.id === id) ?? null,
     incrementViews: async (id) => void views.set(id, (views.get(id) ?? 0) + 1),
+    categoryExists: async () => true,
+    createWithImage: async () => {
+      throw new Error('fora do escopo deste fake')
+    },
+    addImage: async () => {
+      throw new Error('fora do escopo deste fake')
+    },
+    removeImage: async () => {
+      throw new Error('fora do escopo deste fake')
+    },
   }
   return { repo, views }
+}
+
+// Storage em memória: guarda o que foi enviado e o que foi removido.
+export function createFakeStorage() {
+  const uploaded: { publicId: string; url: string }[] = []
+  const removed: string[] = []
+  let n = 0
+  const provider: StorageProvider = {
+    async upload({ folder }) {
+      const publicId = `${folder}/fake-${++n}.png`
+      const result = { publicId, url: `http://x/uploads/${publicId}` }
+      uploaded.push(result)
+      return result
+    },
+    async remove(publicId) {
+      removed.push(publicId)
+    },
+  }
+  return { provider, uploaded, removed }
 }

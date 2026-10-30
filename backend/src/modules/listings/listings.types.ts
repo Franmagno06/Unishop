@@ -44,6 +44,19 @@ export type ListFilters = {
   sort: ListingSort
 }
 
+export type NewListingData = {
+  ownerId: number
+  title: string
+  categoryId: number
+  description: string
+  priceInCents: number
+  quantity: number
+  whatsapp: string
+}
+
+/** Imagem já enviada ao storage, pronta para ser registrada no banco. */
+export type StoredImage = { url: string; publicId: string }
+
 export interface ListingRepository {
   /** Só anúncios visíveis (RN-ANU-05), com filtros, ordenação e paginação. */
   findVisiblePage(
@@ -56,4 +69,17 @@ export interface ListingRepository {
   findById(id: number): Promise<ListingDetailRecord | null>
   /** +1 visualização, atômico (RN-ANU-11). */
   incrementViews(id: number): Promise<void>
+  categoryExists(id: number): Promise<boolean>
+  /** Anúncio ativo e a imagem de ordem 1, na mesma transação (RN-ANU-01, 03). */
+  createWithImage(data: NewListingData, image: StoredImage): Promise<ListingDetailRecord>
+  /** Próxima ordem livre de 1 a 5; `'full'` se já há 5 imagens (RN-ANU-03). */
+  addImage(
+    listingId: number,
+    image: StoredImage,
+  ): Promise<{ id: number; url: string; position: number } | 'full'>
+  /** Remove e renumera para a principal continuar na ordem 1; o anúncio mantém pelo menos 1 imagem. */
+  removeImage(
+    listingId: number,
+    imageId: number,
+  ): Promise<{ publicId: string } | 'last' | 'not_found'>
 }

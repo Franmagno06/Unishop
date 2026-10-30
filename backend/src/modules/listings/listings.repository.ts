@@ -70,7 +70,45 @@ function whereOf(filters: ListFilters): Prisma.ListingWhereInput {
   }
 }
 
+const lockListing = (tx: Prisma.TransactionClient, id: number) =>
+  tx.$queryRaw`SELECT id_anuncio FROM anuncio WHERE id_anuncio = ${id} FOR UPDATE`
+
 export function createPrismaListingRepository(db: Db): ListingRepository {
+  async function findById(id: number): Promise<ListingDetailRecord | null> {
+    const row = await db.listing.findUnique({
+      where: { id },
+      include: {
+        category: { select: { name: true } },
+        images: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
+        user: {
+          select: { id: true, name: true, course: true, verified: true, accountStatus: true },
+        },
+      },
+    })
+    if (!row) return null
+    return {
+      id: row.id,
+      title: row.name,
+      description: row.description,
+      priceInCents: decimalToCents(row.price),
+      quantity: row.quantity,
+      whatsapp: row.whatsapp,
+      status: STATUS[row.status] ?? 'paused',
+      categoryId: row.categoryId,
+      categoryName: row.category.name,
+      publishedAt: row.publishedAt,
+      deletedAt: row.deletedAt,
+      images: row.images,
+      owner: {
+        id: row.user.id,
+        name: row.user.name,
+        course: row.user.course,
+        verified: row.user.verified,
+        accountActive: row.user.accountStatus === 'ativa',
+      },
+    }
+  }
+
   return {
     async findVisiblePage(filters, pagination) {
       const where = whereOf(filters)
@@ -96,43 +134,77 @@ export function createPrismaListingRepository(db: Db): ListingRepository {
       return rows.map(toSummary)
     },
 
-    async findById(id) {
-      const row = await db.listing.findUnique({
-        where: { id },
-        include: {
-          category: { select: { name: true } },
-          images: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
-          user: {
-            select: { id: true, name: true, course: true, verified: true, accountStatus: true },
-          },
-        },
-      })
-      if (!row) return null
-      return {
-        id: row.id,
-        title: row.name,
-        description: row.description,
-        priceInCents: decimalToCents(row.price),
-        quantity: row.quantity,
-        whatsapp: row.whatsapp,
-        status: STATUS[row.status] ?? 'paused',
-        categoryId: row.categoryId,
-        categoryName: row.category.name,
-        publishedAt: row.publishedAt,
-        deletedAt: row.deletedAt,
-        images: row.images,
-        owner: {
-          id: row.user.id,
-          name: row.user.name,
-          course: row.user.course,
-          verified: row.user.verified,
-          accountActive: row.user.accountStatus === 'ativa',
-        },
-      } satisfies ListingDetailRecord
-    },
+    findById,
 
     async incrementViews(id) {
       await db.listing.update({ where: { id }, data: { views: { increment: 1 } } })
+    },
+
+    async categoryExists(id) {
+      return (await db.category.count({ where: { id } })) > 0
+    },
+
+    // RN-ANU-01, 03: anúncio e imagem 1 juntos; sem a imagem, o anúncio não nasce.
+    async createWithImage(data, image) {
+      const { id } = await db.$transaction(async (tx) => {
+        const listing = await tx.listing.create({
+          data: {
+            name: data.title,
+            description: data.description,
+            price: centsToDecimal(data.priceInCents),
+            quantity: data.quantity,
+            whatsapp: data.whatsapp,
+            userId: data.ownerId,
+            categoryId: data.categoryId,
+          },
+          select: { id: true },
+        })
+        await tx.listingImage.create({ data: { listingId: listing.id, position: 1, ...image } })
+        return listing
+      })
+      return (await findById(id))!
+    },
+
+    // A trava na linha do anúncio serializa quem mexe nas imagens dele: duas inclusões ou remoções ao
+    // mesmo tempo não passam de 5 nem deixam o anúncio sem imagem (RN-ANU-03).
+    async addImage(listingId, image) {
+      return db.$transaction(async (tx) => {
+        await lockListing(tx, listingId)
+        const used = new Set(
+          (
+            await tx.listingImage.findMany({ where: { listingId }, select: { position: true } })
+          ).map((r) => r.position),
+        )
+        const position = [1, 2, 3, 4, 5].find((p) => !used.has(p))
+        if (position === undefined) return 'full' as const
+        return tx.listingImage.create({
+          data: { listingId, position, ...image },
+          select: { id: true, url: true, position: true },
+        })
+      })
+    },
+
+    async removeImage(listingId, imageId) {
+      return db.$transaction(async (tx) => {
+        await lockListing(tx, listingId)
+        const images = await tx.listingImage.findMany({
+          where: { listingId },
+          orderBy: { position: 'asc' },
+        })
+        const target = images.find((i) => i.id === imageId)
+        if (!target) return 'not_found' as const
+        if (images.length <= 1) return 'last' as const
+
+        await tx.listingImage.delete({ where: { id: imageId } })
+        // Fecha o buraco na ordem, de cima para baixo, para a principal continuar sendo a de ordem 1.
+        const rest = images.filter((i) => i.id !== imageId)
+        for (const [index, image] of rest.entries()) {
+          if (image.position !== index + 1) {
+            await tx.listingImage.update({ where: { id: image.id }, data: { position: index + 1 } })
+          }
+        }
+        return { publicId: target.publicId }
+      })
     },
   }
 }
