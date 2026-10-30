@@ -424,7 +424,7 @@ Em **Settings → Deployment Protection**, mantenha a proteção do ambiente *Pr
 
 ### 7.1 Criar o banco
 
-1. No painel do Supabase, crie **dois projetos**: `unishop-prod` (produção) e `unishop-dev` (desenvolvimento e preview). O plano gratuito permite 2 projetos ativos. Use o Supabase **só como banco**: o projeto não usa Auth, Storage, Realtime, a API automática (PostgREST) nem RLS do Supabase (a autenticação é o JWT do backend).
+1. No painel do Supabase, crie **dois projetos**: `unishop-prod` (produção) e `unishop-dev` (desenvolvimento e preview). O plano gratuito permite 2 projetos ativos. Use o Supabase **só como banco**: o projeto não usa Auth, Storage, Realtime nem a API automática (PostgREST) do Supabase (a autenticação é o JWT do backend); a RLS fica ligada nas tabelas, sem políticas (decisão de Francisco, 29/10; ver pendência no CLAUDE.md).
 2. Escolha a região do banco **mais próxima da região das funções** da Vercel, para reduzir a latência de cada consulta.
 3. Confira a **versão do PostgreSQL** em *Database → Settings*; este guia assume a 18 (pendência 13).
 4. No botão **Connect** de cada projeto, aba **ORM → Prisma**, copie as duas URLs. Cadastre-as à mão no painel da Vercel (a integração da Marketplace usa outros nomes de variável): `DATABASE_URL` (Transaction pooler, porta 6543, com `?pgbouncer=true&connection_limit=1`) e `DATABASE_URL_UNPOOLED` (Session pooler, porta 5432, ou conexão direta). Escape na senha os caracteres reservados (`&`, `#`, `?`, espaço). **A conexão direta do Supabase é só IPv6** (IPv4 exige um complemento pago); redes e runners sem IPv6 devem usar o **Session pooler**, que é IPv4 em todos os planos. Copie o host pelo Connect, sem montá-lo à mão.

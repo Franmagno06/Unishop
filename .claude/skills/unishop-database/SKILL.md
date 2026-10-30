@@ -8,7 +8,7 @@ metadata:
 
 # Banco de dados do Unishop
 
-Resumo operacional. Fonte completa e autoritativa: [`docs/BancoDeDados/bd.md`](../../../docs/BancoDeDados/bd.md) (v0.2, de 16/10/2026; responsável: Ana Clara). Em dúvida, releia a seção citada; este arquivo não a substitui. O documento descreve o **estado final** do banco (não o dump de 07/10/2026 mais ajustes). Regras de negócio: `unishop-rules`. Código que usa o banco: `unishop-backend`. Conexões (pooler × direta), backup e restauração no Supabase: `unishop-deploy`. Boas práticas gerais de SQL, índices e locks: `supabase-postgres-best-practices` (PostgreSQL puro; o Supabase é só o hospedeiro do banco: **não** use Auth, Storage, Realtime, a API automática nem RLS dele).
+Resumo operacional. Fonte completa e autoritativa: [`docs/BancoDeDados/bd.md`](../../../docs/BancoDeDados/bd.md) (v0.2, de 16/10/2026; responsável: Ana Clara). Em dúvida, releia a seção citada; este arquivo não a substitui. O documento descreve o **estado final** do banco (não o dump de 07/10/2026 mais ajustes). Regras de negócio: `unishop-rules`. Código que usa o banco: `unishop-backend`. Conexões (pooler × direta), backup e restauração no Supabase: `unishop-deploy`. Boas práticas gerais de SQL, índices e locks: `supabase-postgres-best-practices` (PostgreSQL puro; o Supabase é só o hospedeiro do banco: **não** use Auth, Storage, Realtime nem a API automática dele; a RLS fica ligada sem políticas, decisão de Francisco, ver pendência no CLAUDE.md).
 
 Se algo não está no `bd.md`, diga que não está definido; não invente tabela, coluna ou valor. Divergência entre o MER (`.drawio`) e o banco: o banco vale, e o MER é que será corrigido (seção 12 do doc).
 

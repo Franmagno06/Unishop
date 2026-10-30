@@ -71,7 +71,7 @@ Só código: *Instant Rollback* no painel. Código e banco: restaure o banco (po
 ## Usando as skills instaladas sem quebrar as regras acima
 
 - `vercel-cli-with-tokens`: útil para `vercel env`, `vercel logs` e deploy pelo CLI. O token vem de `VERCEL_TOKEN` no **ambiente** (nunca em `--token`, nunca commitado). Não faça `vercel deploy --prod` nem `vercel env rm` sem o usuário pedir. Deploy normal é `git push`.
-- `supabase-postgres-best-practices`: SQL, índices e locks em PostgreSQL puro; vale para o Supabase. O projeto usa o Supabase **só como banco** (sem Auth, Storage, Realtime, API automática nem RLS dele; a autenticação é o JWT do backend e a API roda na Vercel).
+- `supabase-postgres-best-practices`: SQL, índices e locks em PostgreSQL puro; vale para o Supabase. O projeto usa o Supabase **só como banco** (sem Auth, Storage, Realtime nem API automática dele; RLS ligada sem políticas, decisão de Francisco; a autenticação é o JWT do backend e a API roda na Vercel).
 - Não há skill de deploy-to-vercel instalada de propósito: o fallback dela envia o projeto a um endpoint sem login.
 
 ## Verificação (seção 14)

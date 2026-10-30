@@ -120,7 +120,7 @@ SPA em React que consome uma API REST em Node.js/Express (`/api/v1`), sem sessã
  └───┬───────────┬────────────┬───────────┬────────┘
      ▼           ▼            ▼           ▼
  PostgreSQL   Google      Mercado      Resend e Cloudinary
- (Supabase)   (login)     Pago         (e-mails e imagens)
+ (Supabase)       (login)     Pago         (e-mails e imagens)
                           (cartão e Pix)
                             ▲
                             └── webhook: o gateway avisa quando o pagamento é aprovado

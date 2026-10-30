@@ -1,38 +1,48 @@
-import { getCurrentUser, updateCurrentUser } from '../../../../shared/lib/current-user'
+import { api } from '../../../../shared/lib/api'
+import {
+  fromApi,
+  setCurrentUser,
+  type ProfileApiUser,
+} from '../../../../shared/lib/current-user'
+import { MOCK_MODE } from '../../../../shared/lib/mock-mode'
 
-// Dados de exemplo: ainda não há API. Formato assumido de backend.md §9:
-// PATCH /users/me (nome, curso, WhatsApp, foto) e DELETE /users/me. Quando a API existir, só este
-// arquivo muda. O e-mail novo nunca vale na hora: pede confirmação por link (RN-PER-02).
-const DELAY_MS = 300
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
+// PATCH /users/me (nome, e-mail, curso, WhatsApp) e DELETE /users/me (backend.md §9). Em modo de
+// demonstração as chamadas vão para `profile.mock.ts`. O `import.meta.env.DEV` escrito aqui é o que
+// deixa o Vite apagar o código de exemplo do build de produção.
 export type UpdateProfileInput = {
   name: string
   email: string
   course: string
   whatsapp: string // só dígitos (RN-PER-07)
-  avatarUrl: string | null
+  avatarUrl: string | null // a foto só é enviada na Etapa 5 (upload); aqui ainda não vai à API
 }
 
 export type UpdateProfileResult = {
-  // E-mail aguardando confirmação no novo endereço; null se o e-mail não mudou.
+  // Só o modo de demonstração pede confirmação do e-mail novo; na API real a troca é direta.
   pendingEmail: string | null
 }
 
 export async function updateProfile(input: UpdateProfileInput): Promise<UpdateProfileResult> {
-  await wait(DELAY_MS)
-  const current = getCurrentUser()
-  updateCurrentUser({
-    name: input.name,
-    course: input.course,
-    whatsapp: input.whatsapp,
-    avatarUrl: input.avatarUrl,
+  if (import.meta.env.DEV && MOCK_MODE) {
+    return (await import('./profile.mock')).mockProfile.updateProfile(input)
+  }
+  const saved = await api<{ data: { user: ProfileApiUser } }>('/users/me', {
+    method: 'PATCH',
+    body: {
+      name: input.name,
+      email: input.email,
+      course: input.course,
+      whatsapp: input.whatsapp,
+    },
   })
-  return { pendingEmail: input.email !== current.email ? input.email : null }
+  setCurrentUser(fromApi(saved.data.user))
+  return { pendingEmail: null }
 }
 
-// RN-PER-06: o servidor anonimiza a conta. Se houver pedido Pago ou em Retirada combinada em
-// aberto, responde 409 HAS_OPEN_PAID_ORDERS (a regra vale só no backend; aqui sempre dá certo).
+// RN-PER-06: o servidor anonimiza a conta. O pedido leva a confirmação digitada ("EXCLUIR").
 export async function deleteAccount(): Promise<void> {
-  await wait(DELAY_MS)
+  if (import.meta.env.DEV && MOCK_MODE) {
+    return (await import('./profile.mock')).mockProfile.deleteAccount()
+  }
+  await api<void>('/users/me', { method: 'DELETE', body: { confirmation: 'EXCLUIR' } })
 }
