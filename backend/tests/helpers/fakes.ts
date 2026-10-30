@@ -1,4 +1,9 @@
 import type { CategoryRepository } from '../../src/modules/categories/categories.types'
+import type {
+  ListingDetailRecord,
+  ListingRepository,
+  ListingSummaryRecord,
+} from '../../src/modules/listings/listings.types'
 import { AppError } from '../../src/shared/errors/app-error'
 import type { ProfileRepository } from '../../src/modules/users/users.types'
 import type {
@@ -201,4 +206,23 @@ export function createFakeCategories(
 ) {
   const repo: CategoryRepository = { listWithCounts: async () => rows.map((r) => ({ ...r })) }
   return { repo }
+}
+
+// Anúncios em memória para as regras da rota (404 por visibilidade, visualização, serialização).
+// Filtro, ordenação e paginação de verdade são testados no banco (tests/db/listings.http.test.ts).
+export function createFakeListings(
+  details: ListingDetailRecord[],
+  summaries: ListingSummaryRecord[] = [],
+) {
+  const views = new Map<number, number>()
+  const repo: ListingRepository = {
+    findVisiblePage: async (_filters, pagination) => ({
+      items: summaries.slice((pagination.page - 1) * pagination.limit).slice(0, pagination.limit),
+      total: summaries.length,
+    }),
+    findRecent: async (limit) => summaries.slice(0, limit),
+    findById: async (id) => details.find((d) => d.id === id) ?? null,
+    incrementViews: async (id) => void views.set(id, (views.get(id) ?? 0) + 1),
+  }
+  return { repo, views }
 }
