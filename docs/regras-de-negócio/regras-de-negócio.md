@@ -282,7 +282,7 @@ Uma tabela só, com a data de cada decisão. Quando duas decisões tratam do mes
 | Estoque no WhatsApp | Não desconta em "Em negociação"; desconta quando o vendedor conclui. | 13/10 |
 | Imagem do anúncio | Pelo menos uma, obrigatória; no máximo cinco. | 13/10 e 15/10 |
 | Sessão | JWT no cabeçalho `Authorization: Bearer`, validade de 2 horas. | 13/10 e 15/10 |
-| Hospedagem | Vercel (frontend e API) e Neon (PostgreSQL). | 15/10 |
+| Hospedagem | Vercel (frontend e API) e Supabase (PostgreSQL, só como banco). Troca de Neon por Supabase em 30/10 (ADR-005). | 15/10 e 30/10 |
 | Termos de uso e Privacidade | Textos mínimos escritos antes da entrega (seção 11). Substitui "serão definidos durante o desenvolvimento". | 16/10 |
 | Login social | **Google no MVP**, junto do e-mail e senha, com o domínio `@edu.unifor.br` conferido no servidor. Apple fora (custo de US$ 99 por ano e e-mail de retransmissão fora do domínio). Substitui "Google e Apple desejáveis" (10/10). | 16/10 |
 | Imagem de 4 MB | Limite de **4 MB** por imagem, uma por requisição (limite da hospedagem). | 16/10 |

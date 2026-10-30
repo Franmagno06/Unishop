@@ -11,7 +11,7 @@ Conjunto de documentos alinhado em 16/10/2026. Precedência entre eles: PDF, Reg
 - [`docs/backend/backend.md`](docs/backend/backend.md) (v0.3) — arquitetura em camadas, autenticação, módulos e rotas (§9), pagamentos, estados, jobs, erros, segurança e mapa das regras RN no backend.
 - [`docs/frontend/frontend.md`](docs/frontend/frontend.md) (v0.4) — estrutura, rotas, componentes, estado, sessão e padrões de qualidade do frontend.
 - [`docs/api/api.md`](docs/api/api.md) (v0.3) — APIs externas (Google, Mercado Pago, Resend, Cloudinary, Turnstile e outras), arquitetura de segurança "backend-cofre", providers, travas de produção, variáveis, resiliência, custos e ADRs 001 a 009. O contrato da API própria (`openapi.yaml`) ainda não existe.
-- [`docs/deploy/deploy.md`](docs/deploy/deploy.md) (v0.3) — deploy em produção (Vercel + Neon): ambientes, segredos, CORS, jobs agendados, backup, atualização e reversão.
+- [`docs/deploy/deploy.md`](docs/deploy/deploy.md) (v0.3) — deploy em produção (Vercel + Supabase): ambientes, segredos, CORS, jobs agendados, backup, atualização e reversão.
 - [`docs/skills/skills.md`](docs/skills/skills.md) — skills do Claude Code instaladas no projeto e como usá-las.
 - `Trabalho Desenvolvimento Web 2026.pdf` — requisitos funcionais (RF001–RF024) e não-funcionais (RNF001–RNF016) originais do trabalho.
 
@@ -28,15 +28,14 @@ As skills ficam em `.claude/skills/` (detalhes e análise de cobertura em [`docs
 | Tabelas, colunas, `schema.prisma`, `@map`, migração (`0_init` + manual), seed, papéis `unishop_*`, estoque atômico, liquidação, anonimização, consulta SQL do projeto | `unishop-database` |
 | Dúvida de regra ("pode ou não pode"), código `RN-XXX-nn`, escopo do MVP, limites de campos, itens proibidos, desvios do PDF, critério de aceite, conflito entre documentos | `unishop-rules` |
 | Integrar ou revisar serviços externos (Google, Mercado Pago, Resend, Cloudinary, Turnstile), segredos, variáveis, `env.ts`, travas de produção, webhook assinado, ADRs | `unishop-api` |
-| Deploy na Vercel + Neon: variáveis por ambiente, `APP_ENV`, `vercel.json`, jobs por endpoint, `waitUntil`, cron, domínio, backup, rollback, limites do Hobby | `unishop-deploy` |
+| Deploy na Vercel + Supabase: variáveis por ambiente, `APP_ENV`, `vercel.json`, jobs por endpoint, `waitUntil`, cron, domínio, backup, rollback, limites do Hobby | `unishop-deploy` |
 | Operar o Vercel CLI com token (`vercel env`, `vercel logs`, deploy pelo CLI), sempre sob as regras da `unishop-deploy` | `vercel-cli-with-tokens` |
-| Conexão pooled × direta, branches por ambiente e restauração no Neon | `neon-postgres`, `neon-postgres-branches` |
 | Detalhes da API do Resend, entregabilidade, SPF/DKIM/DMARC, e-mail transacional | `resend`, `email-best-practices` |
 | Performance de React: waterfalls, bundle, re-renders, lazy loading (SPA Vite: ignorar regras `server-*` e de Next.js) | `vercel-react-best-practices` |
 | Projetar `shared/components/ui`, compound components, contexto, excesso de props booleanas | `vercel-composition-patterns` |
 | Revisar UI, acessibilidade (WCAG 2.1 AA), formulários, foco e contraste | `web-design-guidelines` |
 | Acabamento e UX das telas: polimento, animação, tela com dados extremos, comportamento no celular (sugestão de estilo; não muda regra nem stack) | `emil-design-eng`, `animate`, `animation-performance`, `review-animations`, `find-animation-opportunities`, `break-ui`, `mobile-native` |
-| Schema, migração, índice, transação, lock, consulta lenta, concorrência de estoque no PostgreSQL | `supabase-postgres-best-practices` |
+| Schema, migração, índice, transação, lock, consulta lenta, concorrência de estoque no PostgreSQL; conexão pooler × direta no Supabase (sem usar Auth, Storage, Realtime nem RLS do Supabase) | `supabase-postgres-best-practices` |
 | Rodar a aplicação local no navegador, screenshots, console, fluxos Playwright | `webapp-testing` |
 | Criar, testar ou melhorar skills do projeto | `skill-creator` |
 | Mapear o projeto em grafo de conhecimento (só se o usuário pedir `/graphify`) | `graphify` |
@@ -47,7 +46,7 @@ Fluxo sugerido por momento do trabalho (quando o código existir):
 |---|---|
 | Entender o que construir | `unishop-rules`: escopo do MVP (§8), limites de campos (§9) e desvios do PDF (§10) antes de estimar ou criar tarefa |
 | Antes de codar | Ler a regra em `docs/` (via `unishop-rules`) e acionar `unishop-frontend` e/ou `unishop-backend` |
-| Banco | `unishop-database` (lê `docs/BancoDeDados/bd.md`); `supabase-postgres-best-practices` ao definir schema, migração e concorrência de estoque; `neon-postgres` e `neon-postgres-branches` para conexões e branches no Neon. Gere o `schema.prisma` e a migração `0_init`, depois a migração manual, e teste em banco vazio |
+| Banco | `unishop-database` (lê `docs/BancoDeDados/bd.md`); `supabase-postgres-best-practices` ao definir schema, migração e concorrência de estoque também para conexões (pooler × direta) no Supabase. Gere o `schema.prisma` e a migração `0_init`, depois a migração manual, e teste em banco vazio |
 | Contrato da API | `unishop-backend` + `unishop-api`; escrever o `openapi.yaml` antes de o frontend consumir as rotas |
 | Regras do servidor | `unishop-backend` junto de `unishop-rules` e `unishop-database`; cada rota cita `RN-XXX-nn` |
 | Integração com serviço externo | `unishop-api` (e `resend` / `email-best-practices` no e-mail); `/security-review` em mudança de pagamento, webhook ou segredo |
@@ -124,12 +123,12 @@ Sistema web onde alunos verificados (e-mail `@edu.unifor.br`) anunciam e compram
 | Frontend | TypeScript + React, Vite, Tailwind CSS, React Router, TanStack Query, React Hook Form + Zod, HTML |
 | Testes (frontend) | Vitest, Testing Library, Playwright |
 | Backend | Node.js + Express, Prisma (ORM) |
-| Banco de dados | PostgreSQL 18 (Neon em produção; Docker Compose em desenvolvimento e testes) |
+| Banco de dados | PostgreSQL (Supabase em produção, só como banco; Docker Compose em desenvolvimento e testes) |
 | Prototipação | Figma |
 | Versionamento | Git, código organizado em camadas |
 | Gestão | Trello (Kanban) |
 
-Decisões fechadas da stack: Vite, Tailwind CSS, Prisma, React Router, TanStack Query, React Hook Form, Zod e Vitest/Testing Library/Playwright, estrutura do backend em camadas (routes/controller/service/repository), Mercado Pago, Vercel + Neon, Resend (Mailtrap em desenvolvimento) e Cloudinary. Todos os documentos (`regras-de-negócio`, `BancoDeDados`, `backend`, `frontend`, `api` e `deploy`) foram alinhados em conjunto em **16/10/2026**. O projeto ainda não foi iniciado: não criar código nem estrutura de pastas até o grupo liberar.
+Decisões fechadas da stack: Vite, Tailwind CSS, Prisma, React Router, TanStack Query, React Hook Form, Zod e Vitest/Testing Library/Playwright, estrutura do backend em camadas (routes/controller/service/repository), Mercado Pago, Vercel + Supabase, Resend (Mailtrap em desenvolvimento) e Cloudinary. Todos os documentos (`regras-de-negócio`, `BancoDeDados`, `backend`, `frontend`, `api` e `deploy`) foram alinhados em conjunto em **16/10/2026**. O projeto ainda não foi iniciado: não criar código nem estrutura de pastas até o grupo liberar.
 
 Sugestões ainda em avaliação (não confirmadas): nenhuma na stack. Itens "depois do MVP" (Turnstile, Sentry, confirmação de e-mail por link, tela de notificações, Redis para o limite de requisições) estão decididos como adiados em `docs/regras-de-negócio/regras-de-negócio.md` (§8) e `docs/api/api.md`.
 
@@ -205,8 +204,8 @@ Estados (nome exibido → valor no banco):
 ## Decisões do grupo já fechadas
 
 - Gateway de pagamento: Mercado Pago (ADR-002). Cartão por token e Pix com webhook assinado. Produção usa **credenciais de teste** (RN-PAG-10), com aviso de ambiente de demonstração na tela (RN-PAG-15).
-- Hospedagem: Vercel (frontend e API) com banco PostgreSQL 18 no Neon (ADR-005). Detalhes e limites do plano Hobby em [`docs/deploy/deploy.md`](docs/deploy/deploy.md). Neon gratuito: 1 GB por projeto, 100 CU-h por mês, 10 branches, restauração de 6 horas, banco dorme após 5 minutos, sem lista de IPs.
-- Banco: criado e evoluído **só pelo Prisma** (baseline `0_init` + migração manual com `CHECK`, índices parciais, view `anuncio_visivel` e papéis). O dump de 07/10/2026 não é restaurado no Neon. Três papéis: `unishop_migrator` (conexão direta, `DATABASE_URL_UNPOOLED`), `unishop_app` (pooler, `DATABASE_URL`) e `unishop_backup` (somente leitura, `DATABASE_URL_BACKUP`).
+- Hospedagem: Vercel (frontend e API) com banco PostgreSQL no Supabase, usado só como banco (ADR-005; sem Auth, Storage, Realtime nem RLS do Supabase). Detalhes e limites do plano Hobby em [`docs/deploy/deploy.md`](docs/deploy/deploy.md). Supabase gratuito (conferido em 30/10/2026): 500 MB por projeto, 2 projetos ativos, projeto pausa após 1 semana sem atividade, **sem branching, sem backup automático e sem restauração a ponto no tempo**, 5 GB de saída. Ambientes: um projeto Supabase para produção e outro para desenvolvimento e preview.
+- Banco: criado e evoluído **só pelo Prisma** (baseline `0_init` + migração manual com `CHECK`, índices parciais, view `anuncio_visivel` e papéis). O dump de 07/10/2026 não é restaurado no Supabase. Três papéis: `unishop_migrator` (conexão direta ou Session pooler, porta 5432, `DATABASE_URL_UNPOOLED`), `unishop_app` (Transaction pooler, porta 6543, com `?pgbouncer=true`, `DATABASE_URL`; no pooler o usuário é `papel.ref-do-projeto`) e `unishop_backup` (somente leitura, `DATABASE_URL_BACKUP`).
 - E-mail: Resend em produção (exige domínio próprio verificado) e Mailtrap em desenvolvimento (ADR-009). Imagens: Cloudinary (ADR-004). ORM: Prisma (ADR-001). Notificação ao vendedor e ao comprador: por e-mail.
 - Modelo de segurança das APIs externas: "backend-cofre" (ADR-008), em [`docs/api/api.md`](docs/api/api.md). Travas de produção por `APP_ENV`, não por `NODE_ENV`.
 - Jobs agendados: endpoints `GET /api/v1/internal/jobs/:name` com `CRON_SECRET`; Vercel Cron no diário (`cleanup-expired-tokens`) e cron-job.org **a cada 30 minutos** nos frequentes (`expire-pix-payments`, `reconcile-pending-payments`). Estorno com `await` e e-mail com `waitUntil`. Rotas técnicas: `GET /health` (leve, para o monitor) e `GET /health/db`.
@@ -229,7 +228,10 @@ Estados (nome exibido → valor no banco):
 - **Login com Google:** testar com um e-mail `@edu.unifor.br` real se ele entrega `email_verified = true`.
 - **Plano Hobby da Vercel:** sem equipe; conferir se commits de outros autores são bloqueados em repositório privado.
 - **Prova de conceito do Mercado Pago:** Pix de teste gerar o webhook de aprovação; escolher Payments API ou Orders API (ADR-002).
-- **Papéis do banco no Neon gratuito:** confirmar no painel como criar `unishop_migrator`, `unishop_app` e `unishop_backup` (Francisco ou Ana Clara); se não der, usar um papel só e registrar a exceção no Deploy.
+- **Papéis do banco no Supabase:** criar `unishop_migrator`, `unishop_app` e `unishop_backup` pelo SQL Editor e testar o login de cada um pelo pooler (Francisco ou Ana Clara); se não der, usar um papel só e registrar a exceção no Deploy.
+- **Versão do PostgreSQL no Supabase:** os documentos foram escritos para o PostgreSQL 18; conferir a versão do projeto em Database > Settings e ajustar a imagem do Docker, o `pg_dump` e o workflow de backup.
+- **Backup no Supabase gratuito:** não há backup automático; o RNF011 depende do workflow diário do GitHub Actions (`pg_dump` pela conexão Session pooler) e o plano gratuito não tem restauração a ponto no tempo.
+- **Pausa do projeto:** o plano gratuito pausa o projeto após 1 semana sem atividade; o monitor de `/health/db` (ou um job) precisa gerar atividade antes da demonstração.
 - **Banco:** testar a migração `0_init` + manual em um banco vazio e atualizar o MER (`.drawio`) com as divergências da seção 12 do Banco de Dados.
 - **PDF:** conferir os RNF012 a RNF016, ainda não mapeados no Deploy, e o limite de imagem (4 MB × 5 MB).
 - **Textos:** Termos de uso e Política de privacidade ainda não existem; limites de campos e lista de itens proibidos (Regras §9) esperam confirmação do grupo.
@@ -258,7 +260,7 @@ docs/
 ├─ regras-de-negócio/regras-de-negócio.md  # regras RN-XXX-nn, estados, permissões, MVP, testes (v0.4.1)
 ├─ BancoDeDados/bd.md                      # dicionário de dados, migração, papéis, LGPD (v0.2)
 ├─ backend/backend.md                      # arquitetura, rotas, pagamentos, segurança (v0.3)
-├─ deploy/deploy.md                        # deploy na Vercel + Neon (v0.3)
+├─ deploy/deploy.md                        # deploy na Vercel + Supabase (v0.3)
 ├─ skills/skills.md                        # skills do Claude Code no projeto
 └─ api/api.md                              # APIs externas e segurança (v0.3); openapi.yaml ainda não existe
 ```

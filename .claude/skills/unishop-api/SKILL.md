@@ -1,9 +1,9 @@
 ---
 name: unishop-api
-description: APIs externas e segurança do Unishop (Google Identity, Mercado Pago, Resend/Mailtrap, Cloudinary, WhatsApp wa.me, Turnstile, Neon, Sentry, UptimeRobot, GitHub Actions), modelo "backend-cofre", providers, webhook assinado, segredos e variáveis de ambiente. Use SEMPRE que o usuário integrar, trocar, testar ou revisar qualquer serviço externo, mexer em `shared/providers`, `config/env.ts`, `.env`, chaves, tokens, webhook, assinatura HMAC, idempotência, estorno, timeout/retry, drivers mock, travas de produção, custos e limites gratuitos ou ADRs, mesmo que não diga "API externa" ou "Unishop".
+description: APIs externas e segurança do Unishop (Google Identity, Mercado Pago, Resend/Mailtrap, Cloudinary, WhatsApp wa.me, Turnstile, Supabase (só o banco), Sentry, UptimeRobot, GitHub Actions), modelo "backend-cofre", providers, webhook assinado, segredos e variáveis de ambiente. Use SEMPRE que o usuário integrar, trocar, testar ou revisar qualquer serviço externo, mexer em `shared/providers`, `config/env.ts`, `.env`, chaves, tokens, webhook, assinatura HMAC, idempotência, estorno, timeout/retry, drivers mock, travas de produção, custos e limites gratuitos ou ADRs, mesmo que não diga "API externa" ou "Unishop".
 metadata:
   author: unishop-team
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # APIs externas e segurança do Unishop
@@ -62,24 +62,24 @@ Google 5 s · Mercado Pago cobrar 15 s (retry só com a mesma chave de idempotê
 
 ## Decisões vigentes e armadilhas
 
-- **ADRs** (numeração única): 001 ORM (Prisma) · 002 gateway (Mercado Pago) · 003 login só Google · 004 imagens (Cloudinary) · 005 hospedagem (Vercel + Neon) · 006 anti-bot · 007 observabilidade · 008 backend-cofre · 009 e-mail (Resend).
+- **ADRs** (numeração única): 001 ORM (Prisma) · 002 gateway (Mercado Pago) · 003 login só Google · 004 imagens (Cloudinary) · 005 hospedagem (Vercel + Supabase) · 006 anti-bot · 007 observabilidade · 008 backend-cofre · 009 e-mail (Resend).
 - **Imagens passam pela API**, uma por requisição, até **4 MB** (Vercel aceita 4,5 MB por requisição), de 1 a 5 por anúncio. Sem upload assinado direto do navegador. O RNF005 fala em 5 MB: desvio **confirmado pelo grupo em 16/10/2026** (Regras §10).
 - **E-mail e domínio:** o Resend só envia a destinatários reais com domínio verificado por DNS (SPF/DKIM); um endereço `vercel.app` não permite. Limite gratuito: 100 e-mails/dia, e e-mail de segurança tem prioridade.
 - **Previews da Vercel não recebem webhook** (a URL é única por aplicação). Teste de pagamento: local com túnel (ngrok/Cloudflare Tunnel) ou produção.
 - **Tarefas depois da resposta** (`waitUntil`/`await`): ver `unishop-deploy`.
 - **Login com Google é MVP** (ADR-003). O servidor confere o domínio e o `email_verified`; o e-mail `@edu.unifor.br` pode não vir verificado pelo Google (pendência 3), então teste com uma conta real. Google em `vercel.app` pode ser recusado como origem autorizada; teste cedo. Apple fica fora do MVP.
-- **Banco:** Neon gratuito (1 GB, PostgreSQL 18) com três papéis: `DATABASE_URL` (pooler, `unishop_app`), `DATABASE_URL_UNPOOLED` (`unishop_migrator`, só migração e seed) e `DATABASE_URL_BACKUP` (`unishop_backup`, somente leitura, só como segredo do GitHub). Todas são credenciais privadas.
+- **Banco:** Supabase gratuito, só como banco (500 MB, 2 projetos, pausa em 1 semana, sem backup nem branching; versão do PostgreSQL a conferir) com três papéis: `DATABASE_URL` (Transaction pooler, porta 6543, `unishop_app`), `DATABASE_URL_UNPOOLED` (Session pooler ou direta, porta 5432, `unishop_migrator`, só migração e seed) e `DATABASE_URL_BACKUP` (`unishop_backup`, somente leitura, só como segredo do GitHub). Todas são credenciais privadas. Não há chave `anon` nem `service_role` no projeto: não use o SDK do Supabase.
 - **Saúde:** `GET /health` leve (monitor UptimeRobot) e `GET /health/db` (confere o banco).
 - Login do admin e do aluno usam o mesmo endpoint; o perfil vem na resposta.
 
 ## Pendências abertas que afetam o código
 
-(numeração da seção 12 do `api.md` v0.3) Payments API × Orders API (1) · domínio próprio para o Resend (2) · `email_verified` do Google com e-mail institucional (3) · termos do UptimeRobot gratuito (4) · `openapi.yaml` (5) · criar os três papéis do banco no Neon gratuito (6). Turnstile e Sentry estão decididos como depois do MVP. Se a tarefa depende de uma delas, avise em vez de decidir sozinho.
+(numeração da seção 12 do `api.md` v0.3) Payments API × Orders API (1) · domínio próprio para o Resend (2) · `email_verified` do Google com e-mail institucional (3) · termos do UptimeRobot gratuito (4) · `openapi.yaml` (5) · criar e testar os três papéis do banco no Supabase (6) · versão do PostgreSQL do Supabase (7). Turnstile e Sentry estão decididos como depois do MVP. Se a tarefa depende de uma delas, avise em vez de decidir sozinho.
 
 ## Skills que complementam esta
 
 - Regras do servidor, rotas e estados → `unishop-backend`; regras de negócio e escopo do MVP → `unishop-rules`; tabelas e papéis do banco → `unishop-database`.
 - Hospedagem, variáveis por ambiente, CORS, jobs e backup → `unishop-deploy`.
 - Detalhes e armadilhas da API do Resend (idempotência, webhooks, domínios) → `resend`; entregabilidade e SPF/DKIM/DMARC → `email-best-practices`. Siga a interface `MailProvider` do projeto; ignore o que for de caixa de entrada para agentes, marketing ou contatos, que o Unishop não usa.
-- Banco Neon e branches → `neon-postgres`, `neon-postgres-branches` (ver `unishop-deploy`).
+- Banco Supabase, projetos por ambiente e conexões → `unishop-deploy` e `unishop-database`.
 - Antes do PR, em mudança de pagamento ou segredo → `/security-review`.

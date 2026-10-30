@@ -10,7 +10,7 @@ metadata:
 
 Resumo operacional da API REST do Unishop (`/api/v1`). Fonte completa e autoritativa: [`docs/backend/backend.md`](../../../docs/backend/backend.md) (v0.3, de 16/10/2026, baseada nas Regras de Negócio v0.4 e no Banco de Dados v0.2). Em dúvida, releia a seção relevante do doc; este arquivo não o substitui. A seção 9 do doc lista todas as rotas e a seção 20 mapeia cada `RN-XXX-nn` ao arquivo onde ela deve morar.
 
-Outras fontes: regras e limites de campos → skill `unishop-rules` ([`docs/regras-de-negócio/regras-de-negócio.md`](../../../docs/regras-de-negócio/regras-de-negócio.md)); tabelas, colunas e `@map` do Prisma → skill `unishop-database` ([`docs/BancoDeDados/bd.md`](../../../docs/BancoDeDados/bd.md)); providers, segredos e webhook → `unishop-api`; Vercel + Neon → `unishop-deploy`.
+Outras fontes: regras e limites de campos → skill `unishop-rules` ([`docs/regras-de-negócio/regras-de-negócio.md`](../../../docs/regras-de-negócio/regras-de-negócio.md)); tabelas, colunas e `@map` do Prisma → skill `unishop-database` ([`docs/BancoDeDados/bd.md`](../../../docs/BancoDeDados/bd.md)); providers, segredos e webhook → `unishop-api`; Vercel + Supabase → `unishop-deploy`.
 
 Prioridade entre fontes (CLAUDE.md): PDF do trabalho > decisões do grupo > docs em `docs/` > Figma. Se algo não está documentado, diga que não está definido; não invente rota, campo ou regra. Pendências abertas que tocam o backend: Payments API × Orders API do Mercado Pago (ADR-002), `email_verified` do Google com e-mail institucional, `openapi.yaml` inexistente.
 
@@ -92,6 +92,6 @@ Casos de teste obrigatórios: duas compras simultâneas da última unidade (só 
 - Tabelas, constraints, anonimização, migração Prisma e papéis do banco → `unishop-database`.
 - Integração com Google, Mercado Pago, Resend, Cloudinary, Turnstile, segredos, variáveis, travas de produção, webhook → `unishop-api`.
 - Hospedagem, `app.ts`/`dev-server.ts`, jobs por endpoint, `waitUntil`, migração e backup em produção → `unishop-deploy`.
-- Schema, índice, transação, lock ou query lenta no PostgreSQL → `supabase-postgres-best-practices` (sem adotar nada específico do Supabase; o banco é o PostgreSQL do Neon). Branches e conexões do Neon → `neon-postgres` e `neon-postgres-branches`.
+- Schema, índice, transação, lock ou query lenta no PostgreSQL → `supabase-postgres-best-practices` (sem adotar nada específico do Supabase: o banco é um PostgreSQL hospedado lá, acessado só pelo Prisma). Conexões: `DATABASE_URL` no Transaction pooler (6543, `?pgbouncer=true`) e `DATABASE_URL_UNPOOLED` no Session pooler ou direta (5432) para migração; veja `unishop-deploy`.
 - Revisão final de código com `code-review` / `security-review` antes do PR.
 - Para criar ou melhorar skills do projeto → `skill-creator`.

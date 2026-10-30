@@ -25,8 +25,9 @@ language: pt-BR (código e pastas em inglês; interface em português)
 | Versão | Data | O que mudou |
 |---|---|---|
 | 0.1 | 14/10/2026 | Primeira versão: catálogo das APIs externas e arquitetura de segurança "backend-cofre". |
-| 0.2 | 15/10/2026 | Alinhada às decisões fechadas: Mercado Pago como gateway (ADR-002, resta escolher a Payments API ou a Orders API), hospedagem Vercel + Neon (ADR-005), jobs como endpoints, upload de uma imagem por requisição (até 4 MB) e `waitUntil`. Travas de produção passam a usar `APP_ENV` e não exigem mais credencial real de pagamento (RN-PAG-10). `FRONTEND_URL` aceita lista. Variáveis unificadas com o Deploy. ADR-008 (backend-cofre) e ADR-009 (e-mail) renumerados. |
-| 0.3 | 16/10/2026 | Alinhada às Regras de Negócio v0.4, ao Banco v0.2 e ao Backend v0.3. Login com Google passa a **MVP**. Limite do Neon corrigido para **1 GB** (e demais limites conferidos em 16/10/2026). `/health` leve e `/health/db`. Três papéis de banco (migração, aplicação e backup somente leitura). PostgreSQL 18 na CI e no Docker. Estorno e liquidação cobrem pagamento tardio e anúncio inativo (RN-PAG-13, 14). Imagem de 4 MB confirmada pelo grupo. Variável `EMAIL_VERIFICATION_REQUIRED`. Metas de 500 usuários e 99% tratadas como metas de produto. Pendências renumeradas (seção 12). |
+| 0.2 | 15/10/2026 | Alinhada às decisões fechadas: Mercado Pago como gateway (ADR-002, resta escolher a Payments API ou a Orders API), hospedagem Vercel + Supabase (ADR-005), jobs como endpoints, upload de uma imagem por requisição (até 4 MB) e `waitUntil`. Travas de produção passam a usar `APP_ENV` e não exigem mais credencial real de pagamento (RN-PAG-10). `FRONTEND_URL` aceita lista. Variáveis unificadas com o Deploy. ADR-008 (backend-cofre) e ADR-009 (e-mail) renumerados. |
+| 0.3.1 | 30/10/2026 | **Banco trocado de Neon para Supabase (ADR-005 revisado).** Seção 4.8 reescrita (limites do Supabase conferidos em 30/10/2026: 500 MB, 2 projetos, pausa em 1 semana, sem branching nem backup automático), tabelas de risco e de limites, ambientes por projeto e pendências 6 e 7. |
+| 0.3 | 16/10/2026 | Alinhada às Regras de Negócio v0.4, ao Banco v0.2 e ao Backend v0.3. Login com Google passa a **MVP**. Limite do Neon (depois substituído) corrigido para **1 GB** (e demais limites conferidos em 16/10/2026). `/health` leve e `/health/db`. Três papéis de banco (migração, aplicação e backup somente leitura). PostgreSQL 18 na CI e no Docker. Estorno e liquidação cobrem pagamento tardio e anúncio inativo (RN-PAG-13, 14). Imagem de 4 MB confirmada pelo grupo. Variável `EMAIL_VERIFICATION_REQUIRED`. Metas de 500 usuários e 99% tratadas como metas de produto. Pendências renumeradas (seção 12). |
 
 ## Sumário
 
@@ -61,11 +62,11 @@ Existem dois tipos de API no projeto, e é importante não confundir:
 
 ### O que fica fora
 
-- **Hospedagem e deploy** (Vercel + Neon): estão em `docs/deploy/deploy.md`.
+- **Hospedagem e deploy** (Vercel + Supabase): estão em `docs/deploy/deploy.md`.
 - O contrato campo a campo da API do Unishop: `openapi.yaml`, que **ainda não existe** (pendência 5 da seção 12).
 - Tabelas e relações do banco: documento de Banco de Dados.
 
-> **Como ler os custos.** Os limites gratuitos citados foram conferidos em pesquisa feita em 14/10/2026 (o do Neon, reconferido em 16/10/2026) e **mudam com frequência**. Antes de depender de um limite, confirme na página oficial do provedor. Onde a informação não foi conferida, o texto diz "conferir".
+> **Como ler os custos.** Os limites gratuitos citados foram conferidos em pesquisa feita em 14/10/2026 (o do banco, reconferido em 30/10/2026 para o Supabase) e **mudam com frequência**. Antes de depender de um limite, confirme na página oficial do provedor. Onde a informação não foi conferida, o texto diz "conferir".
 
 
 ## 2. Arquitetura das APIs no projeto
@@ -97,7 +98,7 @@ A regra central é simples: **o backend é o único lugar que guarda segredos e 
 | Comunicação | Resend, Mailtrap (dev), link `wa.me` | E-mails transacionais; contato direto entre aluno e vendedor |
 | Mídia | Cloudinary (ou R2) | Guarda e entrega as imagens já comprimidas |
 | Proteção contra abuso | Cloudflare Turnstile | Barra robôs em cadastro, login e recuperação de senha |
-| Dados | PostgreSQL gerenciado no Neon | Banco em nuvem, com um branch por ambiente (Deploy, seção 7) |
+| Dados | PostgreSQL gerenciado no Supabase | Banco em nuvem, com um projeto por ambiente (Deploy, seção 7) |
 | Operação | Sentry, UptimeRobot, GitHub Actions | Erros, disponibilidade e integração contínua |
 | Apoio ao desenvolvimento | ngrok ou Cloudflare Tunnel | Recebe webhooks na máquina local |
 
@@ -129,7 +130,7 @@ Etapa: **MVP** entra na primeira entrega; **Depois** entra quando o MVP estiver 
 | Cloudflare R2 | Armazenamento de imagens | Back | Chaves de acesso (privadas) | Alternativa |
 | WhatsApp (`wa.me`) | Contato com o vendedor | Front (link) | Nenhuma | MVP |
 | Cloudflare Turnstile | Anti-bot | Front (widget) + Back | Site key (pública); secret (privada) | Depois |
-| Neon | PostgreSQL gerenciado | Back | `DATABASE_URL` e `DATABASE_URL_UNPOOLED` (privadas) | MVP |
+| Supabase (só o banco) | PostgreSQL gerenciado | Back | `DATABASE_URL` e `DATABASE_URL_UNPOOLED` (privadas) | MVP |
 | Vercel Cron e agendador externo (cron-job.org) | Chamam os endpoints de jobs | Agendador | `CRON_SECRET` (privada) | MVP |
 | ngrok ou Cloudflare Tunnel | Webhook na máquina local | Dev | Authtoken (privada, dev) | Dev |
 | Sentry | Monitoramento de erros | Back | DSN | Depois |
@@ -514,7 +515,7 @@ export async function verifyTurnstile(token: string, ip?: string) {
 - **Política se o Turnstile cair (decidida):** em `/auth/register` e `/auth/forgot-password`, falha fechada (503). Em `/auth/login`, falha aberta com limite de 3 tentativas por minuto por IP, para não trancar todos os alunos por uma queda do provedor.
 
 
-### 4.8 PostgreSQL gerenciado (Neon)
+### 4.8 PostgreSQL gerenciado (Supabase)
 
 > O **deploy e a hospedagem** estão em `docs/deploy/deploy.md`. Aqui entram só os aspectos de API e credencial do banco em nuvem.
 
@@ -524,15 +525,15 @@ export async function verifyTurnstile(token: string, ip?: string) {
 | Etapa | MVP |
 | Origem | RNF015, RNF011 |
 | Quem chama | Backend, pelo ORM |
-| Credenciais | `DATABASE_URL` (com *pooler*, usada pela API) e `DATABASE_URL_UNPOOLED` (conexão direta, usada pela migração e pelo backup). Privadas: usuário e senha dentro da URL |
-| Custo | Neon, plano Free (conferido em 16/10/2026): **100 CU-horas por projeto por mês, 1 GB de armazenamento por projeto, 10 branches, janela de restauração de 6 horas e 5 GB de transferência de saída**. O banco "dorme" após 5 minutos sem uso e isso não pode ser desligado. PostgreSQL 14 a 18, escolhido na criação do projeto. Supabase fica como alternativa mapeada (conferir) |
+| Credenciais | `DATABASE_URL` (Transaction pooler, porta 6543, usada pela API) e `DATABASE_URL_UNPOOLED` (Session pooler na porta 5432 ou conexão direta, usada pela migração; o backup usa `DATABASE_URL_BACKUP`). Privadas: usuário e senha dentro da URL. Não há chave `anon` nem `service_role`: o projeto **não** usa o SDK, a API REST nem o Auth do Supabase |
+| Custo | Supabase, plano Free (conferido em 30/10/2026): **500 MB de banco por projeto, 2 projetos ativos, 5 GB de saída, sem branching, sem backup automático nem restauração a ponto no tempo**. O projeto é **pausado após 1 semana sem atividade** e precisa ser retomado no painel. Versão do PostgreSQL: conferir em *Database → Settings* (pendência 7) |
 
-- **Limite de 1 GB:** basta para o MVP porque as imagens ficam na Cloudinary, não no banco. Crie o projeto com **PostgreSQL 18**, a versão do restante da documentação (Banco de Dados e Deploy).
-- **Risco para a disponibilidade (RNF011):** no plano gratuito do Neon, o processamento é suspenso quando o limite mensal acaba, e o banco "acorda" devagar depois de dormir. Planeje isso antes da demonstração.
+- **Limite de 500 MB:** basta para o MVP porque as imagens ficam na Cloudinary, não no banco. O restante da documentação (Banco de Dados e Deploy) assume o **PostgreSQL 18**; confira a versão do projeto ao criá-lo (pendência 7).
+- **Risco para a disponibilidade (RNF011):** no plano gratuito do Supabase o projeto é pausado após 1 semana sem atividade e não há backup automático. Os jobs de 30 em 30 minutos mantêm atividade; confira o painel antes da demonstração e mantenha o workflow de backup diário (Deploy, seção 11).
 - **TLS obrigatório:** `sslmode=require` na URL de conexão.
-- **Duas conexões e três papéis:** a migração (`prisma migrate deploy`, `directUrl`) usa `DATABASE_URL_UNPOOLED` com o papel `unishop_migrator`; a API usa `DATABASE_URL` com *pooler* (`?pgbouncer=true&connection_limit=1`) e o papel `unishop_app`, **sem permissão de alterar a estrutura**; o backup usa `DATABASE_URL_BACKUP`, com o papel `unishop_backup`, **somente leitura** (Banco de Dados, seção 10). A integração do Neon entrega um usuário só; os três papéis são criados à parte (Deploy, seção 7), e é preciso conferir no painel como criá-los no plano gratuito (pendência 6).
-- **Não há lista de IPs permitidos** (*IP Allow*) no plano gratuito: a proteção do banco é a senha forte, o TLS e os papéis com pouca permissão.
-- **Um branch por ambiente** (produção e um por preview), não um por pessoa. **Dados reais de produção nunca vão para desenvolvimento** (LGPD); o branch de preview **não** pode nascer de uma cópia da produção: o branch pai dos previews é o de desenvolvimento, só com dados fictícios (Deploy, seção 7.2).
+- **Duas conexões e três papéis:** a migração (`prisma migrate deploy`, `directUrl`) usa `DATABASE_URL_UNPOOLED` (porta 5432) com o papel `unishop_migrator`; a API usa `DATABASE_URL` com o *Transaction pooler* (porta 6543, `?pgbouncer=true&connection_limit=1`) e o papel `unishop_app`, **sem permissão de alterar a estrutura**; o backup usa `DATABASE_URL_BACKUP`, com o papel `unishop_backup`, **somente leitura** (Banco de Dados, seção 10). O Supabase entrega o usuário `postgres`; os três papéis são criados à parte pelo *SQL Editor* (Deploy, seção 7). **Pelo pooler o usuário é `papel.ref-do-projeto`**, e é preciso testar o login de cada papel (pendência 6). A conexão direta é só IPv6; sem IPv6 (inclusive no runner do GitHub Actions), use o Session pooler.
+- **Lista de IPs não serve** com a Vercel (sem IP fixo): a proteção do banco é a senha forte, o TLS e os papéis com pouca permissão.
+- **Um projeto por ambiente:** `unishop-prod` (produção) e `unishop-dev` (desenvolvimento e preview), sem branches (o plano gratuito não os tem). **Dados reais de produção nunca vão para desenvolvimento** (LGPD): `unishop-dev` só recebe dados fictícios (Deploy, seção 7.2).
 - Backup diário (workflow do GitHub Actions) e restauração testada seguem o RNF011 (Deploy, seção 11).
 
 
@@ -583,7 +584,7 @@ cloudflared tunnel --url http://localhost:3000
 | Credencial | Só a conta no serviço. **Nenhuma chave no código** |
 | Custo | Plano gratuito: **50 monitores com checagem a cada 5 minutos**. Os termos do plano gratuito já mudaram (uso não comercial): **conferir**. Alternativa: StatusCake (plano gratuito com 10 monitores) |
 
-- O `/health` responde 200 **sem consultar o banco**, para o monitor não acordar o Neon a cada checagem (o plano gratuito conta o tempo de computação). A rota `/health/db` faz `SELECT 1` e responde 200 ou 503; é para conferir o deploy, não para o monitor. Nenhuma das duas **revela versão, caminho ou erro detalhado**.
+- O `/health` responde 200 **sem consultar o banco**, para o monitor não consultar o banco a cada checagem. A rota `/health/db` faz `SELECT 1` e responde 200 ou 503; é para conferir o deploy, não para o monitor. Nenhuma das duas **revela versão, caminho ou erro detalhado**.
 - A rota não exige login, por isso não retorna nenhum dado do sistema.
 
 
@@ -1139,7 +1140,7 @@ Cada ambiente usa **credenciais próprias**. Credencial de teste nunca vai para 
 | Resend / Mailtrap | Mailtrap (caixa de teste) | `console` | Resend, domínio verificado (Preview: Mailtrap) |
 | Cloudinary | Pasta `unishop/dev/` (ou conta separada) | `local` | Pasta `unishop/prod/` (`CLOUDINARY_UPLOAD_FOLDER`) |
 | Turnstile | Chaves de teste da Cloudflare | `noop` | `noop` até o Turnstile entrar; depois, widget de produção com hostname restrito |
-| PostgreSQL | Docker local (`docker-compose.yml`, imagem `postgres:18`) | Docker local de testes (`docker-compose.test.yml`), em memória | Branch `production` do Neon (PostgreSQL 18); um branch por preview, derivado do branch de desenvolvimento |
+| PostgreSQL | Docker local (`docker-compose.yml`, imagem `postgres:18`) | Docker local de testes (`docker-compose.test.yml`), em memória | Projeto Supabase `unishop-prod` (PostgreSQL; versão a conferir); previews usam o projeto `unishop-dev` |
 | Sentry | Desligado ou `environment=development` | Desligado | `environment=production` |
 
 
@@ -1236,7 +1237,7 @@ Se um provedor cair, só a função dele para. Esta tabela define o comportament
 |---|---|---|
 | Resend (100 por dia) | E-mails recusados até o dia seguinte | Priorizar e-mails de segurança; trocar de plano ou de provedor (a interface `MailProvider` permite) |
 | Cloudinary (créditos) | Entrega ou upload limitados até renovar | Reduzir transformações; migrar para R2 (ADR-004) |
-| Neon (CU-horas) | Banco suspenso até renovar | Subir de plano; ou usar Supabase |
+| Supabase (pausa em 1 semana; 500 MB) | Banco pausado ou só leitura | Manter atividade pelos jobs; retomar no painel; subir de plano (Pro); ou voltar ao Neon |
 | Sentry (5.000 erros) | Eventos descartados | Aumentar a amostragem de descarte ou trocar de plano |
 
 
@@ -1279,7 +1280,7 @@ Se um provedor cair, só a função dele para. Esta tabela define o comportament
 | Resend | **3.000 e-mails/mês, 100/dia, 1 domínio** | Estourar 100 por dia | Mailtrap só em dev; outro provedor |
 | Cloudinary | **25 créditos/mês** (1 crédito = 1 GB de armazenamento, ou 1 GB de banda, ou 1.000 transformações) | Imagens muito acessadas | Cloudflare R2 |
 | Cloudflare Turnstile | Gratuito; **até 20 widgets**; sem SLA no gratuito | Queda do provedor | Política de falha (4.7) |
-| Neon | **100 CU-horas e 1 GB** por projeto por mês; 10 branches; restauração de 6 h; dorme em 5 min (conferido em 16/10/2026) | Suspender ao atingir o limite; arranque lento (soma-se à partida a frio da função, RNF008). Jobs e monitor que acordam o banco gastam CU-horas, por isso os jobs rodam de 30 em 30 minutos e o `/health` não consulta o banco. Cada branch de preview também consome o limite | Supabase (conferir) |
+| Supabase | **500 MB** por projeto; 2 projetos ativos; 5 GB de saída; sem branching; sem backup nem ponto no tempo; pausa após 1 semana sem atividade (conferido em 30/10/2026) | Projeto pausado até ser retomado no painel; banco cheio vira só leitura; sem backup próprio, por isso o workflow diário do Deploy (seção 11) é obrigatório. Os jobs de 30 em 30 minutos geram atividade | Neon (conferir), ou plano Pro |
 | Vercel (Hobby) | Gratuito, de uso não comercial; sem equipe; cron só diário; logs de cerca de 1 h; 100 deploys/dia | Ver Deploy, seção 6 e pendência 1 | Plano Pro, se necessário |
 | Sentry | **1 usuário, 5.000 erros/mês** | Só 1 pessoa no gratuito | Adiar, ou conta compartilhada |
 | UptimeRobot | **50 monitores, checagem a cada 5 min** (termos de uso: conferir) | Restrição de uso comercial (conferir) | StatusCake (10 monitores) |
@@ -1297,7 +1298,7 @@ Se um provedor cair, só a função dele para. Esta tabela define o comportament
 | Cloudinary (e R2) | RN-ANU-03, RN-PER-05 | RF015.2, RF008.1, RNF005 (desvio de 4 MB), RNF009 |
 | WhatsApp `wa.me` | RN-PED-05, RN-PER-04 | RF009.4, RF014.5, RF017.5, RNF007 |
 | Cloudflare Turnstile | RN-ACE-09 | RNF003 |
-| PostgreSQL gerenciado (Neon) | RN-EST-05 (CHECK), RN-PED-03 | RNF011, RNF015 |
+| PostgreSQL gerenciado (Supabase) | RN-EST-05 (CHECK), RN-PED-03 | RNF011, RNF015 |
 | Vercel Cron e agendador externo | RN-PAG-04, RN-PAG-05, RN-PAG-08, RN-PAG-12, RN-PAG-13, RN-ACE-10 | RNF011 |
 | Sentry, UptimeRobot, GitHub Actions | — | RNF011, RNF016 |
 | Arquitetura de segurança (seção 5) | RN-ADM-01, RN-PAG-02, RN-PAG-05, RN-PAG-06 | RNF001, RNF003, RNF004, RNF005, RNF006, RNF007 |
@@ -1319,9 +1320,9 @@ Se um provedor cair, só a função dele para. Esta tabela define o comportament
 | Upload de imagem | Pelo backend, para a Cloudinary; uma imagem por requisição, até 4 MB (confirmado pelo grupo em 16/10/2026); sem upload assinado direto do navegador |
 | WhatsApp | Link `wa.me`, sem API |
 | Ambientes | Credenciais separadas por ambiente; `APP_ENV` define o ambiente; drivers `mock`, `console` e `local` proibidos em produção; credencial real de pagamento só em produção |
-| Hospedagem e banco | **Vercel + Neon (ADR-005, decidido)**; documentado em `docs/deploy/deploy.md` |
+| Hospedagem e banco | **Vercel + Supabase (ADR-005, decidido)**; documentado em `docs/deploy/deploy.md` |
 | Jobs agendados | Endpoints `/api/v1/internal/jobs/:name` com `CRON_SECRET`; Vercel Cron no diário e agendador externo a cada 30 minutos (Backend, seção 14) |
-| Banco | Neon, PostgreSQL 18, três papéis (migração, aplicação, backup somente leitura); previews derivados do branch de desenvolvimento |
+| Banco | Supabase (só como banco), PostgreSQL (versão a conferir, documentos assumem 18), três papéis (migração, aplicação, backup somente leitura); dois projetos: produção e desenvolvimento/preview |
 | Monitoramento | UptimeRobot no MVP, chamando o `/health` leve |
 
 
@@ -1335,7 +1336,7 @@ Numeração única para todos os documentos (a mesma do Backend e do Deploy):
 | ADR-002 | Gateway de pagamento (Mercado Pago) e forma de integração (Payments API ou Orders API) | **Gateway decidido: Mercado Pago.** Falta escolher a Payments API ou a Orders API |
 | ADR-003 | Login social só com Google (MVP), sem Apple; e-mail e senha continuam | Decidido |
 | ADR-004 | Armazenamento de imagens: Cloudinary no MVP (R2 fica como alternativa) | **Decidido** |
-| ADR-005 | Hospedagem e banco: Vercel + Neon (`docs/deploy/deploy.md`) | **Decidido** |
+| ADR-005 | Hospedagem e banco: Vercel + Supabase (`docs/deploy/deploy.md`); revisado em 30/10/2026, antes era Neon | **Decidido** |
 | ADR-006 | Anti-bot (Turnstile) depois do MVP, com a política de falha da seção 4.7 | **Decidido** |
 | ADR-007 | Observabilidade: UptimeRobot e Sentry depois do MVP (Sentry sem dado pessoal) | **Decidido** |
 | ADR-008 | Modelo de segurança "backend-cofre" (era ADR-005 na v0.1 deste documento) | **Decidido** |
@@ -1353,4 +1354,5 @@ As propostas que o grupo fechou em 15/10/2026 (Sentry adiado, Turnstile depois d
 | 3 | O e-mail `@edu.unifor.br` está vinculado a uma conta Google e entrega `email_verified`? | Testar com um e-mail real antes de fechar o RF002.6 |
 | 4 | Termos do plano gratuito do UptimeRobot (uso não comercial) | Conferir; se for barrado, usar StatusCake |
 | 5 | **O `openapi.yaml` (contrato da API do Unishop) não existe**, e o frontend, o backend e as skills dependem dele | Pedro escreve a partir do Backend §9 e deste documento, antes de o frontend consumir as rotas; definir prazo |
-| 6 | Criar os três papéis do banco no Neon gratuito: confirmar no painel como criar papéis com senha | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |
+| 6 | Criar os três papéis do banco no Supabase (SQL Editor) e testar o login de cada um pelo pooler (`papel.ref-do-projeto`) | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |
+| 7 | Versão do PostgreSQL do projeto Supabase: os documentos assumem a 18 (Docker, `pg_dump`, CI) | Conferir em *Database → Settings* ao criar os projetos; se for outra, ajustar os documentos |

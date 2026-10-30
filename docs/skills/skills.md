@@ -46,12 +46,10 @@ Todas ficam em `.claude/skills/`, cada uma com seu conteúdo real (sem symlinks 
 | `unishop-frontend` | Própria | Regras do frontend do Unishop: áreas, rotas, guards, estado, estados de tela, qualidade | Qualquer tela, componente, rota, hook ou serviço do frontend |
 | `unishop-backend` | Própria | Regras do backend: camadas, autenticação, pagamentos, estoque, pedidos, admin, erros | Qualquer rota, service, repository, middleware, job ou provider da API |
 | `unishop-api` | Própria | APIs externas e segurança: backend-cofre, providers, Mercado Pago, webhook assinado, segredos, variáveis, travas de produção, ADRs | Integrar ou revisar Google, Mercado Pago, Resend, Cloudinary, Turnstile; mexer em `env.ts`, chaves ou webhook |
-| `unishop-deploy` | Própria | Deploy na Vercel + Neon: ambientes, `APP_ENV`, `vercel.json`, jobs por endpoint, `waitUntil`, backup, rollback, limites do Hobby | Publicar, configurar variáveis, domínio, cron, migração em produção, backup |
+| `unishop-deploy` | Própria | Deploy na Vercel + Supabase: ambientes, `APP_ENV`, `vercel.json`, jobs por endpoint, `waitUntil`, backup, rollback, limites do Hobby | Publicar, configurar variáveis, domínio, cron, migração em produção, backup |
 | `unishop-database` | Própria | Banco: as 8 tabelas em português, `@map` do Prisma, constraints, migração `0_init` + manual, seed, papéis, estoque atômico, liquidação, anonimização | Schema, migração, repository, consulta SQL, seed, exclusão ou anonimização de dados |
 | `unishop-rules` | Própria | Regras de negócio: índice das RN-XXX-nn, ciclo de vida, permissões, escopo do MVP, limites de campos, desvios do PDF | Dúvida de "pode ou não pode", critério de aceite, teste de regra, conflito entre documentos |
 | `vercel-cli-with-tokens` | Vercel | Operar o Vercel CLI com token de acesso (variáveis, logs, deploy) | `vercel env`, `vercel logs`, deploy pelo CLI; sempre sob as regras da `unishop-deploy` |
-| `neon-postgres` | Neon | Conexões pooled × direta, migrações, branching, restauração, IP allow list no Neon | Trabalhar com a `DATABASE_URL` e o banco de produção |
-| `neon-postgres-branches` | Neon | Escolher e criar o tipo certo de branch (teste de migração, dados sensíveis, reset) | Branch por preview, teste de migração com dados reais, CI |
 | `resend` | Resend | API do Resend: envio, idempotência, webhooks, domínios, chaves | Implementar o `resend.provider` do `MailProvider` |
 | `email-best-practices` | Resend | Entregabilidade, SPF/DKIM/DMARC, e-mail transacional, acessibilidade e conformidade | Domínio do Resend, e-mails de confirmação e redefinição de senha |
 | `vercel-react-best-practices` | Vercel (MIT) | 70 regras de performance de React em 8 categorias | Escrever ou revisar componentes, data fetching e bundle |
@@ -101,10 +99,9 @@ Escreve scripts Playwright em Python para abrir a aplicação local, tirar scree
 
 ### 3.7 Skills externas de deploy, banco e e-mail
 
-Instaladas em 15/10/2026 a partir de repositórios oficiais (`vercel-labs/agent-skills`, `neondatabase/agent-skills` e `resend/resend-skills`), revisadas antes de entrar e registradas no `skills-lock.json`.
+Instaladas em 15/10/2026 a partir de repositórios oficiais (`vercel-labs/agent-skills` e `resend/resend-skills`), revisadas antes de entrar e registradas no `skills-lock.json`. As skills `neon-postgres` e `neon-postgres-branches` foram removidas em 30/10/2026, com a troca do banco para o Supabase.
 
 - **`vercel-cli-with-tokens`:** o token vem do ambiente (`VERCEL_TOKEN`), nunca de `--token`. Ela sugere procurar o token em arquivos `.env` e aceita `vercel deploy --prod`; no Unishop quem manda é a `unishop-deploy`: deploy normal é `git push`, produção só com pedido explícito, e nenhum segredo em arquivo versionado.
-- **`neon-postgres` e `neon-postgres-branches`:** só a parte de **banco** do Neon. O projeto não usa Neon Auth, Functions, Object Storage nem AI Gateway (autenticação própria por JWT, API na Vercel).
 - **`resend` e `email-best-practices`:** dão os detalhes e armadilhas do Resend e de entregabilidade. Siga a interface `MailProvider` do projeto; partes de caixa de entrada para agentes, marketing, contatos e React Email não se aplicam.
 
 ### 3.8 `skill-creator`
@@ -124,8 +121,8 @@ Guia o ciclo de criar uma skill: rascunhar, escrever casos de teste, rodar com e
 | Testes E2E e verificação de telas | `webapp-testing` | Coberta (Playwright em Python; testes do repositório usam o Playwright de Node) |
 | Criar e manter skills | `skill-creator` | Coberta |
 | APIs externas, segurança e segredos (`docs/api/api.md`) | `unishop-api` | Coberta |
-| Deploy na Vercel + Neon (`docs/deploy/deploy.md`) | `unishop-deploy` + `vercel-cli-with-tokens` | Coberta |
-| Banco no Neon: conexões, branches, restauração | `neon-postgres`, `neon-postgres-branches` | Coberta |
+| Deploy na Vercel + Supabase (`docs/deploy/deploy.md`) | `unishop-deploy` + `vercel-cli-with-tokens` | Coberta |
+| Banco no Supabase: conexões (pooler × direta), papéis, backup | `unishop-database`, `unishop-deploy`, `supabase-postgres-best-practices` | Coberta |
 | E-mail transacional (Resend) | `resend`, `email-best-practices` | Coberta |
 | Mercado Pago (cartão, Pix, webhook) | `unishop-api` | Coberta pelo doc do projeto; não há skill oficial do Mercado Pago |
 | Cloudinary (imagens) | `unishop-api` | Coberta pelo doc do projeto; a skill oficial da Cloudinary não foi instalada |
@@ -176,13 +173,13 @@ O projeto hoje está só em documentação; as etapas abaixo valem para quando o
 | Etapa | Começar por | Combinar com | Observação |
 |---|---|---|---|
 | 1. Entender o que construir | `unishop-rules` | Documento de regras (§4 a 5 e §8) | Confirme o escopo do MVP (§8), os limites de campos (§9) e os desvios do PDF (§10) antes de estimar tarefas |
-| 2. Preparar banco e esqueleto do backend | `unishop-database`, `unishop-backend` | `supabase-postgres-best-practices`, `neon-postgres`, `neon-postgres-branches` | Gerar `schema.prisma`, migração `0_init`, migração manual e seed; testar a migração em banco vazio |
+| 2. Preparar banco e esqueleto do backend | `unishop-database`, `unishop-backend` | `supabase-postgres-best-practices` | Gerar `schema.prisma`, migração `0_init`, migração manual e seed; testar a migração em banco vazio |
 | 3. Contrato da API | `unishop-backend`, `unishop-api` | — | Escrever o `openapi.yaml` (pendência de Pedro) antes de o frontend consumir as rotas |
 | 4. Integrar serviços externos | `unishop-api` | `resend`, `email-best-practices`; `/security-review` | Comece pelo Pix de teste do Mercado Pago (prova de conceito) e pelo Google; domínio próprio para o Resend |
 | 5. Regras do servidor (auth, pedidos, pagamentos, admin) | `unishop-backend` | `unishop-rules`, `unishop-database` | Cada rota cita `RN-XXX-nn`; testes de concorrência de estoque e de webhook |
 | 6. Telas do frontend | `unishop-frontend` | Roteiro da seção 8: ideação com `unishop-rules`, `emil-design-eng`, `vercel-composition-patterns`, `mobile-native` e `break-ui`; revisão com `web-design-guidelines`, `vercel-react-best-practices`, `review-animations` e `break-ui` | Trate todos os estados de tela; sessão, imagem de 4 MB e aviso de demonstração |
 | 7. Verificar rodando | `webapp-testing` | `unishop-frontend` | Screenshots, console e fluxos de ponta a ponta (cadastro, compra por Pix de teste, anúncio) |
-| 8. Publicar | `unishop-deploy` | `vercel-cli-with-tokens`, `neon-postgres`, `unishop-api` | Só executar deploy, troca de variável ou restauração quando o usuário pedir, confirmando o alvo |
+| 8. Publicar | `unishop-deploy` | `vercel-cli-with-tokens`, `unishop-api` | Só executar deploy, troca de variável ou restauração quando o usuário pedir, confirmando o alvo |
 | 9. Antes do PR | `/code-review` | `/security-review` em auth, pagamento, admin ou segredo | Conferir se algum documento ou skill precisa mudar |
 | 10. Manter | `skill-creator` | — | Documento mudou? Revisar a skill correspondente, atualizar `version` e os casos em `evals/` |
 

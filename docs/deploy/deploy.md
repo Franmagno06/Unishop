@@ -10,16 +10,16 @@ based_on: Regras de Negócio v0.4, Banco de Dados v0.2, Backend v0.3, API v0.3, 
 language: pt-BR (código e pastas em inglês; documentação em português)
 ---
 
-# Documentação Técnica — Deploy (Vercel + Neon)
+# Documentação Técnica — Deploy (Vercel + Supabase)
 
-- Versão 0.3 · 16/10/2026
+- Versão 0.3.1 · 30/10/2026 (banco trocado de Neon para Supabase)
 - Base: Regras de Negócio v0.4, Banco de Dados v0.2, Backend v0.3, API v0.3, Frontend v0.4 e requisitos RNF001–RNF016
 - Elaboração: Francisco Magno (gestão e integração front-back)
 - Documentos relacionados: Backend (docs/backend/), Frontend (docs/frontend/), API e segurança das APIs externas (docs/api/api.md), Banco de Dados (docs/banco-de-dados/banco-de-dados.md)
 
-> **Este é o guia de deploy oficial do Unishop.** A hospedagem é a **Vercel** (frontend e API) com **Neon** (PostgreSQL), e o gateway de pagamento é o **Mercado Pago**. Uma hospedagem em servidor próprio (Oracle Cloud + Docker) foi avaliada e **não foi adotada**; a comparação está no ADR-005 (seção 17.1).
+> **Este é o guia de deploy oficial do Unishop.** A hospedagem é a **Vercel** (frontend e API) com **Supabase** (PostgreSQL, usado só como banco), e o gateway de pagamento é o **Mercado Pago**. Uma hospedagem em servidor próprio (Oracle Cloud + Docker) foi avaliada e **não foi adotada**; a comparação está no ADR-005 (seção 17.1).
 
-> **Comandos neste guia.** Os comandos são de shell (bash). No Windows, rode-os no **Git Bash** ou no **WSL**, não no PowerShell nem no CMD. Para o backup manual você também precisa do cliente do PostgreSQL (`pg_dump`) instalado, na versão do seu banco no Neon.
+> **Comandos neste guia.** Os comandos são de shell (bash). No Windows, rode-os no **Git Bash** ou no **WSL**, não no PowerShell nem no CMD. Para o backup manual você também precisa do cliente do PostgreSQL (`pg_dump`) instalado, na versão do seu banco no Supabase.
 
 ## Sumário
 
@@ -31,7 +31,7 @@ language: pt-BR (código e pastas em inglês; documentação em português)
 | 4 | Segredos e variáveis | 13 | Atualizar e reverter |
 | 5 | Preparar o código | 14 | Verificação e checklist |
 | 6 | Projetos na Vercel | 15 | Segurança operacional |
-| 7 | Banco de dados (Neon) | 16 | Riscos |
+| 7 | Banco de dados (Supabase) | 16 | Riscos |
 | 8 | Domínio e HTTPS | 17 | Decisões, pendências e impacto nas outras docs |
 | 9 | CORS e proxy | | |
 
@@ -41,27 +41,28 @@ language: pt-BR (código e pastas em inglês; documentação em português)
 |---|---|---|
 | 0.1 | 15/10/2026 | Primeira versão, como alternativa a um deploy em servidor próprio (Oracle + Docker). |
 | 0.2 | 15/10/2026 | Vira o guia oficial e autossuficiente. Gateway fixado no Mercado Pago (ADR-002). Acrescenta: limites do plano Hobby (conta única de dono); `waitUntil` para tarefas depois da resposta; upload de imagens pela API, uma por requisição, até 4 MB; tabela dos jobs reais e agendador externo; backup diário automatizado; correção da pendência do bloqueio de login (já fica no banco); avisos para Windows; dev, testes e trava de teste dentro deste guia. |
-| 0.3 | 16/10/2026 | Alinhado ao conjunto v0.4/v0.3. **Neon:** limites corrigidos (1 GB de armazenamento por projeto, 100 CU-h por mês, 10 branches, restauração de 6 h, dorme em 5 min, **sem lista de IPs no plano gratuito**), PostgreSQL 18, três papéis (`unishop_migrator`, `unishop_app`, `unishop_backup`) e previews derivados do branch de desenvolvimento. **Backup:** o workflow usa o segredo `DATABASE_URL_BACKUP` (somente leitura), separado do usado nas migrações, e `pg_dump` 18. **Jobs:** a cada 30 minutos (cabe nas CU-horas do Neon). **Saúde:** `/health` leve e `/health/db`. **Código:** comparação do `CRON_SECRET` com `Secret` e `timingSafeEqual` (e testes de `Bearer undefined`), `env.frontendUrls`, `env.appEnv`. **Variáveis:** `EMAIL_VERIFICATION_REQUIRED`. **Metas:** 500 usuários e 99% passam a metas de produto, fora do MVP (§14.3). **Limite de 4 MB** confirmado pelo grupo. **Pendências** renumeradas na seção 17.3 (os números 1, 3 e 7 não mudaram, pois a API os cita). |
+| 0.3.1 | 30/10/2026 | **Banco trocado de Neon para Supabase (ADR-005 revisado).** Supabase gratuito (conferido em 30/10/2026): 500 MB por projeto, 2 projetos ativos, pausa após 1 semana sem atividade, **sem branching, sem backup automático e sem restauração a ponto no tempo**. Ambientes: um projeto Supabase para produção e outro para desenvolvimento e preview (sem branch por preview). Conexões: Transaction pooler (6543) para a API e Session pooler ou direta (5432) para migração e backup. Backup passa a depender só do workflow do GitHub Actions. Versão do PostgreSQL a conferir (pendência 13). |
+| 0.3 | 16/10/2026 | Alinhado ao conjunto v0.4/v0.3. **Neon (substituído em 30/10/2026):** limites corrigidos (1 GB de armazenamento por projeto, 100 CU-h por mês, 10 branches, restauração de 6 h, dorme em 5 min, **sem lista de IPs no plano gratuito**), PostgreSQL 18, três papéis (`unishop_migrator`, `unishop_app`, `unishop_backup`) e previews derivados do branch de desenvolvimento. **Backup:** o workflow usa o segredo `DATABASE_URL_BACKUP` (somente leitura), separado do usado nas migrações, e `pg_dump` 18. **Jobs:** a cada 30 minutos (cabe nas CU-horas do Neon, hoje sem efeito no Supabase). **Saúde:** `/health` leve e `/health/db`. **Código:** comparação do `CRON_SECRET` com `Secret` e `timingSafeEqual` (e testes de `Bearer undefined`), `env.frontendUrls`, `env.appEnv`. **Variáveis:** `EMAIL_VERIFICATION_REQUIRED`. **Metas:** 500 usuários e 99% passam a metas de produto, fora do MVP (§14.3). **Limite de 4 MB** confirmado pelo grupo. **Pendências** renumeradas na seção 17.3 (os números 1, 3 e 7 não mudaram, pois a API os cita). |
 
 ## 1. Objetivo
 
-Este documento explica **como publicar o Unishop na Vercel**: o frontend como site estático, a API Express como função serverless e o PostgreSQL em um serviço gerenciado (Neon). Cobre segredos, ambientes, HTTPS, CORS, jobs agendados, backup, atualização e reversão.
+Este documento explica **como publicar o Unishop na Vercel**: o frontend como site estático, a API Express como função serverless e o PostgreSQL em um serviço gerenciado (Supabase). Cobre segredos, ambientes, HTTPS, CORS, jobs agendados, backup, atualização e reversão.
 
-Cinco regras valem para tudo que está neste guia. A regra 4 é cumprida só em parte, porque não existe rede privada entre a Vercel e o Neon (ver seção 7.4):
+Cinco regras valem para tudo que está neste guia. A regra 4 é cumprida só em parte, porque não existe rede privada entre a Vercel e o Supabase (ver seção 7.4):
 
 | # | Regra | Como o deploy cumpre |
 | --- | --- | --- |
-| 1 | Nenhum segredo no código | Variáveis no painel da Vercel e do Neon; `.env` local fora do Git; `.env.example` como modelo (seção 4) |
-| 2 | Ambientes separados, cada um com seu banco | Production, Preview e Development da Vercel, cada um com **um branch próprio do Neon**; os testes usam banco `*_test` local (seção 3) |
+| 1 | Nenhum segredo no código | Variáveis no painel da Vercel e do Supabase; `.env` local fora do Git; `.env.example` como modelo (seção 4) |
+| 2 | Ambientes separados, cada um com seu banco | Production, Preview e Development da Vercel, produção com **um projeto Supabase próprio**, e Development e Preview compartilhando **um segundo projeto Supabase** com dados fictícios; os testes usam banco `*_test` local (seção 3) |
 | 3 | Todo tráfego externo em HTTPS | Automático e obrigatório na Vercel; HTTP é redirecionado (seção 8) |
 | 4 | Banco sem porta aberta para fora | **Cumprida só em parte.** O banco gerenciado é acessível pela internet, com TLS e senha. Mitigações na seção 7.4; é uma **exceção aceita pelo grupo** (seção 7.4) |
-| 5 | CORS só para a origem do frontend | `FRONTEND_URL` exata, sem curinga, validada ao iniciar; o painel do Neon não tem lista de IPs no plano gratuito (seção 9) |
+| 5 | CORS só para a origem do frontend | `FRONTEND_URL` exata, sem curinga, validada ao iniciar; o Supabase não tem lista de IPs utilizável com a Vercel, que não tem IP fixo (seção 9) |
 
 > O que o deploy muda no restante do projeto está na seção 17.5: os jobs do `node-cron` viram chamadas HTTP, o upload de imagens passa a ser uma imagem por requisição, de até 4 MB, a API exporta o `app` sem `listen`, as tarefas depois da resposta usam `waitUntil`, o Prisma usa o endereço com *pooler* e os jobs rodam a cada 30 minutos.
 
 ## 2. Arquitetura da produção
 
-São **dois projetos na Vercel**, cada um com seu endereço, mais o banco no Neon. O navegador chama a API em outro domínio, então o CORS fica ativo e estrito (seção 9).
+São **dois projetos na Vercel**, cada um com seu endereço, mais o banco no Supabase. O navegador chama a API em outro domínio, então o CORS fica ativo e estrito (seção 9).
 
 ```text
 Navegador
@@ -71,7 +72,7 @@ Navegador
    └── https://<api>.vercel.app   →  Projeto "unishop-api"   Express como função serverless
                                           │  TLS, endereço com pooler
                                           ▼
-                                     Neon PostgreSQL   (branches: production, preview, ...)
+                                     Supabase PostgreSQL   (projetos: unishop-prod e unishop-dev)
 
 Serviços externos: Mercado Pago (webhook para a API), Cloudinary (imagens enviadas pela API),
                    Resend (e-mail), Google (login)
@@ -85,7 +86,7 @@ Monitor externo (UptimeRobot): chama GET /api/v1/health (seção 14.3)
 | Domínios | Dois: um para o site, um para a API | Evita o *rewrite* entre projetos, que esconderia o IP real do usuário do rate limit e cobraria tráfego em dobro |
 | Frontend | Estático, servido pela CDN | O Vite gera arquivos; não precisa de Node em produção |
 | API | Express como **uma única função** (Fluid compute) | A Vercel detecta o Express sem configuração; sobe e desce conforme o tráfego |
-| Banco | Neon PostgreSQL (pela Marketplace da Vercel) | A Vercel não hospeda PostgreSQL; o Neon dá um branch por ambiente |
+| Banco | Supabase PostgreSQL (dois projetos: produção e desenvolvimento/preview) | A Vercel não hospeda PostgreSQL; o plano gratuito do Supabase não tem branches, então os ambientes se separam por projeto |
 | Jobs | Endpoints HTTP protegidos, chamados por Vercel Cron (diário) e por agendador externo (a cada 30 min) | Não existe processo ligado para o `node-cron` (seção 10) |
 | Imagens | Passam pela API, uma por requisição, até 4 MB | A função aceita no máximo **4,5 MB** por requisição (seção 5.3) |
 | Deploy | `git push`; a Vercel constrói e publica | Sem servidor para administrar |
@@ -97,7 +98,7 @@ A Vercel separa três ambientes. Cada um recebe o **seu** banco:
 | Item | Desenvolvimento | Testes | Preview | Produção |
 |---|---|---|---|---|
 | Onde roda | Máquina local (`npm run dev`) | Máquina local (Vitest) | Deploy de cada branch/PR na Vercel | Branch `main` na Vercel |
-| Banco | `unishop_dev` em Docker local | `unishop_test` em Docker local | Branch do Neon só do preview (criado a partir do branch `development`) | Branch `production` do Neon |
+| Banco | `unishop_dev` em Docker local | `unishop_test` em Docker local | Projeto Supabase `unishop-dev` (compartilhado com o desenvolvimento remoto; dados fictícios) | Projeto Supabase `unishop-prod` |
 | Compose | `docker-compose.yml` | `docker-compose.test.yml` | não usa | não usa |
 | E-mail | Mailtrap | Mock | Mailtrap | Resend (depende da pendência 3, domínio próprio) |
 | Pagamento | Mercado Pago em teste + túnel público | Mock do provider | Mercado Pago em teste (sem webhook, seção 9) | **Credenciais de teste do Mercado Pago**: conta única de teste e repasse simulado (RN-PAG-10); a tela de pagamento avisa que é um ambiente de demonstração (RN-PAG-15) |
@@ -106,7 +107,7 @@ A Vercel separa três ambientes. Cada um recebe o **seu** banco:
 
 > **Produção não cobra dinheiro real.** O grupo decidiu que o repasse é simulado em conta única de teste (RN-PAG-10). A produção usa as credenciais de **teste** do Mercado Pago, e a `VITE_MP_PUBLIC_KEY` também é a chave de teste.
 
-> **Preview não pode tocar o banco de produção.** O Neon cria um branch por preview, **a partir do branch `development`** (dados fictícios), e injeta a `DATABASE_URL` dele (seção 7.2). Confirme que, no painel da Vercel, as variáveis de banco do ambiente *Preview* **não** apontam para o branch `production`.
+> **Preview não pode tocar o banco de produção.** O Supabase gratuito não cria banco por preview: todos os previews usam o projeto `unishop-dev` (dados fictícios), com a `DATABASE_URL` cadastrada à mão no ambiente *Preview* (seção 7.2). Confirme que, no painel da Vercel, as variáveis de banco do ambiente *Preview* **não** apontam para o projeto `unishop-prod`.
 
 ### 3.1 Desenvolvimento
 
@@ -130,7 +131,7 @@ volumes:
   unishop_dev_data:
 ```
 
-`DATABASE_URL` local: `postgresql://dev:dev@localhost:5432/unishop_dev`. A porta aparece só em `127.0.0.1`, então outras máquinas da rede não chegam nela. O projeto usa o **PostgreSQL 18** no Neon (a versão é escolhida ao criar o projeto e não muda depois); a imagem local tem a mesma versão principal. Se o Neon estiver em outra versão, ajuste o `18`. Atenção: nas imagens do PostgreSQL 18 o volume é montado em `/var/lib/postgresql`, e não em `/var/lib/postgresql/data` como nas versões anteriores.
+`DATABASE_URL` local: `postgresql://dev:dev@localhost:5432/unishop_dev`. A porta aparece só em `127.0.0.1`, então outras máquinas da rede não chegam nela. O documento assume o **PostgreSQL 18**; confira a versão do projeto Supabase em *Database → Settings* (pendência 13) e use a mesma versão principal na imagem local. Se for outra, ajuste o `18` aqui, no `docker-compose.yml` e no workflow de backup. Atenção: nas imagens do PostgreSQL 18 o volume é montado em `/var/lib/postgresql`, e não em `/var/lib/postgresql/data` como nas versões anteriores.
 
 ### 3.2 Testes
 
@@ -222,9 +223,9 @@ ALLOWED_EMAIL_DOMAIN=edu.unifor.br
 EMAIL_VERIFICATION_REQUIRED=false   # confirmação de e-mail desligada no MVP (RN-ACE-07)
 FRONTEND_URL=https://<app>.vercel.app
 
-# Injetadas pela integração do Neon; confira o formato (seção 5.4)
-DATABASE_URL=                   # com pooler, papel unishop_app; acrescentar ?pgbouncer=true&connection_limit=1
-DATABASE_URL_UNPOOLED=          # direta, papel unishop_migrator; só migração (o backup usa DATABASE_URL_BACKUP, só no GitHub)
+# Copiadas do botão Connect do Supabase (aba ORM > Prisma); confira o formato (seção 5.4)
+DATABASE_URL=                   # Transaction pooler (porta 6543), usuário unishop_app.<ref-do-projeto>; acrescentar ?pgbouncer=true&connection_limit=1
+DATABASE_URL_UNPOOLED=          # Session pooler (porta 5432, IPv4) ou direta (IPv6), usuário unishop_migrator.<ref-do-projeto> no pooler; só migração (o backup usa DATABASE_URL_BACKUP, só no GitHub)
 
 GOOGLE_CLIENT_ID=
 MP_ACCESS_TOKEN=                # access token de TESTE do Mercado Pago (RN-PAG-10)
@@ -396,7 +397,7 @@ datasource db {
 }
 ```
 
-Em Preview, a `DATABASE_URL` aponta para o branch do preview, então a migração roda ali, e não em produção. O build usa o papel `unishop_migrator` (via `DATABASE_URL_UNPOOLED`); a API em execução usa o papel `unishop_app`, sem permissão de alterar a estrutura (seção 7.1). Para o pooler do Neon, acrescente à `DATABASE_URL` os parâmetros `?pgbouncer=true&connection_limit=1`. Para o Prisma 7, consulte a documentação do Prisma, pois a forma de declarar as duas URLs mudou.
+Em Preview, a `DATABASE_URL` aponta para o projeto `unishop-dev`, então a migração roda ali, e não em produção. Como todos os previews dividem esse banco, dois PRs com migrações diferentes podem se atrapalhar: aplique um de cada vez ou recrie o banco de desenvolvimento (`prisma migrate reset`, só nele). O build usa o papel `unishop_migrator` (via `DATABASE_URL_UNPOOLED`); a API em execução usa o papel `unishop_app`, sem permissão de alterar a estrutura (seção 7.1). Para o Transaction pooler do Supabase, acrescente à `DATABASE_URL` os parâmetros `?pgbouncer=true&connection_limit=1`. Para o Prisma 7, consulte a documentação do Prisma, pois a forma de declarar as duas URLs mudou.
 
 ## 6. Projetos na Vercel
 
@@ -419,38 +420,38 @@ Em **Settings → Deployment Protection**, mantenha a proteção do ambiente *Pr
 
 > **Plano Hobby e equipe.** O plano Hobby (gratuito) é de uso pessoal, **não comercial**, e **não tem colaboração em equipe**. Pelas regras atuais, quem é dono dos projetos é uma conta só, e os outros membros do grupo não conseguem ser adicionados ao time. Na prática: a conta de uma pessoa (proposta: Francisco) é dona dos dois projetos, e todos dão push no GitHub. **Verifique antes do primeiro deploy** se a Vercel bloqueia deploys de commits de outros autores no repositório (isso pode acontecer em repositório privado no Hobby). Se bloquear, as saídas são: repositório público, deploys feitos só pelo dono (`vercel deploy` pelo CLI), ou o plano Pro com assentos pagos (pendência 1). Os limites do Hobby também incluem 100 deploys por dia, e cada push em PR conta.
 
-## 7. Banco de dados (Neon)
+## 7. Banco de dados (Supabase)
 
 ### 7.1 Criar o banco
 
-1. No projeto `unishop-api`, abra a aba **Storage** e instale **Neon** pela Marketplace (ou crie a conta no Neon e conecte).
-2. Escolha a região do banco **mais próxima da região das funções**, para reduzir a latência de cada consulta.
-3. Escolha o **PostgreSQL 18** (a versão é definida na criação do projeto e não pode ser trocada depois).
-4. A integração injeta `DATABASE_URL` (com pooler) e `DATABASE_URL_UNPOOLED` (direta) nas variáveis do projeto. Confira os nomes na tela e ajuste a seção 4.2 e o `schema.prisma` se forem diferentes.
-5. **Crie os três papéis do banco** (Banco de Dados, seção 12): `unishop_migrator` (dono do schema, usado nas migrações), `unishop_app` (leitura e escrita nas tabelas, usado pela API) e `unishop_backup` (somente `SELECT`, usado só no backup). A integração entrega um usuário só; **confirme no painel do Neon, antes do primeiro deploy, como criar papéis com senha no plano gratuito** (pendência 6 do `api.md`). Se não for possível, use um papel só e registre a exceção aqui.
+1. No painel do Supabase, crie **dois projetos**: `unishop-prod` (produção) e `unishop-dev` (desenvolvimento e preview). O plano gratuito permite 2 projetos ativos. Use o Supabase **só como banco**: o projeto não usa Auth, Storage, Realtime, a API automática (PostgREST) nem RLS do Supabase (a autenticação é o JWT do backend).
+2. Escolha a região do banco **mais próxima da região das funções** da Vercel, para reduzir a latência de cada consulta.
+3. Confira a **versão do PostgreSQL** em *Database → Settings*; este guia assume a 18 (pendência 13).
+4. No botão **Connect** de cada projeto, aba **ORM → Prisma**, copie as duas URLs. Cadastre-as à mão no painel da Vercel (a integração da Marketplace usa outros nomes de variável): `DATABASE_URL` (Transaction pooler, porta 6543, com `?pgbouncer=true&connection_limit=1`) e `DATABASE_URL_UNPOOLED` (Session pooler, porta 5432, ou conexão direta). Escape na senha os caracteres reservados (`&`, `#`, `?`, espaço). **A conexão direta do Supabase é só IPv6** (IPv4 exige um complemento pago); redes e runners sem IPv6 devem usar o **Session pooler**, que é IPv4 em todos os planos. Copie o host pelo Connect, sem montá-lo à mão.
+5. **Crie os três papéis do banco** (Banco de Dados, seção 12) pelo *SQL Editor*: `unishop_migrator` (dono do schema, usado nas migrações), `unishop_app` (leitura e escrita nas tabelas, usado pela API) e `unishop_backup` (somente `SELECT`, usado só no backup). **Pelo pooler, o usuário de um papel próprio é `papel.ref-do-projeto`** (ex.: `unishop_app.abcdefgh`). Teste o login de cada papel pelo pooler antes do primeiro deploy (pendência 12). Se algum não funcionar, use um papel só e registre a exceção aqui.
 
-**Limites do plano gratuito do Neon (conferidos em 16/10/2026):** 100 CU-horas por projeto por mês, **1 GB** de armazenamento por projeto, 10 branches, restauração a um ponto no tempo de até 6 horas, 5 GB de saída de dados por mês, e a computação **dorme após 5 minutos** sem uso (isso não pode ser desligado; a primeira consulta depois disso é mais lenta). Ao atingir um limite, o serviço é suspenso até o mês seguinte. Por isso os jobs rodam a cada 30 minutos e o monitor chama o `/health` leve, que não consulta o banco.
+**Limites do plano gratuito do Supabase (conferidos em 30/10/2026):** **500 MB** de banco por projeto, **2 projetos ativos**, 5 GB de saída de dados por mês, **sem branching** (exige o plano Pro), **sem backup automático nem restauração a ponto no tempo**, e o projeto é **pausado após 1 semana sem atividade** (é preciso retomá-lo pelo painel; a retomada leva alguns minutos). Os limites mudam: confira na página de preços antes da demonstração. Os jobs a cada 30 minutos e o monitor no `/health/db` geram atividade e evitam a pausa; o `/health` leve **não** consulta o banco e, sozinho, não evita a pausa.
 
-### 7.2 Um branch por ambiente
+### 7.2 Um projeto por ambiente
 
-Ative, na integração, a opção de **criar um branch do banco para cada preview**. Resultado:
+O plano gratuito não tem branches, então a separação é por **projeto**. Resultado:
 
-| Ambiente | Branch do Neon | Dados |
+| Ambiente | Projeto Supabase | Dados |
 |---|---|---|
-| Production | `production` | Reais (do trabalho) |
-| Development | `development`, branch compartilhado do Neon | Fictícios (criados pelo seed de desenvolvimento) |
-| Preview | Um por deploy de preview, **filho do branch `development`** | Cópia dos dados fictícios |
+| Production | `unishop-prod` | Reais (do trabalho) |
+| Development (remoto) | `unishop-dev`, compartilhado | Fictícios (criados pelo seed de desenvolvimento) |
+| Preview | O mesmo `unishop-dev` (todos os previews dividem o banco) | Fictícios |
 | Local | Banco Docker local (`unishop_dev`) | Descartáveis |
 
-> **LGPD.** Os branches de preview **não** são criados a partir do `production`: na integração, defina o branch `development` (com dados fictícios) como o pai dos previews. Assim nenhum dado de aluno real é copiado para um preview. Os 10 branches do plano gratuito bastam para `production`, `development` e alguns previews; apague os previews antigos.
+> **LGPD.** Nenhum dado de aluno real é copiado para `unishop-dev`: ele é criado vazio pelas migrações e recebe só o seed de desenvolvimento. Nunca restaure um dump de produção nele. Se a equipe passar para o plano Pro (que tem branching), os previews podem passar a derivar de um branch de desenvolvimento, nunca do de produção.
 
 ### 7.3 Migrações e seed
 
 - A cada deploy, o **Build Command** roda `prisma migrate deploy` (seção 5.4).
-- O **seed** cria as 6 categorias fixas e a conta de administrador (RN-CAT-01, RN-ADM-11). Rode **uma vez**, **da sua máquina**, apontando para a conexão direta de produção. Defina as variáveis só no terminal, sem gravá-las em arquivo:
+- O **seed** cria as 6 categorias fixas e a conta de administrador (RN-CAT-01, RN-ADM-11). Rode **uma vez**, **da sua máquina**, apontando para a conexão direta (ou Session pooler) de produção. Defina as variáveis só no terminal, sem gravá-las em arquivo:
 
 ```text
-export DATABASE_URL="<URL direta do branch production>"
+export DATABASE_URL="<URL direta ou Session pooler do projeto unishop-prod>"
 export ADMIN_EMAIL="<e-mail do administrador>"
 read -r -s -p "Senha do administrador: " ADMIN_PASSWORD && export ADMIN_PASSWORD
 npm run db:seed
@@ -461,11 +462,11 @@ Como a senha só existe no terminal, não há `ADMIN_PASSWORD` para apagar de ne
 
 ### 7.4 Banco aberto à internet: o que compensa
 
-O endereço do Neon é público, protegido por **TLS obrigatório** e senha. Para a regra 4 ficar o mais perto possível do original:
+O endereço do Supabase é público, protegido por **TLS** e senha (use `sslmode=require`; para verificar o servidor, baixe o certificado raiz em *Database → Settings* e use `sslmode=verify-full`). Para a regra 4 ficar o mais perto possível do original:
 
 - Use senhas longas e geradas e **três papéis separados** (migração, aplicação e backup). A API nunca usa o papel dono do schema.
 - **Nunca** coloque a `DATABASE_URL` no frontend, em logs nem em prints.
-- A **lista de IPs permitidos (IP Allow) não existe no plano gratuito do Neon**, e as funções da Vercel não têm IP fixo; portanto essa mitigação não está disponível.
+- Restringir o acesso por IP não ajuda: as funções da Vercel não têm IP fixo; portanto essa mitigação não está disponível. Como a API conecta como `unishop_app`, que não é o `postgres`, uma credencial vazada tem alcance menor.
 - A exceção à regra 4 foi **aceita pelo grupo** e fica registrada aqui e na seção 17.3 (pendência 2).
 
 ## 8. Domínio e HTTPS
@@ -551,7 +552,7 @@ Os três jobs vêm do Backend, seção 14:
 | `reconcile-pending-payments` | A cada 30 minutos em produção (5 minutos no dev) | Consulta pagamentos pendentes no gateway e corrige os que perderam o webhook; refaz estornos que falharam (RN-PAG-05, RN-PAG-08) | **Agendador externo** (a cada 30 min) |
 | `cleanup-expired-tokens` | Uma vez por dia | Apaga tokens de confirmação e de senha vencidos ou usados (RN-ACE-10) | **Vercel Cron** (diário) |
 
-**Por que dois agendadores.** No plano Hobby, o Vercel Cron roda **uma vez por dia**, com precisão de ±59 minutos, e expressões mais frequentes **fazem o deploy falhar**. Os dois jobs de pagamento são os mais importantes (o `reconcile` é a rede de segurança do webhook) e precisam rodar com frequência, então ficam com um agendador externo gratuito. A frequência é de **30 minutos** porque cada chamada acorda o banco do Neon e o plano gratuito tem só 100 CU-horas por mês; chamar a cada minuto o manteria ligado o tempo todo:
+**Por que dois agendadores.** No plano Hobby, o Vercel Cron roda **uma vez por dia**, com precisão de ±59 minutos, e expressões mais frequentes **fazem o deploy falhar**. Os dois jobs de pagamento são os mais importantes (o `reconcile` é a rede de segurança do webhook) e precisam rodar com frequência, então ficam com um agendador externo gratuito. A frequência é de **30 minutos** por decisão do grupo (tomada por causa das CU-horas do Neon e mantida no Supabase): reduz as invocações da função, e cada chamada que consulta o banco conta como atividade e evita a pausa do projeto:
 
 - **cron-job.org** (ou serviço equivalente): `GET` no endpoint a cada 30 minutos, com o cabeçalho `Authorization: Bearer <CRON_SECRET>`. É o caminho proposto.
 - GitHub Actions com `schedule` **não serve** como único agendador desses dois jobs: o intervalo mínimo é de 5 minutos, costuma atrasar e o agendamento é desativado em repositório sem atividade.
@@ -619,9 +620,9 @@ O horário é em UTC. No plano Hobby, a Vercel pode disparar a chamada em qualqu
 
 ## 11. Backup e restauração
 
-O Neon mantém um histórico que permite **restaurar o banco a um ponto no tempo** (*point-in-time restore*) ou criar um branch a partir de um instante passado. No plano gratuito do Neon a janela é de **6 horas** (conferido em 16/10/2026), portanto serve para desfazer um erro recente, **não** como backup diário. A cópia diária fora do Neon é a do workflow abaixo (RNF011).
+O plano gratuito do Supabase **não inclui backup automático nem restauração a um ponto no tempo** (conferido em 30/10/2026). Portanto o **único backup** é a cópia diária do workflow abaixo (RNF011); antes de uma migração arriscada, rode o workflow à mão.
 
-O RNF011 pede **backup diário**. Por isso a cópia fora do Neon é **automatizada**, e não manual.
+O RNF011 pede **backup diário**. Por isso a cópia fora do Supabase é **automatizada**, e não manual.
 
 ### 11.1 Backup diário automático (GitHub Actions)
 
@@ -643,7 +644,7 @@ jobs:
         env:
           DATABASE_URL_BACKUP: ${{ secrets.DATABASE_URL_BACKUP }}
         run: |
-          # imagem com a MESMA versão principal (ou maior) do PostgreSQL do Neon: 18
+          # imagem com a MESMA versão principal (ou maior) do PostgreSQL do Supabase (pendência 13); o segredo usa o Session pooler (IPv4), pois o runner do GitHub não tem IPv6
           docker run --rm -e URL="$DATABASE_URL_BACKUP" postgres:18-alpine \
             sh -c 'pg_dump "$URL" --format=custom --no-owner' > unishop.dump
           test -s unishop.dump
@@ -666,9 +667,9 @@ Pontos de atenção:
 
 ```bash
 #!/usr/bin/env bash
-# infra/scripts/backup-neon.sh  (rodar na sua máquina, com a conexão DIRETA do papel de backup, branch production)
+# infra/scripts/backup-supabase.sh  (rodar na sua máquina, com o Session pooler ou a conexão direta do papel de backup, projeto unishop-prod)
 set -euo pipefail
-: "${DATABASE_URL_BACKUP:?defina a URL direta (sem pooler) do papel unishop_backup}"
+: "${DATABASE_URL_BACKUP:?defina a URL do Session pooler ou direta (nunca a porta 6543) do papel unishop_backup}"
 umask 077
 
 BACKUP_DIR="${BACKUP_DIR:-$HOME/unishop-backups}"
@@ -685,13 +686,12 @@ find "$BACKUP_DIR" -name 'unishop-*.dump' -mtime +"$KEEP_DAYS" -delete
 echo "backup ok: $OUT"
 ```
 
-O `pg_dump` da sua máquina precisa ter a **mesma versão principal (ou maior)** que o PostgreSQL do Neon, ou seja, a 18. Confira com `pg_dump --version`.
+O `pg_dump` da sua máquina precisa ter a **mesma versão principal (ou maior)** que o PostgreSQL do Supabase (a 18, se a pendência 13 confirmar). Confira com `pg_dump --version`.
 
 ### 11.3 Restaurar
 
 Prefira, nesta ordem:
-1. **Restauração a um ponto no tempo** pelo painel do Neon (para desfazer uma migração ou um erro recente).
-2. **`pg_restore` de um dump** em um branch novo ou em um banco local descartável:
+1. **`pg_restore` de um dump** (não há restauração a ponto no tempo no plano gratuito) em um projeto Supabase novo ou em um banco local descartável:
 
 ```text
 createdb restore_check
@@ -708,7 +708,7 @@ O RNF011 pede **restauração testada**: faça este teste uma vez, em banco desc
 2. Faça uma **prova de conceito do pagamento**: com as credenciais de teste do Mercado Pago, confirme que um Pix de teste gera o webhook de aprovação (pendência 10). Isso decide se o RN-PAG-08 e o `reconcile` poderão ser testados e também qual API do Mercado Pago será usada (Payments ou Orders, ADR-002).
 3. Faça o merge do código preparado na seção 5 na `main` (export do `app`, `dev-server.ts`, `vercel.json`, script de build, endpoints de jobs, `@vercel/functions`).
 4. Crie o projeto **`unishop-api`** (pasta `backend`), com as configurações da seção 6. Na própria tela de importação, **adicione as variáveis** da seção 4.2 antes de implantar. Se o primeiro deploy automático falhar por falta de variáveis, é esperado: preencha e use *Redeploy*.
-5. Instale o **Neon** nesse projeto (seção 7.1), escolha o PostgreSQL 18, crie os três papéis e ative o branch por preview com o `development` como pai. Confira os nomes `DATABASE_URL` e `DATABASE_URL_UNPOOLED` injetados.
+5. Crie os projetos **Supabase** `unishop-prod` e `unishop-dev` (seção 7.1), confira a versão do PostgreSQL, crie os três papéis em cada um e cadastre `DATABASE_URL` e `DATABASE_URL_UNPOOLED` por ambiente (Production aponta para `unishop-prod`; Preview e Development, para `unishop-dev`).
 6. Preencha as variáveis no ambiente *Production* (e as de teste em *Preview*). Gere `JWT_SECRET` e `CRON_SECRET` na sua máquina. Marque os segredos como *Sensitive*.
 7. Rode o deploy da API e confira se `GET https://<api>.vercel.app/api/v1/health` responde `{"status":"ok"}` e se `/api/v1/health/db` também responde 200 (esse consulta o banco).
 8. Rode o **seed** uma vez, da sua máquina (seção 7.3).
@@ -738,7 +738,7 @@ Antes de fazer merge de uma migração arriscada, rode o **backup manual** (seç
 ### 13.2 Reverter
 
 - **Só o código:** em *Deployments*, abra um deploy anterior que funcionava e use **Instant Rollback** (ou *Promote to Production*). A troca é imediata e não reconstrói nada.
-- **Código e banco:** o rollback da Vercel **não desfaz migrações**. Se a migração nova mexeu em dados, restaure o banco (ponto no tempo do Neon ou dump, seção 11.3) e depois faça o rollback do código.
+- **Código e banco:** o rollback da Vercel **não desfaz migrações**. Se a migração nova mexeu em dados, restaure o banco (dump, seção 11.3; não há ponto no tempo no plano gratuito) e depois faça o rollback do código.
 - Migrações do Prisma só andam para frente. Prefira migrações **aditivas** (criar coluna, criar tabela), que não impedem voltar ao código anterior.
 - Rollback do **site** e da **API** são independentes: confira se a versão do site é compatível com a da API antes de reverter só um deles.
 
@@ -750,7 +750,7 @@ Antes de fazer merge de uma migração arriscada, rode o **backup manual** (seç
 | Logs da API | Painel → *Logs* do projeto `unishop-api`, ou `vercel logs <endereço-do-deploy>` |
 | Erros em tempo de execução | Painel → *Observability* |
 | Variáveis | Painel → *Settings → Environment Variables*, ou `vercel env ls` |
-| Consultar o banco | Console SQL do Neon, ou `psql` com a conexão direta |
+| Consultar o banco | *SQL Editor* ou *Table Editor* do Supabase, ou `psql` com o Session pooler |
 | Disparar um job à mão | `curl -H "Authorization: Bearer $CRON_SECRET" https://<api>.vercel.app/api/v1/internal/jobs/<nome>` |
 
 > **Logs duram pouco.** No plano Hobby, os logs de execução ficam disponíveis por **cerca de 1 hora** (no Pro, 1 dia). Um erro de ontem não aparece mais. Se for preciso investigar problemas antigos, envie os logs a um serviço externo ou registre os erros críticos no banco. O Backend (§18) já guarda o log de auditoria no banco.
@@ -765,7 +765,7 @@ API=https://unishop-api.vercel.app
 
 curl -sI "${APP/https/http}" | head -n 1                      # 308 → HTTPS
 curl -s "$API/api/v1/health"                                  # {"status":"ok"} (leve, sem banco)
-curl -s "$API/api/v1/health/db"                               # 200 com o banco; 503 sem (acorda o Neon)
+curl -s "$API/api/v1/health/db"                               # 200 com o banco; 503 sem (um projeto pausado precisa ser retomado no painel)
 curl -sI "$APP/" | grep -i strict-transport                   # HSTS presente
 curl -sI "$APP/categorias" | head -n 1                        # 200 (o React Router decide)
 curl -sI -H "Origin: https://evil.example" "$API/api/v1/health" \
@@ -811,16 +811,16 @@ curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer undefined" \
 |---|---|
 | RNF001: HTTPS e hash de senha | Item 3 do checklist e Backend, seção 16 (bcrypt) |
 | RNF008: página em até 3 s | `curl -s -o /dev/null -w "%{time_total}\n" $APP/` e o Lighthouse; observe também a **primeira chamada** à API após um período parado (partida a frio) |
-| RNF010: 500 usuários simultâneos | **Meta de produto, fora do MVP** (decisão do grupo em 16/10/2026: o objetivo agora é concluir e ser avaliado, mantendo a infraestrutura gratuita). Se o projeto seguir como produto, fazer teste de carga com k6 contra um preview, nunca contra produção, e reavaliar o plano do Neon |
+| RNF010: 500 usuários simultâneos | **Meta de produto, fora do MVP** (decisão do grupo em 16/10/2026: o objetivo agora é concluir e ser avaliado, mantendo a infraestrutura gratuita). Se o projeto seguir como produto, fazer teste de carga com k6 contra um preview, nunca contra produção, e reavaliar o plano do Supabase |
 | RNF011: 99% de disponibilidade | **Meta de produto, não medida no MVP** (Regras de Negócio, seção 6). O UptimeRobot já fica ligado no MVP em `$API/api/v1/health` (o leve), a cada 5 minutos, com aviso por e-mail |
-| RNF011: backup diário | Histórico do workflow em *Actions* (um dump por dia) e a restauração a um ponto no tempo do Neon |
+| RNF011: backup diário | Histórico do workflow em *Actions* (um dump por dia) (o plano gratuito do Supabase não tem backup próprio) |
 | RNF011: restauração testada | Teste da seção 11.3, uma vez antes da entrega |
 
 > Os demais RNF (RNF012 a RNF016) não foram mapeados neste guia: o PDF do trabalho não está no repositório para conferir quais deles dependem de deploy (pendência 6 da seção 17.3).
 
 ## 15. Segurança operacional
 
-- **Contas:** ative a verificação em duas etapas na Vercel, no Neon e no GitHub. Como o plano Hobby tem uma conta dona, essa conta é a mais crítica: use senha forte e guarde a recuperação em local seguro.
+- **Contas:** ative a verificação em duas etapas na Vercel, no Supabase e no GitHub. Como o plano Hobby tem uma conta dona, essa conta é a mais crítica: use senha forte e guarde a recuperação em local seguro.
 - **Tokens:** o *Personal Access Token* da Vercel e o `CRON_SECRET` são segredos; troque-os se vazarem.
 - **Variáveis:** use *Sensitive* nos segredos e mantenha cada ambiente com valores próprios.
 - **Previews protegidos:** mantenha a *Deployment Protection* do ambiente Preview ligada; previews públicos expõem uma API conectada a um banco com dados.
@@ -843,9 +843,10 @@ curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer undefined" \
 | Limite de 4,5 MB por requisição | Imagem acima disso falha com 413 genérico da Vercel | Uma imagem por requisição, até 4 MB; o frontend confere o tamanho antes e trata o 413 (seção 5.3) |
 | **Limite de 4 MB contra os 5 MB citados no enunciado** | Possível desvio do requisito, que tem prioridade sobre as decisões do grupo | Limite confirmado pelo grupo; conferir o enunciado do trabalho; se exigir 5 MB, o frontend comprime a imagem antes de enviar (pendência 5) |
 | Banco acessível pela internet (regra 4) | Superfície de ataque maior que a de um banco em rede interna | TLS, senha forte, três papéis com privilégio mínimo; **sem lista de IPs no plano gratuito**; exceção aceita pelo grupo |
-| Partida a frio e latência até o banco | Primeira chamada lenta (o Neon dorme após 5 minutos); risco para o RNF008 | Funções e banco na mesma região; medir; o Fluid compute reduz as partidas a frio; aceitar a primeira consulta lenta |
-| **CU-horas do Neon (100 por mês)** | Banco suspenso até o mês seguinte | Jobs a cada 30 minutos, `/health` leve, sem consultas em laço; acompanhar o consumo no painel |
-| **Armazenamento de 1 GB** | Banco suspenso ao encher | As imagens ficam no Cloudinary; no banco só texto; acompanhar o tamanho |
+| Partida a frio e latência até o banco | Primeira chamada lenta após a partida a frio da função; risco para o RNF008 | Funções e banco na mesma região; medir; o Fluid compute reduz as partidas a frio |
+| **Pausa do projeto Supabase (1 semana sem atividade)** | Banco indisponível até alguém retomá-lo no painel | Jobs de 30 em 30 minutos e monitor no `/health/db` geram atividade; conferir o painel antes da demonstração |
+| **Sem backup automático nem ponto no tempo** | Um erro ou migração ruim só se desfaz com o dump do dia | Workflow diário do GitHub Actions; rodar o workflow à mão antes de migrações arriscadas |
+| **Armazenamento de 500 MB** | Banco passa a só leitura ao encher | As imagens ficam no Cloudinary; no banco só texto; acompanhar o tamanho |
 | Conexões esgotadas no banco | Erros 500 sob carga | Endereço com **pooler** e `connection_limit=1`, uma instância do Prisma por processo |
 | Rate limit em memória | Cada instância conta separado; o limite vira inócuo | Armazenamento compartilhado (por exemplo Upstash Redis) ou aceitar a limitação no escopo acadêmico. **O bloqueio de login (5 erros / 15 min) já é gravado no banco** (Backend §8) e não é afetado |
 | Backup do GitHub em repositório público | Vazamento de dados de alunos | Workflow só em repositório privado (seção 11.1) |
@@ -859,20 +860,20 @@ curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer undefined" \
 
 ### 17.1 ADR-005 · Hospedagem
 
-| Critério | Vercel + Neon (adotada) | Oracle Cloud + Docker (avaliada, não adotada) |
+| Critério | Vercel + Supabase (adotada) | Oracle Cloud + Docker (avaliada, não adotada) |
 |---|---|---|
 | Esforço de deploy | Baixo (`git push`) | Alto (servidor, Docker, proxy, certificados) |
 | Experiência do grupo | Adequada para quem nunca fez deploy | Exige administrar servidor |
 | Regra 4 (banco fechado) | Cumprida só em parte (banco gerenciado público) | Cumprida |
 | Jobs agendados | Precisam virar endpoints + agendador externo (30 min) | Funcionam como estão (`node-cron`) |
 | Upload de imagens | Uma por requisição, até 4 MB | Funciona como está (5 MB) |
-| Lista de IPs do banco | Indisponível no plano gratuito do Neon | Possível com firewall do servidor |
+| Lista de IPs do banco | Indisponível com a Vercel (sem IP fixo) | Possível com firewall do servidor |
 | Equipe | Hobby: conta única de dono | Chave SSH por pessoa |
-| Backup | Workflow diário + ponto no tempo do Neon | `pg_dump` diário no servidor |
+| Backup | Workflow diário (o Supabase gratuito não tem backup próprio) | `pg_dump` diário no servidor |
 | Rollback | Instant Rollback, um clique | Imagem anterior por etiqueta |
-| Custo | Gratuito, com limites do Hobby e do Neon (100 CU-h, 1 GB) | Gratuito, com risco de capacidade |
+| Custo | Gratuito, com limites do Hobby e do Supabase (500 MB, pausa em 1 semana) | Gratuito, com risco de capacidade |
 
-**Decisão (fechada pelo grupo):** Vercel + Neon, pela simplicidade para um grupo que faz o primeiro deploy. A alternativa em servidor próprio **não será documentada**. Se os limites do Hobby, a regra 4 ou os jobs virarem problema, a revisão da hospedagem volta ao grupo como um novo ADR.
+**Decisão (fechada pelo grupo):** Vercel + Supabase, pela simplicidade para um grupo que faz o primeiro deploy. A alternativa em servidor próprio **não será documentada**. Se os limites do Hobby, a regra 4 ou os jobs virarem problema, a revisão da hospedagem volta ao grupo como um novo ADR.
 
 ### 17.2 Decisões já tomadas que este guia segue
 
@@ -889,19 +890,19 @@ curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer undefined" \
 | Upload de imagens | Pela API, uma imagem por requisição, até 4 MB, até 5 imagens por anúncio (usa o máximo da Vercel) | Decisão do grupo, confirmada em 16/10/2026 (pendência 5) |
 | Login | E-mail e senha, e Google (`@edu.unifor.br`) no MVP; Apple fora | Decisão do grupo, 16/10/2026 (RN-ACE-14) |
 | Metas de produto | 500 usuários e 99% de disponibilidade fora do MVP; infraestrutura gratuita | Decisão do grupo, 16/10/2026 |
-| Jobs | A cada 30 minutos em produção | Decisão do grupo, 16/10/2026 (CU-horas do Neon) |
-| Hospedagem e banco | Vercel (frontend e API) com PostgreSQL no Neon | Decisão do grupo (ADR-005) |
+| Jobs | A cada 30 minutos em produção | Decisão do grupo, 16/10/2026 (mantida após a troca para o Supabase) |
+| Hospedagem e banco | Vercel (frontend e API) com PostgreSQL no Supabase (só como banco) | ADR-005, revisado em 30/10/2026 (antes: Neon) |
 
 A decisão "uma única instância da API" do Backend §14 **deixa de valer** na Vercel (a função escala sozinha). Ela é trocada pela exigência de jobs idempotentes (seção 10).
 
 ### 17.3 Pendências em aberto
 
-**Estado em 16/10/2026.** As propostas das pendências 2, 4, 8 e 9 passam a valer como decisão: exceção da regra 4 aceita, cron-job.org a cada 30 minutos, rate limit em memória aceito no escopo acadêmico. A pendência 5 (4 MB) foi confirmada pelo grupo. Continuam abertas, porque dependem de ação externa: **1** (verificar o bloqueio de commits no Hobby), **3** (domínio próprio), **6** (conferir o enunciado quanto aos RNF012 a RNF016), **7** (testar o Google), **10** (prova de conceito do Pix de teste e escolha Payments ou Orders), **11** (nome da tabela) e **12** (criar os papéis no Neon gratuito). Os números 1, 3 e 7 não mudam porque a API os cita.
+**Estado em 16/10/2026.** As propostas das pendências 2, 4, 8 e 9 passam a valer como decisão: exceção da regra 4 aceita, cron-job.org a cada 30 minutos, rate limit em memória aceito no escopo acadêmico. A pendência 5 (4 MB) foi confirmada pelo grupo. Continuam abertas, porque dependem de ação externa: **1** (verificar o bloqueio de commits no Hobby), **3** (domínio próprio), **6** (conferir o enunciado quanto aos RNF012 a RNF016), **7** (testar o Google), **10** (prova de conceito do Pix de teste e escolha Payments ou Orders), **11** (nome da tabela) e **12** (criar e testar os papéis no Supabase) e **13** (versão do PostgreSQL). Os números 1, 3 e 7 não mudam porque a API os cita.
 
 | # | Pendência | Proposta |
 | --- | --- | --- |
 | 1 | **Plano da Vercel e equipe:** o Hobby não tem colaboração; commits de outros autores podem ser bloqueados | Conta única de dono (Francisco); verificar o bloqueio antes do primeiro deploy; Pro só se for indispensável |
-| 2 | **Exceção à regra 4:** banco do Neon acessível pela internet, sem lista de IPs no plano gratuito | **Aceita** com TLS, senha forte e três papéis (seção 7.4) |
+| 2 | **Exceção à regra 4:** banco do Supabase acessível pela internet, sem lista de IPs utilizável com a Vercel | **Aceita** com TLS, senha forte e três papéis (seção 7.4) |
 | 3 | **E-mail em produção:** o Resend exige domínio verificado por DNS, e `vercel.app` não permite | Registrar um domínio próprio barato e apontá-lo para os dois projetos (seção 8) |
 | 4 | **Agendador externo** dos jobs frequentes | **Decidido:** cron-job.org (ou similar), a cada 30 minutos, para `expire-pix-payments` e `reconcile-pending-payments` |
 | 5 | **Limite de imagem: 4 MB** (confirmado pelo grupo em 16/10/2026; já nos documentos) | Conferir o enunciado; se exigir 5 MB, o frontend comprime antes de enviar (seção 5.3) |
@@ -911,7 +912,8 @@ A decisão "uma única instância da API" do Backend §14 **deixa de valer** na 
 | 9 | **Versão do Prisma** (ADR-001): client, *driver adapter* e `directUrl` | Felipe confirma ao instalar e ajusta as seções 5.1 e 5.4 |
 | 10 | **Pix com credenciais de teste do Mercado Pago:** não foi verificado se o Pix de teste gera o webhook de aprovação; também decide a Payments API ou a Orders API (ADR-002) | Prova de conceito no início do projeto (seção 12, passo 2); registrar o resultado na seção 14.2 |
 | 11 | **Nome da tabela de categorias** no teste de restauração | Ana Clara confirma no documento de Banco de Dados |
-| 12 | **Papéis do banco no Neon gratuito:** confirmar no painel como criar `unishop_migrator`, `unishop_app` e `unishop_backup` | Francisco ou Ana Clara confirma antes do primeiro deploy; se não der, um papel só e a exceção registrada aqui |
+| 12 | **Papéis do banco no Supabase:** criar `unishop_migrator`, `unishop_app` e `unishop_backup` pelo SQL Editor e testar o login de cada um pelo pooler (`papel.ref-do-projeto`) | Francisco ou Ana Clara confirma antes do primeiro deploy; se não der, um papel só e a exceção registrada aqui |
+| 13 | **Versão do PostgreSQL no Supabase:** os documentos assumem a 18 (imagem do Docker, `pg_dump`, workflow) | Conferir em *Database → Settings* ao criar os projetos; se for outra, ajustar os documentos |
 
 ### 17.4 O que cada pessoa confirma
 
@@ -921,7 +923,7 @@ A decisão "uma única instância da API" do Backend §14 **deixa de valer** na 
 | Pedro (API) | O `openapi.yaml` (ainda não existe, pendência 5 do `api.md`) usa o servidor `https://<api>.vercel.app/api/v1`; documentar as rotas de imagem (`POST` e `DELETE /listings/:id/images`) e o limite de 4 MB |
 | Francisco (frontend e deploy) | `VITE_API_URL` absoluto; `frontend/vercel.json` com o `rewrite` do React Router; `ImageUploader` com uma imagem por requisição, conferência de 4 MB antes de enviar e tratamento do 413; UptimeRobot no `/health`; `VITE_MP_PUBLIC_KEY` e `VITE_GOOGLE_CLIENT_ID`; bloqueio de commits de outros autores no Hobby; agendador externo; segredo `DATABASE_URL_BACKUP` no GitHub |
 | Felipe e Pedro (providers e segurança) | `config/env.ts` com `APP_ENV`, `FRONTEND_URL` em lista e `CRON_SECRET`; travas de produção por `APP_ENV` (`docs/api/api.md`, seção 6.3); lista de variáveis do `api.md` igual à da seção 4.2 deste guia; `openapi.yaml` (pendência 13 do `api.md`) |
-| Ana Clara (banco) | Nome das tabelas para o teste de restauração; índices e as restrições do Banco v0.2 presentes nas migrações; os três papéis; compatibilidade com o PostgreSQL 18 do Neon |
+| Ana Clara (banco) | Nome das tabelas para o teste de restauração; índices e as restrições do Banco v0.2 presentes nas migrações; os três papéis; compatibilidade com a versão do PostgreSQL do Supabase (pendência 13) |
 | Grupo | Pendências 1, 3 e 7 acima (as demais já estão decididas) |
 
 ### 17.5 Ajustes em outros documentos
@@ -933,6 +935,6 @@ Em 16/10/2026 todos os documentos foram alinhados em conjunto. O quadro registra
 | `docs/regras-de-negocio/regras-de-negocio.md` (v0.4) | **Aplicado:** 4 MB, Google no MVP, metas de produto fora do MVP, novas regras (ACE-14, ACE-15, PED-10 a PED-13, PAG-12 a PAG-15, entre outras) |
 | `docs/banco-de-dados/banco-de-dados.md` (v0.2) | **Aplicado:** estado final do banco, três papéis, `DATABASE_URL_UNPOOLED`, `DATABASE_URL_BACKUP` |
 | `docs/backend/backend.md` (v0.3) | **Aplicado:** `app.ts` e `dev-server.ts`; jobs como endpoints a cada 30 minutos; imagens uma por requisição até 4 MB; `waitUntil`; `/health` leve e `/health/db` |
-| `docs/api/api.md` (v0.3) | **Aplicado:** `APP_ENV` e travas, variáveis iguais às da seção 4.2, limites do Neon corrigidos, ADRs 001 a 009 |
+| `docs/api/api.md` (v0.3) | **Aplicado:** `APP_ENV` e travas, variáveis iguais às da seção 4.2, limites do banco revisados para o Supabase, ADRs 001 a 009 |
 | `docs/frontend/frontend.md` (v0.4) | **Aplicado:** `VITE_API_URL` absoluto, telas e rotas faltantes, 4 MB, aviso de demonstração |
 | `README.md`, `CLAUDE.md`, `docs/skills/skills.md` do repositório | **A atualizar pelo grupo:** nomes de pastas sem acento (`regras-de-negocio`), limite de 4 MB na regra central do `CLAUDE.md`, Google no MVP; o `docs/README.md` deste conjunto traz o índice |

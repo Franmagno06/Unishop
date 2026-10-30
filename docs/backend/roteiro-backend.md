@@ -35,7 +35,7 @@ Resolver **antes** da etapa indicada. Nenhuma trava a Etapa 1.
 | P2 | ~~Valores dos estados no JSON~~ **Decidido em 28/10/2026 (Francisco): banco em português, código e API em inglês, com o Prisma fazendo a ponte por `@map` nos enums.** Tabela de correspondência na seção 2.1. | — | — | Falta só corrigir a nota do `bd.md §7` ("os valores são os mesmos nos dois lados"), na Etapa 2, com o aval da Ana Clara. |
 | P3 | Payments API × Orders API do Mercado Pago (ADR-002 aberto) | Etapa 10 (real); a 7 não depende | Pedro | Prova de conceito: Pix de teste gera o webhook de aprovação. Até lá, só o `mock.provider`. |
 | P4 | Google institucional entrega `email_verified = true`? (§21 nº 1) | Etapa 10 | Francisco | Testar com e-mail `@edu.unifor.br` real. |
-| P5 | Papéis `unishop_*` no Neon gratuito (CLAUDE.md, pendências) | Etapa 11 | Francisco / Ana Clara | Se não der, um papel só e registrar a exceção no Deploy. |
+| P5 | Papéis `unishop_*` no Supabase (SQL Editor; login pelo pooler como `papel.ref`) e revogação de `anon`/`authenticated` (CLAUDE.md, pendências) | Etapa 11 | Francisco / Ana Clara | Se não der, um papel só e registrar a exceção no Deploy. |
 | P6 | Domínio próprio para o Resend (e talvez Google) | Etapa 10 | Grupo | Em dev usa Mailtrap; produção exige domínio verificado. |
 | P7 | **Prisma 7 × documentos.** O projeto instalou `prisma` e `@prisma/client` 7.10.1 com `@prisma/adapter-pg`; `bd.md`/`backend.md` descrevem `directUrl` no `schema.prisma`. Na versão 7 a URL de conexão sai do schema (arquivo `prisma.config.ts` + adapter). **A confirmar na Etapa 2**; se confirmado, corrigir `bd.md §11/§14` e `backend.md §3`. | Etapa 2 | Felipe + Ana Clara | Spike de 1 h no início da Etapa 2. |
 | P8 | **Funcionalidades do frontend sem regra nem tabela** (commits `6be5b283`, `fb89e4d2` e `ecb08f1d`, já mesclados com a `main` em `c02c16b3`). Lista completa na seção 2.2. As Regras v0.4.1 e o Banco v0.2 não as mencionam, e os próprios tipos do frontend dizem "provisório". | Etapa 12 (opcional) | Grupo | Decidir item a item: entra no MVP (então Regras → Banco → Backend, nessa ordem) ou fica como demonstração só no frontend. **Não implementar antes da decisão.** |
@@ -241,7 +241,7 @@ Uma etapa só termina quando o fluxo dela funciona no navegador com a API real. 
 
 **Pronto quando:** `db:reset` + seed num banco vazio passam e a Ana Clara confere o schema contra o DER (divergências do `bd.md §12` anotadas).
 
-**Skills:** `unishop-database`, `supabase-postgres-best-practices`, `neon-postgres`. **Estudar:** D1 (SQL, restrições), D2 (Prisma, migrações, papéis), D3 (índice único parcial; já prepara a Etapa 6).
+**Skills:** `unishop-database`, `supabase-postgres-best-practices`. **Estudar:** D1 (SQL, restrições), D2 (Prisma, migrações, papéis), D3 (índice único parcial; já prepara a Etapa 6).
 
 ## Etapa 3 — Providers e drivers falsos
 
@@ -361,13 +361,13 @@ Troca de driver por variável, **sem mudar service nem controller** (é o teste 
 **Entregas**
 - Cobertura mínima de **80%** nos services de `auth`, `payments`, `listings` e `orders`; revisão com `/code-review` e `/security-review` da branch inteira; CSP e cabeçalhos (`unishop-api`/`unishop-deploy`).
 - `openapi.yaml` completo e conferido contra as rotas reais; opcional: teste de contrato.
-- Deploy (`unishop-deploy`): `vercel.json`, `scripts/vercel-build.sh` (`prisma generate` + `migrate deploy`), variáveis por ambiente, `APP_ENV`, branches do Neon (P5), `CRON_SECRET`, cron-job.org a cada 30 min nos dois jobs frequentes, Vercel Cron diário, UptimeRobot no `/health`, workflow de backup no GitHub Actions. **Só executar deploy, troca de variável ou restauração se o gestor pedir, confirmando o alvo (preview ou produção).**
+- Deploy (`unishop-deploy`): `vercel.json`, `scripts/vercel-build.sh` (`prisma generate` + `migrate deploy`), variáveis por ambiente, `APP_ENV`, projetos Supabase `unishop-prod` e `unishop-dev` (P5), `CRON_SECRET`, cron-job.org a cada 30 min nos dois jobs frequentes, Vercel Cron diário, UptimeRobot no `/health`, workflow de backup no GitHub Actions. **Só executar deploy, troca de variável ou restauração se o gestor pedir, confirmando o alvo (preview ou produção).**
 - Frontend: remover `VITE_USE_MOCKS` do caminho de produção; E2E Playwright completo contra a API; aviso de ambiente de demonstração (RN-PAG-15).
 - Atualizar `CLAUDE.md`, as skills `unishop-*` (campo `version` e `evals/`) e os documentos que mudaram (P7, enums de P2).
 
 **Pronto quando:** compra Pix e cartão de ponta a ponta em produção com credenciais de teste, jobs rodando, backup restaurado em teste e checklist do `deploy.md` marcado.
 
-**Skills:** `unishop-deploy`, `vercel-cli-with-tokens`, `neon-postgres`, `neon-postgres-branches`, `webapp-testing`. **Estudar:** F2 (deploy), F3 (limites e backup), G1 (defesa de uma compra de ponta a ponta).
+**Skills:** `unishop-deploy`, `vercel-cli-with-tokens`, `webapp-testing`. **Estudar:** F2 (deploy), F3 (limites e backup), G1 (defesa de uma compra de ponta a ponta).
 
 ## Etapa 12 — Avaliações e suporte (condicional a P8)
 
@@ -381,7 +381,7 @@ Só começa depois de o grupo decidir. Ordem obrigatória: **Regras de Negócio 
 
 - **Caminho crítico:** 1 → 2 → 4 → 5 → 6 → 7. É a sequência que o front espera para sair dos mocks.
 - **Em paralelo:** Etapa 3 corre ao lado da 2 (só depende da 1); P1 (Pedro, `openapi.yaml` da fatia seguinte) corre ao lado do código da etapa atual; P3, P4, P5 e P6 são ações externas que podem ser feitas a qualquer momento antes da Etapa 10.
-- **Riscos principais:** (1) concorrência de estoque e liquidação idempotente — cobrir com testes contra banco real desde a Etapa 6, nunca só mocks; (2) divergência de contrato front × back (P2) — resolver na Etapa 4; (3) cotas gratuitas do Neon (jobs de 30 min e `/health` leve já mitigam).
+- **Riscos principais:** (1) concorrência de estoque e liquidação idempotente — cobrir com testes contra banco real desde a Etapa 6, nunca só mocks; (2) divergência de contrato front × back (P2) — resolver na Etapa 4; (3) pausa do projeto Supabase por inatividade e falta de backup automático (jobs de 30 min e o workflow diário mitigam).
 
 ## 6. Primeiro passo sugerido
 

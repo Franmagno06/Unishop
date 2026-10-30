@@ -43,7 +43,8 @@ language: pt-BR (código e pastas em inglês; interface em português)
 |---|---|---|
 | 0.1 | 13/10/2026 | Primeira versão, escrita a partir dos requisitos e do documento de Frontend. |
 | 0.2 | 14/10/2026 | Revisão completa com base nas Regras de Negócio v0.4. Substituiu a v0.1. |
-| 0.2.1 | 15/10/2026 | Ajustes para a hospedagem na Vercel + Neon (ADR-005): `app.ts` e `dev-server.ts`; jobs como endpoints; imagens uma por requisição; `waitUntil`; novas variáveis. |
+| 0.2.1 | 15/10/2026 | Ajustes para a hospedagem na Vercel + Supabase (ADR-005): `app.ts` e `dev-server.ts`; jobs como endpoints; imagens uma por requisição; `waitUntil`; novas variáveis. |
+| 0.3.1 | 30/10/2026 | Banco trocado de Neon para Supabase (ADR-005 revisado): variáveis `DATABASE_URL` (Transaction pooler, 6543) e `DATABASE_URL_UNPOOLED` (Session pooler ou direta, 5432), backup só pelo workflow, `/health/db` gera atividade contra a pausa do projeto. |
 | 0.3 | 16/10/2026 | Alinhado às Regras de Negócio v0.4 e ao Banco de Dados v0.2. Login com Google entra no MVP (com a tela "completar cadastro"); troca de senha logado; cancelamento de pedido pelo comprador; pedido aberto reaproveitado; liquidação só com anúncio ativo; pagamento tardio estornado; várias tentativas de pagamento por pedido; imagem de 4 MB confirmada pelo grupo; exclusão lógica e bloqueios com pedido pago em aberto; proteção do admin; jobs de 30 em 30 minutos e `/health` leve; SQL com os nomes do Banco. As pendências 1 a 16 da v0.2 passam às Regras de Negócio (seção 21). |
 
 ### O que mudou na v0.3
@@ -60,7 +61,7 @@ language: pt-BR (código e pastas em inglês; interface em português)
 | Exclusão de anúncio, perfil e usuário | Remoção | Exclusão lógica e anonimização, bloqueadas com pedido Pago ou em Retirada combinada em aberto (RN-ANU-09, RN-PER-06, RN-ADM-06, 09) |
 | Edição pelo admin | Dados, vendedor e imagem | Só o status da conta e do anúncio, sem troca de vendedor (RN-ADM-04, 08; Regras v0.4.1, decisão de 26/10) |
 | Proteção do admin | Proposta | Regra: não suspende nem exclui a si mesmo; último admin protegido (RN-ADM-12) |
-| Jobs | A cada 1 a 5 minutos | A cada 30 minutos, para caber no plano gratuito do Neon |
+| Jobs | A cada 1 a 5 minutos | A cada 30 minutos (decisão de custo do grupo, mantida no Supabase; também gera atividade e evita a pausa do projeto) |
 | Imagem | 4 MB contra 5 MB (pendência) | 4 MB, confirmado pelo grupo (Regras §10) |
 | Metas de 500 usuários e 99% | Verificadas por teste | Metas de produto, não medidas no MVP (Regras §6) |
 | Pendências | 17 abertas | As propostas viraram regras; restam as da seção 21 |
@@ -107,7 +108,7 @@ Quem chama a API:
 
 ## 2. Arquitetura e stack
 
-É uma API REST em camadas, **sem sessão guardada no servidor** (o login é um JWT), que fala com um PostgreSQL e com quatro serviços externos. Em produção roda como **função serverless na Vercel**, com o PostgreSQL no Neon (`docs/deploy/deploy.md`); os jobs agendados são endpoints HTTP chamados por um agendador (seção 14). Em desenvolvimento roda como um processo Node.js comum, com `node-cron`.
+É uma API REST em camadas, **sem sessão guardada no servidor** (o login é um JWT), que fala com um PostgreSQL e com quatro serviços externos. Em produção roda como **função serverless na Vercel**, com o PostgreSQL no Supabase, usado só como banco (`docs/deploy/deploy.md`); os jobs agendados são endpoints HTTP chamados por um agendador (seção 14). Em desenvolvimento roda como um processo Node.js comum, com `node-cron`.
 
 ```text
  Navegador (SPA React)
@@ -148,7 +149,7 @@ As versões exatas ficam no `package.json`; aqui só se registra a escolha.
 | Testes | Vitest + Supertest | Unidade e integração das rotas |
 | Contrato da API | OpenAPI (`openapi.yaml`) | Combinado entre backend e frontend |
 | Ambiente local | Docker Compose | Sobe o PostgreSQL de desenvolvimento e o de testes |
-| Hospedagem | Vercel (frontend e API) + Neon (PostgreSQL) | Deploy por `git push`, um branch de banco por ambiente (ADR-005; ver `docs/deploy/deploy.md`) |
+| Hospedagem | Vercel (frontend e API) + Supabase (PostgreSQL) | Deploy por `git push`, um projeto de banco por ambiente (ADR-005; ver `docs/deploy/deploy.md`) |
 
 
 ### Princípios
@@ -244,7 +245,7 @@ npm run dev        # abre em http://localhost:3000/api/v1/health
 
 Se aparecer `{"status":"ok"}`, a base está certa.
 
-> No projeto definitivo existem duas rotas técnicas (seção 9.11). `GET /api/v1/health` é **leve**: responde 200 sem consultar o banco e é a que o monitor de disponibilidade chama de tempos em tempos, para não acordar o banco à toa (o Neon gratuito conta o tempo de computação). `GET /api/v1/health/db` faz um `SELECT 1` e responde 200 ou 503; serve para conferir o deploy.
+> No projeto definitivo existem duas rotas técnicas (seção 9.11). `GET /api/v1/health` é **leve**: responde 200 sem consultar o banco e é a que o monitor de disponibilidade chama de tempos em tempos, para não consultar o banco à toa. Como o Supabase gratuito pausa o projeto após 1 semana sem atividade, o monitor também chama o `/health/db` de vez em quando (ou os jobs de 30 minutos bastam para gerar atividade). `GET /api/v1/health/db` faz um `SELECT 1` e responde 200 ou 503; serve para conferir o deploy.
 
 > Esta documentação assume **Express 5**, que repassa erros de funções assíncronas ao `errorHandler` sem biblioteca extra. Confira a versão instalada no `package.json`.
 
@@ -310,8 +311,8 @@ ADMIN_PASSWORD=
 | Variável | Para quê |
 |---|---|
 | `NODE_ENV · PORT` | Ambiente de execução e porta da API |
-| `DATABASE_URL` | Conexão com o PostgreSQL (em produção, o endereço **com pooler** do Neon, com `?pgbouncer=true&connection_limit=1`) |
-| `DATABASE_URL_UNPOOLED` | Conexão direta ao Neon, sem pooler. Usada pelo `prisma migrate deploy` (`directUrl` no `schema.prisma`) e pelo backup |
+| `DATABASE_URL` | Conexão com o PostgreSQL (em produção, o **Transaction pooler** do Supabase, porta 6543, com `?pgbouncer=true&connection_limit=1`; o usuário é `unishop_app.<ref-do-projeto>`) |
+| `DATABASE_URL_UNPOOLED` | Conexão direta ou Session pooler do Supabase (porta 5432, usuário `unishop_migrator.<ref-do-projeto>` no pooler; a direta é só IPv6). Usada pelo `prisma migrate deploy` (`directUrl` no `schema.prisma`) e pelo backup |
 | `FRONTEND_URL` | Origem(ns) aceita(s) no CORS, separadas por vírgula, sem curinga; a primeira é a base dos links enviados por e-mail. Em produção deve ser `https` e sem barra no fim |
 | `CRON_SECRET` | Senha que o agendador envia (`Authorization: Bearer`) para chamar os endpoints de jobs |
 | `APP_ENV` | Ambiente de verdade: `development`, `test`, `preview` ou `production`. As travas de produção usam `APP_ENV`, não `NODE_ENV`, que na Vercel é `production` também no Preview |
@@ -339,7 +340,7 @@ ADMIN_PASSWORD=
 |---|---|---|---|---|
 | Desenvolvimento | PostgreSQL no Docker | Caixa de teste (Mailtrap) | Sandbox do gateway + túnel público (ngrok ou Cloudflare Tunnel) para o webhook | Cloudinary, pasta de testes |
 | Testes automáticos | PostgreSQL de teste, recriado a cada execução | Mock | Mock do provider | Mock |
-| Produção | PostgreSQL 18 no Neon (branch `production`), com backup diário e restauração a um ponto no tempo (janela de 6 horas no plano gratuito) | Resend | Mercado Pago com credenciais de **teste** (RN-PAG-10) | Cloudinary |
+| Produção | PostgreSQL no Supabase (projeto `unishop-prod`; versão a conferir, documentos assumem 18), com backup diário pelo workflow do GitHub Actions (o plano gratuito não tem restauração a ponto no tempo) | Resend | Mercado Pago com credenciais de **teste** (RN-PAG-10) | Cloudinary |
 
 
 ## 5. Estrutura de pastas
@@ -1437,7 +1438,7 @@ Em **desenvolvimento**, rodam no mesmo processo da API, com `node-cron` (`jobs/s
 | `cleanup-expired-tokens` | Uma vez por dia | Apaga tokens de confirmação e de senha vencidos ou já usados | RN-ACE-10 |
 | `reconcile-pending-payments` | A cada 30 minutos | Consulta no gateway os pagamentos pendentes recentes e corrige os que perderam o aviso do webhook. Refaz os estornos que ficaram em `estorno_pendente` (até 10 tentativas, com o erro em `ultimo_erro`) | RN-PAG-05, RN-PAG-08, RN-PAG-13 |
 
-A frequência de 30 minutos é uma escolha de custo: no Neon gratuito cada chamada acorda o banco, e o tempo de computação é limitado (`docs/deploy/deploy.md`, seção 7). Como o cancelamento também acontece **sob demanda** (quando alguém lê ou paga o pedido), o atraso do agendador não é visível ao usuário. Se o consumo permitir, a frequência pode cair para 15 minutos.
+A frequência de 30 minutos é uma escolha de custo e de atividade: foi decidida pelo grupo por causa das CU-horas do Neon e mantida no Supabase, onde as chamadas também evitam a pausa do projeto por inatividade (`docs/deploy/deploy.md`, seção 7). Como o cancelamento também acontece **sob demanda** (quando alguém lê ou paga o pedido), o atraso do agendador não é visível ao usuário. Se o consumo permitir, a frequência pode cair para 15 minutos.
 
 ### Jobs em produção: endpoints e agendador
 
@@ -1451,7 +1452,7 @@ Cada job responde em `GET /api/v1/internal/jobs/<nome>`, com o nome do job da ta
 
 Além do job, a API **cancela o pedido vencido sob demanda**: ao ler ou pagar um pedido pendente cujo prazo de 30 minutos passou, o cancela na hora, sem depender do relógio do agendador.
 
-> Na Vercel a função escala sozinha, então a regra de "uma instância" deixa de valer: a segurança vem de os jobs serem **idempotentes**. O **backup diário** do banco (RNF011) não é um script no servidor: é um workflow do GitHub Actions mais a restauração a um ponto no tempo do Neon (`docs/deploy/deploy.md`, seção 11).
+> Na Vercel a função escala sozinha, então a regra de "uma instância" deixa de valer: a segurança vem de os jobs serem **idempotentes**. O **backup diário** do banco (RNF011) não é um script no servidor: é um workflow do GitHub Actions (o Supabase gratuito não tem backup nem ponto no tempo próprios; `docs/deploy/deploy.md`, seção 11).
 
 
 ## 15. Erros e formato de resposta
@@ -1614,7 +1615,7 @@ Excluir o perfil **anonimiza** a conta (RN-PER-06). O mesmo tratamento vale para
 |---|---|
 | Páginas em até 3 s e API em até 500 ms (RNF008) | Listagens paginadas (máximo de 50), só os campos necessários, índices (ver Banco de Dados), compressão das respostas e carrossel com poucos itens e cache curto |
 | Imagens leves (RNF009) | O storage entrega imagem comprimida e redimensionada; o banco guarda só a URL |
-| 500 usuários simultâneos (RNF010) | **Meta de produto, não medida no MVP** (Regras de Negócio, seção 6). A arquitetura já ajuda: API sem estado (escala por instâncias), pooler do Neon com `connection_limit=1` por instância e nada pesado dentro da requisição (e-mail em `waitUntil`, estorno com `await`; seção 11) |
+| 500 usuários simultâneos (RNF010) | **Meta de produto, não medida no MVP** (Regras de Negócio, seção 6). A arquitetura já ajuda: API sem estado (escala por instâncias), Transaction pooler do Supabase com `connection_limit=1` por instância e nada pesado dentro da requisição (e-mail em `waitUntil`, estorno com `await`; seção 11) |
 | 99% de disponibilidade e backup diário (RNF011) | Meta de produto, não medida no MVP. Fazemos o que cabe de graça: rota `/health` leve monitorada de tempos em tempos, backup automático do banco e restauração testada |
 
 O teste de carga de 500 usuários simultâneos fica **fora do MVP**. Se o projeto seguir como produto, rode-o (por exemplo, com k6 ou autocannon) antes de abrir a todos os alunos, incluindo o cenário de **duas compras simultâneas da última unidade**. Esse cenário específico já é um teste de integração obrigatório (seção 19).
@@ -1835,7 +1836,7 @@ As decisões de **comportamento** estão nas Regras de Negócio (seções 5 e 6)
 | Login | E-mail e senha, e Google no MVP; Apple fora (RN-ACE-14) |
 | Pagamento | Gateway externo: Mercado Pago (ADR-002); cartão por token; Pix com webhook |
 | ORM, storage e e-mail | Prisma (ADR-001), Cloudinary (ADR-004) e Resend (ADR-009). Numeração única dos ADRs em `docs/api/api.md`, seção 12 |
-| Hospedagem | Vercel (API e frontend) + Neon (PostgreSQL 18), ADR-005; a API é uma função serverless exportada por `app.ts` |
+| Hospedagem | Vercel (API e frontend) + Supabase (PostgreSQL, só como banco), ADR-005; a API é uma função serverless exportada por `app.ts` |
 | Jobs agendados | Endpoints `/api/v1/internal/jobs/:name` protegidos por `CRON_SECRET`; Vercel Cron no diário e agendador externo nos de 30 minutos |
 | Tarefas depois da resposta | `await` no estorno; `waitUntil` no e-mail e na notificação |
 | Imagens | Passam pela API, uma por requisição, até 4 MB; a primeira vai com `POST /listings` e as demais com `POST /listings/:id/images` |

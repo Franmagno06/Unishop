@@ -16,7 +16,7 @@ language: pt-BR
 # Documentação Técnica — Banco de Dados
 
 - Versão 0.2 · 16/10/2026
-- SGBD: PostgreSQL 18 (o Neon aceita as versões 14 a 18, e a versão é escolhida na criação do projeto)
+- SGBD: PostgreSQL 18 nos documentos e no Docker; o provedor é o Supabase (usado só como banco), e a **versão do projeto precisa ser conferida** em *Database → Settings* (Deploy, pendência 13)
 - Responsável: Ana Clara · Revisores: Felipe Bessa (backend), Pedro Cândido (API), Francisco Magno (integração front-back)
 - Base: MER do Unishop, dump de 07/10/2026, Regras de Negócio v0.4, Backend v0.3 e API v0.3
 
@@ -25,7 +25,7 @@ language: pt-BR
 | Versão | Data | O que mudou |
 |---|---|---|
 | 0.1 | 15/10/2026 | Dicionário das 7 tabelas do dump, lacunas frente ao Backend v0.2 e script de evolução proposto. |
-| 0.2 | 16/10/2026 | O documento passa a descrever o **estado final** do banco (não mais o dump mais um script de ajustes). Todas as lacunas da seção 13 da v0.1 foram incorporadas ao dicionário. Entram: pedido com vendedor, produto, imagem, quantidade, preço unitário e taxa congelados; WhatsApp no anúncio; login com Google (`google_sub`, senha anulável); índice único em `lower(email)`; pagamento com índice único parcial e o estado `estorno_pendente`; datas em `timestamptz`; papéis do banco (`unishop_migrator`, `unishop_app`, `unishop_backup`); caminho único de migração pelo Prisma; limites do Neon (1 GB); nomes das seis categorias. Os nomes de coluna das consultas passam a ser os do banco. Fecha as pendências 1 a 11 da v0.1. |
+| 0.2 | 16/10/2026 | O documento passa a descrever o **estado final** do banco (não mais o dump mais um script de ajustes). Todas as lacunas da seção 13 da v0.1 foram incorporadas ao dicionário. Entram: pedido com vendedor, produto, imagem, quantidade, preço unitário e taxa congelados; WhatsApp no anúncio; login com Google (`google_sub`, senha anulável); índice único em `lower(email)`; pagamento com índice único parcial e o estado `estorno_pendente`; datas em `timestamptz`; papéis do banco (`unishop_migrator`, `unishop_app`, `unishop_backup`); caminho único de migração pelo Prisma; limites do banco (500 MB no Supabase gratuito, depois da troca de Neon para Supabase em 30/10/2026); nomes das seis categorias. Os nomes de coluna das consultas passam a ser os do banco. Fecha as pendências 1 a 11 da v0.1. |
 
 ## 1. Objetivo e escopo
 
@@ -768,8 +768,8 @@ Três papéis, cada um com a menor permissão possível:
 | `unishop_app` | A API em execução, usa `DATABASE_URL` (conexão com pooler) | `SELECT`, `INSERT`, `UPDATE`, `DELETE` nas tabelas; **sem** permissão de alterar estrutura |
 | `unishop_backup` | Cópia de segurança agendada, usa `DATABASE_URL_BACKUP` | Somente leitura (`SELECT`) |
 
-- TLS obrigatório em todas as conexões (`sslmode=require`). O banco não é exposto à internet além do acesso do provedor (exceção documentada no Deploy); o plano gratuito do Neon não tem lista de IPs permitidos (IP Allow).
-- Dados reais de produção nunca vão para desenvolvimento nem para preview (LGPD). Cada ambiente tem seu próprio banco ou branch, criado **vazio** a partir do schema; um branch do Neon copia os dados do pai, por isso o branch de desenvolvimento nunca é derivado do de produção.
+- TLS obrigatório em todas as conexões (`sslmode=require`). O banco não é exposto à internet além do acesso do provedor (exceção documentada no Deploy); a lista de IPs não serve com a Vercel (sem IP fixo). **No Supabase**, as roles `anon` e `authenticated` do provedor recebem acesso às tabelas do schema `public` por padrão (para a API automática dele): a seção "Papéis e permissões" manda revogar esse acesso, porque o Unishop só acessa o banco pelo backend.
+- Dados reais de produção nunca vão para desenvolvimento nem para preview (LGPD). Cada ambiente tem seu próprio banco (projeto Supabase `unishop-prod`; `unishop-dev` para desenvolvimento e preview; Docker local), criado **vazio** a partir do schema. O plano gratuito não tem branches; se um dia houver branching, o branch de desenvolvimento nunca é derivado do de produção.
 - `DATABASE_URL` e as demais strings de conexão são segredos: nunca no Git.
 
 ### Anonimização ao excluir o perfil (RN-PER-06, RN-ADM-06)
@@ -799,13 +799,13 @@ UPDATE public.usuario
 
 ### Cópias de segurança e dados anonimizados
 
-Backups e pontos de restauração feitos antes da anonimização guardam os dados antigos até vencerem (no Neon gratuito, a janela de restauração é de 6 horas; os arquivos do backup agendado seguem o prazo definido no Deploy). Se um backup for restaurado, a anonimização é **reaplicada** em seguida. Essa limitação consta nos Termos e na Política de privacidade.
+Backups e pontos de restauração feitos antes da anonimização guardam os dados antigos até vencerem (o Supabase gratuito não tem restauração a ponto no tempo; os arquivos do backup agendado seguem o prazo definido no Deploy). Se um backup for restaurado, a anonimização é **reaplicada** em seguida. Essa limitação consta nos Termos e na Política de privacidade.
 
 ## 11. Como criar, migrar e popular o banco
 
 ### Caminho único: Prisma
 
-O banco **não** é restaurado a partir do dump no Neon. A estrutura é criada e evoluída por **uma só via**, as migrações do Prisma, para desenvolvimento, preview e produção terem o mesmo schema.
+O banco **não** é restaurado a partir do dump no Supabase. A estrutura é criada e evoluída por **uma só via**, as migrações do Prisma, para desenvolvimento, preview e produção terem o mesmo schema.
 
 1. **Baseline (`0_init`).** Com o `schema.prisma` descrevendo as 8 tabelas (nomes pelo mapeamento da seção 7), gerar a migração inicial a partir do zero:
 
@@ -847,19 +847,19 @@ O `npm run db:seed` cria:
 
 2. A conta de administrador (RN-ADM-11), com `tipo_usuario = 'admin'`, `verificacao = true`, `data_aceite_termos` preenchida, e-mail e senha vindos de `ADMIN_EMAIL` e `ADMIN_PASSWORD` (a senha entra como hash). É a única exceção à regra do domínio `@edu.unifor.br`. A senha inicial deve ser trocada no primeiro acesso (RN-ACE-15).
 
-### Limites do Neon (plano gratuito)
+### Limites do Supabase (plano gratuito, conferidos em 30/10/2026)
 
 | Item | Limite |
 |---|---|
-| Armazenamento | 1 GB por projeto (as imagens ficam fora do banco, na Cloudinary) |
-| Computação | 100 CU-hora por projeto por mês |
-| Branches | 10 por projeto |
-| Restauração instantânea | Janela de 6 horas |
+| Armazenamento | 500 MB por projeto (as imagens ficam fora do banco, na Cloudinary) |
+| Projetos ativos | 2 (`unishop-prod` e `unishop-dev`) |
+| Branches | Não disponível (exige o plano Pro) |
+| Backup automático e restauração a ponto no tempo | Não incluídos; o backup é o workflow diário do Deploy |
 | Transferência de saída | 5 GB por mês |
-| Suspensão | O banco "dorme" após 5 minutos sem uso (não desativável); a primeira consulta depois disso demora mais |
-| Lista de IPs (IP Allow) | Não disponível |
+| Suspensão | O projeto é pausado após 1 semana sem atividade e precisa ser retomado pelo painel |
+| Conexão direta | Só IPv6; sem IPv6, usar o Session pooler (IPv4) |
 
-Os limites mudam com o tempo; conferir no painel do Neon antes da demonstração.
+Os limites mudam com o tempo; conferir no painel e na página de preços do Supabase antes da demonstração.
 
 ## 12. MER × banco: divergências
 
@@ -1046,10 +1046,11 @@ COMMIT;
 
 ### Papéis e permissões
 
-Os papéis podem ser criados no Console do Neon ou por SQL com o papel de administração do projeto. **Confirmar no painel do Neon** como criar papéis com senha no seu projeto antes de executar. Os comandos abaixo mostram as permissões esperadas; as senhas vêm do gerenciador de segredos, nunca do repositório.
+Os papéis são criados pelo *SQL Editor* do Supabase, com o usuário `postgres` do projeto. Pelo pooler (Session ou Transaction), o usuário de um papel próprio é `papel.ref-do-projeto` (ex.: `unishop_app.abcdefgh`); **teste o login de cada papel pelo pooler** antes do primeiro deploy. Os comandos abaixo mostram as permissões esperadas; as senhas vêm do gerenciador de segredos, nunca do repositório.
 
 ```sql
 -- Criados fora do Git, com senha própria: unishop_migrator, unishop_app, unishop_backup
+-- Ex.: CREATE ROLE unishop_app LOGIN PASSWORD '<senha gerada>';  (idem para os outros dois)
 
 -- Quem migra é dono do schema (as tabelas ficam com ele como dono)
 GRANT ALL ON SCHEMA public TO unishop_migrator;
@@ -1069,7 +1070,18 @@ ALTER DEFAULT PRIVILEGES FOR ROLE unishop_migrator IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO unishop_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE unishop_migrator IN SCHEMA public
   GRANT SELECT ON TABLES TO unishop_backup;
+
+-- Supabase: as roles anon e authenticated da API automática NÃO podem tocar nas tabelas
+-- (o Unishop só acessa o banco pelo backend; sem isto, quem tiver a chave pública do projeto leria os dados)
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE unishop_migrator IN SCHEMA public
+  REVOKE ALL ON TABLES FROM anon, authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE unishop_migrator IN SCHEMA public
+  REVOKE ALL ON SEQUENCES FROM anon, authenticated;
 ```
+
+**Só no Supabase:** rode o bloco acima em `unishop-prod` e em `unishop-dev`, e confirme depois da migração que `anon` e `authenticated` não têm privilégio em nenhuma tabela (`SELECT grantee, table_name, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'public' AND grantee IN ('anon','authenticated');` deve voltar vazio). Se o painel permitir, desligue também a *Data API* (PostgREST) do projeto, porque o Unishop não a usa. Ativar RLS nas tabelas é uma camada extra opcional: como `unishop_app` não é dono das tabelas, o RLS sem política o bloquearia; só ative com uma política `TO unishop_app USING (true)` e teste antes.
 
 ### Como conferir depois de rodar
 
@@ -1108,8 +1120,8 @@ INSERT INTO public.pagamento (id_pedido, forma_pagamento, status_pagamento) VALU
 
 | Tema | Decisão |
 |---|---|
-| SGBD | PostgreSQL 18 (suportado pelo Neon), em desenvolvimento, CI, backup e produção |
-| Migração | Só pelo Prisma: baseline `0_init` mais uma migração manual (seção 14). O dump não é restaurado no Neon |
+| SGBD | PostgreSQL 18 nos documentos (conferir a versão do projeto Supabase, Deploy pendência 13), em desenvolvimento, CI, backup e produção |
+| Migração | Só pelo Prisma: baseline `0_init` mais uma migração manual (seção 14). O dump não é restaurado no Supabase |
 | Chaves | Numéricas, `GENERATED ALWAYS AS IDENTITY` |
 | Dinheiro | `numeric(10,2)` |
 | Datas | `timestamptz`, em UTC |
@@ -1128,7 +1140,7 @@ INSERT INTO public.pagamento (id_pedido, forma_pagamento, status_pagamento) VALU
 
 | # | Pendência | Proposta |
 |---|---|---|
-| 1 | Criação dos papéis no Neon: confirmar no painel (Console ou SQL) como criar papéis com senha no plano gratuito | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |
+| 1 | Criação dos papéis no Supabase pelo SQL Editor, teste de login de cada um pelo pooler (`papel.ref-do-projeto`) e revogação do acesso de `anon` e `authenticated` | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |
 | 2 | Regras que o banco não garante: admin não compra, dono não compra o próprio anúncio, mínimo de 1 imagem, admin não remove o último admin | Backend (`authorizeRole`, `OWN_LISTING`, transação). Triggers são opcionais |
 | 3 | Busca por texto no nome do anúncio | `ILIKE` no MVP; `pg_trgm` se a busca ficar lenta |
 | 4 | Atualizar o MER conforme a seção 12 | Ajuste no `.drawio` (fora desta entrega) |
