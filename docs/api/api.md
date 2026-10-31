@@ -528,7 +528,7 @@ export async function verifyTurnstile(token: string, ip?: string) {
 | Credenciais | `DATABASE_URL` (Transaction pooler, porta 6543, usada pela API) e `DATABASE_URL_UNPOOLED` (Session pooler na porta 5432 ou conexão direta, usada pela migração; o backup usa `DATABASE_URL_BACKUP`). Privadas: usuário e senha dentro da URL. Não há chave `anon` nem `service_role`: o projeto **não** usa o SDK, a API REST nem o Auth do Supabase |
 | Custo | Supabase, plano Free (conferido em 30/10/2026): **500 MB de banco por projeto, 2 projetos ativos, 5 GB de saída, sem branching, sem backup automático nem restauração a ponto no tempo**. O projeto é **pausado após 1 semana sem atividade** e precisa ser retomado no painel. Versão do PostgreSQL: conferir em *Database → Settings* (pendência 7) |
 
-- **Limite de 500 MB:** basta para o MVP porque as imagens ficam na Cloudinary, não no banco. O restante da documentação (Banco de Dados e Deploy) assume o **PostgreSQL 18**; confira a versão do projeto ao criá-lo (pendência 7).
+- **Limite de 500 MB:** basta para o MVP porque as imagens ficam na Cloudinary, não no banco. O restante da documentação (Banco de Dados e Deploy) assume o **PostgreSQL 17** (versão do projeto Supabase conferida em 31/10/2026: 17.11).
 - **Risco para a disponibilidade (RNF011):** no plano gratuito do Supabase o projeto é pausado após 1 semana sem atividade e não há backup automático. Os jobs de 30 em 30 minutos mantêm atividade; confira o painel antes da demonstração e mantenha o workflow de backup diário (Deploy, seção 11).
 - **TLS obrigatório:** `uselibpqcompat=true&sslmode=require` na URL de conexão. Só `sslmode=require` faz o driver `pg` (usado pelo `@prisma/adapter-pg`) verificar o certificado e falhar no pooler do Supabase com `self-signed certificate in certificate chain`.
 - **Duas conexões e três papéis:** a migração (`prisma migrate deploy`, `directUrl`) usa `DATABASE_URL_UNPOOLED` (porta 5432) com o papel `unishop_migrator`; a API usa `DATABASE_URL` com o *Transaction pooler* (porta 6543, `?pgbouncer=true&connection_limit=1`) e o papel `unishop_app`, **sem permissão de alterar a estrutura**; o backup usa `DATABASE_URL_BACKUP`, com o papel `unishop_backup`, **somente leitura** (Banco de Dados, seção 10). O Supabase entrega o usuário `postgres`; os três papéis são criados à parte pelo *SQL Editor* (Deploy, seção 7). **Pelo pooler o usuário é `papel.ref-do-projeto`**, e é preciso testar o login de cada papel (pendência 6). A conexão direta é só IPv6; sem IPv6 (inclusive no runner do GitHub Actions), use o Session pooler.
@@ -611,7 +611,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:18
+        image: postgres:17
         env: { POSTGRES_PASSWORD: test, POSTGRES_DB: unishop_test }
         ports: ['5432:5432']
     steps:
@@ -1140,7 +1140,7 @@ Cada ambiente usa **credenciais próprias**. Credencial de teste nunca vai para 
 | Resend / Mailtrap | Mailtrap (caixa de teste) | `console` | Resend, domínio verificado (Preview: Mailtrap) |
 | Cloudinary | Pasta `unishop/dev/` (ou conta separada) | `local` | Pasta `unishop/prod/` (`CLOUDINARY_UPLOAD_FOLDER`) |
 | Turnstile | Chaves de teste da Cloudflare | `noop` | `noop` até o Turnstile entrar; depois, widget de produção com hostname restrito |
-| PostgreSQL | Docker local (`docker-compose.yml`, imagem `postgres:18`) | Docker local de testes (`docker-compose.test.yml`), em memória | Projeto Supabase `unishop-prod` (PostgreSQL; versão a conferir); previews usam o projeto `unishop-dev` |
+| PostgreSQL | Docker local (`docker-compose.yml`, imagem `postgres:17`) | Docker local de testes (`docker-compose.test.yml`), em memória | Projeto Supabase `unishop-prod` (PostgreSQL 17); previews usam o projeto `unishop-dev` |
 | Sentry | Desligado ou `environment=development` | Desligado | `environment=production` |
 
 
@@ -1322,7 +1322,7 @@ Se um provedor cair, só a função dele para. Esta tabela define o comportament
 | Ambientes | Credenciais separadas por ambiente; `APP_ENV` define o ambiente; drivers `mock`, `console` e `local` proibidos em produção; credencial real de pagamento só em produção |
 | Hospedagem e banco | **Vercel + Supabase (ADR-005, decidido)**; documentado em `docs/deploy/deploy.md` |
 | Jobs agendados | Endpoints `/api/v1/internal/jobs/:name` com `CRON_SECRET`; Vercel Cron no diário e agendador externo a cada 30 minutos (Backend, seção 14) |
-| Banco | Supabase (só como banco), PostgreSQL (versão a conferir, documentos assumem 18), três papéis (migração, aplicação, backup somente leitura); dois projetos: produção e desenvolvimento/preview |
+| Banco | Supabase (só como banco), PostgreSQL 17 (conferido em 31/10/2026), três papéis (migração, aplicação, backup somente leitura); dois projetos: produção e desenvolvimento/preview |
 | Monitoramento | UptimeRobot no MVP, chamando o `/health` leve |
 
 
@@ -1355,4 +1355,4 @@ As propostas que o grupo fechou em 15/10/2026 (Sentry adiado, Turnstile depois d
 | 4 | Termos do plano gratuito do UptimeRobot (uso não comercial) | Conferir; se for barrado, usar StatusCake |
 | 5 | **O `openapi.yaml` (contrato da API do Unishop) não existe**, e o frontend, o backend e as skills dependem dele | Pedro escreve a partir do Backend §9 e deste documento, antes de o frontend consumir as rotas; definir prazo |
 | 6 | Criar os três papéis do banco no Supabase (SQL Editor) e testar o login de cada um pelo pooler (`papel.ref-do-projeto`) | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |
-| 7 | Versão do PostgreSQL do projeto Supabase: os documentos assumem a 18 (Docker, `pg_dump`, CI) | Conferir em *Database → Settings* ao criar os projetos; se for outra, ajustar os documentos |
+| 7 | ~~Versão do PostgreSQL do projeto Supabase~~ **Resolvida em 31/10/2026:** o projeto roda a 17.11; documentos, Docker, `pg_dump` e CI foram ajustados para a 17 | — |

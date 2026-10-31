@@ -227,7 +227,7 @@ Uma etapa só termina quando o fluxo dela funciona no navegador com a API real. 
 **Entregas**
 - Spike P7 (Prisma 7: `prisma.config.ts`, adapter `pg`, conexão pooled × direta).
 - Resolver P10 (corrigir `bd.md §11` e a frase do `CLAUDE.md`). A P11 já está respondida: não há banco vivo.
-- **Baseline `0_init`:** copiar a estrutura de `Unishop_db.sql` (sem `OWNER TO postgres` e sem `\restrict`). Subir um Postgres 18 vazio com ela, rodar `prisma db pull` e conferir o resultado contra o dump.
+- **Baseline `0_init`:** copiar a estrutura de `Unishop_db.sql` (sem `OWNER TO postgres` e sem `\restrict`). Subir um Postgres 17 vazio com ela, rodar `prisma db pull` e conferir o resultado contra o dump.
 - **Migração 1, `1_v02_estrutura`** (seção 2.3, item A): colunas, tipos, `token_usuario` e remoção do UNIQUE de `pagamento.id_pedido`. Revisada à mão, porque o Prisma gera o diff entre o schema e o banco, mas o `NOT NULL` em tabela com linhas precisa de preenchimento.
 - **Migração 2, `2_v02_regras`:** o SQL do `bd.md §14` sem alteração (`CHECK`, índices parciais `uq_pedido_aberto` e `uq_pagamento_ativo`, `lower(email)`, view `anuncio_visivel`, papéis).
 - **Migração 3, `3_motivo_cancelamento`** (item B, **funcionalidade nova**): `pedido.motivo_cancelamento` com `CHECK`. Atualizar o `bd.md §4.5 e §6` no mesmo PR, com o aval da Ana Clara. Correção da nota do `bd.md §7` sobre os valores (P2) junto.

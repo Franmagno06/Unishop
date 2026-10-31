@@ -117,7 +117,7 @@ O Docker Compose de desenvolvimento sobe **só o banco**; a API e o frontend rod
 # docker-compose.yml — só o banco; API e frontend rodam com npm run dev
 services:
   db:
-    image: postgres:18-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER: dev
       POSTGRES_PASSWORD: dev
@@ -125,13 +125,13 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      - unishop_dev_data:/var/lib/postgresql   # PostgreSQL 18: o volume vai em /var/lib/postgresql
+      - unishop_dev_data:/var/lib/postgresql/data
 
 volumes:
   unishop_dev_data:
 ```
 
-`DATABASE_URL` local: `postgresql://dev:dev@localhost:5432/unishop_dev`. A porta aparece só em `127.0.0.1`, então outras máquinas da rede não chegam nela. O documento assume o **PostgreSQL 18**; confira a versão do projeto Supabase em *Database → Settings* (pendência 13) e use a mesma versão principal na imagem local. Se for outra, ajuste o `18` aqui, no `docker-compose.yml` e no workflow de backup. Atenção: nas imagens do PostgreSQL 18 o volume é montado em `/var/lib/postgresql`, e não em `/var/lib/postgresql/data` como nas versões anteriores.
+`DATABASE_URL` local: `postgresql://dev:dev@localhost:5432/unishop_dev`. A porta aparece só em `127.0.0.1`, então outras máquinas da rede não chegam nela. O projeto Supabase roda o **PostgreSQL 17.11** (conferido em 31/10/2026), e a imagem local, o `pg_dump` e o workflow de backup usam a mesma versão principal (17). Se o Supabase subir de versão, ajuste o `17` aqui, no `docker-compose.yml` e no workflow. Atenção: nas imagens do PostgreSQL 18 ou mais novas o volume é montado em `/var/lib/postgresql`; na 17 continua em `/var/lib/postgresql/data`. Se você já subiu o contêiner com a 18, apague o volume antigo (`docker compose down -v`; só apaga dados de desenvolvimento) antes de subir a 17.
 
 ### 3.2 Testes
 
@@ -139,7 +139,7 @@ volumes:
 # docker-compose.test.yml — banco descartável para o Vitest + Supertest
 services:
   db_test:
-    image: postgres:18-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER: test
       POSTGRES_PASSWORD: test
@@ -147,7 +147,7 @@ services:
     ports:
       - "127.0.0.1:5433:5432"
     tmpfs:
-      - /var/lib/postgresql   # PostgreSQL 18
+      - /var/lib/postgresql/data
 ```
 
 `DATABASE_URL` dos testes: `postgresql://test:test@localhost:5433/unishop_test`. O `tmpfs` guarda os dados só em memória: ao parar o contêiner, tudo some.
@@ -426,7 +426,7 @@ Em **Settings → Deployment Protection**, mantenha a proteção do ambiente *Pr
 
 1. No painel do Supabase, crie **dois projetos**: `unishop-prod` (produção) e `unishop-dev` (desenvolvimento e preview). O plano gratuito permite 2 projetos ativos. Use o Supabase **só como banco**: o projeto não usa Auth, Storage, Realtime nem a API automática (PostgREST) do Supabase (a autenticação é o JWT do backend); a RLS fica ligada nas tabelas, com política só para `unishop_app` e `unishop_backup` (decisão de Francisco, 29/10, e política por papel confirmada em 30/10; ver 7.5).
 2. Escolha a região do banco **mais próxima da região das funções** da Vercel, para reduzir a latência de cada consulta.
-3. Confira a **versão do PostgreSQL** em *Database → Settings*; este guia assume a 18 (pendência 13).
+3. Confira a **versão do PostgreSQL** em *Database → Settings*; o projeto atual roda a 17.11 (conferido em 31/10/2026) e o guia assume a 17.
 4. No botão **Connect** de cada projeto, aba **ORM → Prisma**, copie as duas URLs. Cadastre-as à mão no painel da Vercel (a integração da Marketplace usa outros nomes de variável): `DATABASE_URL` (Transaction pooler, porta 6543, com `?pgbouncer=true&connection_limit=1&uselibpqcompat=true&sslmode=require`) e `DATABASE_URL_UNPOOLED` (Session pooler, porta 5432, ou conexão direta, com `?uselibpqcompat=true&sslmode=require`). A senha vai **sem os colchetes** do modelo `[YOUR-PASSWORD]`, e os valores do `.env` ficam entre aspas. Escape na senha os caracteres reservados (`&`, `#`, `?`, espaço). **A conexão direta do Supabase é só IPv6** (IPv4 exige um complemento pago); redes e runners sem IPv6 devem usar o **Session pooler**, que é IPv4 em todos os planos. Copie o host pelo Connect, sem montá-lo à mão.
 5. **Crie os três papéis do banco** (Banco de Dados, seção 12) pelo *SQL Editor*: `unishop_migrator` (dono do schema, usado nas migrações), `unishop_app` (leitura e escrita nas tabelas, usado pela API) e `unishop_backup` (somente `SELECT`, usado só no backup). **Pelo pooler, o usuário de um papel próprio é `papel.ref-do-projeto`** (ex.: `unishop_app.abcdefgh`). Teste o login de cada papel pelo pooler antes do primeiro deploy (pendência 12). Se algum não funcionar, use um papel só e registre a exceção aqui.
 
@@ -709,8 +709,8 @@ jobs:
           DATABASE_URL_BACKUP: ${{ secrets.DATABASE_URL_BACKUP }}
         run: |
           # imagem com a MESMA versão principal (ou maior) do PostgreSQL do Supabase (pendência 13); o segredo usa o Session pooler (IPv4), pois o runner do GitHub não tem IPv6
-          docker run --rm -e URL="$DATABASE_URL_BACKUP" postgres:18-alpine \
-            sh -c 'pg_dump "$URL" --format=custom --no-owner' > unishop.dump
+          docker run --rm -e URL="$DATABASE_URL_BACKUP" postgres:17-alpine \
+            sh -c 'pg_dump "$URL" --schema=public --enable-row-security --format=custom --no-owner' > unishop.dump
           test -s unishop.dump
       - uses: actions/upload-artifact@v4
         with:
@@ -742,7 +742,7 @@ STAMP="$(date +%Y%m%d-%H%M%S)"
 OUT="$BACKUP_DIR/unishop-$STAMP.dump"
 
 mkdir -p "$BACKUP_DIR"
-pg_dump "$DATABASE_URL_BACKUP" --format=custom --no-owner > "$OUT.tmp"
+pg_dump "$DATABASE_URL_BACKUP" --schema=public --enable-row-security --format=custom --no-owner > "$OUT.tmp"
 [ -s "$OUT.tmp" ] || { echo "backup vazio, abortando" >&2; rm -f "$OUT.tmp"; exit 1; }
 mv "$OUT.tmp" "$OUT"
 
@@ -750,7 +750,7 @@ find "$BACKUP_DIR" -name 'unishop-*.dump' -mtime +"$KEEP_DAYS" -delete
 echo "backup ok: $OUT"
 ```
 
-O `pg_dump` da sua máquina precisa ter a **mesma versão principal (ou maior)** que o PostgreSQL do Supabase (a 18, se a pendência 13 confirmar). Confira com `pg_dump --version`.
+O `pg_dump` da sua máquina precisa ter a **mesma versão principal (ou maior)** que o PostgreSQL do Supabase (a 17). Confira com `pg_dump --version`.
 
 ### 11.3 Restaurar
 
@@ -977,8 +977,8 @@ A decisão "uma única instância da API" do Backend §14 **deixa de valer** na 
 | 10 | **Pix com credenciais de teste do Mercado Pago:** não foi verificado se o Pix de teste gera o webhook de aprovação; também decide a Payments API ou a Orders API (ADR-002) | Prova de conceito no início do projeto (seção 12, passo 2); registrar o resultado na seção 14.2 |
 | 11 | **Nome da tabela de categorias** no teste de restauração | Ana Clara confirma no documento de Banco de Dados |
 | 12 | **Papéis do banco no Supabase:** criar `unishop_migrator`, `unishop_app` e `unishop_backup` pelo SQL Editor e testar o login de cada um pelo pooler (`papel.ref-do-projeto`) | Francisco ou Ana Clara confirma antes do primeiro deploy; se não der, um papel só e a exceção registrada aqui |
-| 13 | **Versão do PostgreSQL no Supabase:** os documentos assumem a 18 (imagem do Docker, `pg_dump`, workflow) | Conferir em *Database → Settings* ao criar os projetos; se for outra, ajustar os documentos |
-| 14 | **RLS ligada × papéis `unishop_*`:** a RLS está ligada nas 8 tabelas e `unishop_app` e `unishop_backup` (não donos) ficam sem acesso se não houver política; o `pg_dump` sairia vazio sem erro | Decidido por Francisco em 30/10/2026: política `app_all` para `unishop_app` e `backup_select` para `unishop_backup` em cada tabela, nenhuma para `anon` e `authenticated` (migração `2_rls_politicas`). Falta aplicar e testar no Supabase, pelo passo a passo da 7.5 |
+| 13 | ~~Versão do PostgreSQL no Supabase~~ **Resolvida em 31/10/2026:** o projeto roda a 17.11; imagem do Docker, `pg_dump` e workflow ajustados para a 17 | — |
+| 14 | **RLS ligada × papéis `unishop_*`:** a RLS está ligada nas 8 tabelas e `unishop_app` e `unishop_backup` (não donos) ficam sem acesso se não houver política; o `pg_dump` sairia vazio sem erro | Decidido por Francisco em 30/10/2026: política `app_all` para `unishop_app` e `backup_select` para `unishop_backup` em cada tabela, nenhuma para `anon` e `authenticated` (migração `2_rls_politicas`). **Aplicada em 31/10/2026** no projeto `UNISHOP DB`: papéis criados, `unishop_migrator` dono das tabelas e da view, políticas `app_all` e `backup_select` nas 8 tabelas (na `_prisma_migrations` só `backup_select`), `anon` e `authenticated` sem privilégio, Security Advisor sem alertas, migração registrada. **Falta** o passo 6 da 7.5 (login de cada papel pelo pooler, `UPDATE 6` como `unishop_app`, `pg_dump` do `unishop_backup` com contagem de linhas) e repetir no `unishop-dev` |
 
 ### 17.4 O que cada pessoa confirma
 

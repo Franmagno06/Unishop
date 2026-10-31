@@ -151,7 +151,7 @@ Requisição HTTP ▶ Route ▶ Controller ▶ Service ▶ Repository ▶ Postgr
 |---|---|
 | Frontend | TypeScript com React, Tailwind CSS e HTML |
 | Backend | Node.js com Express |
-| Banco de dados | PostgreSQL 18 |
+| Banco de dados | PostgreSQL 17 |
 | Prototipação | Figma |
 | Versionamento | Git, código organizado em camadas |
 | Gestão | Trello (Kanban) |
@@ -305,7 +305,7 @@ Detalhes completos em [Documentação do Banco de Dados](docs/BancoDeDados/bd.md
 | `log_admin` | Auditoria das ações do administrador |
 | `token_usuario` | Links de uso único (recuperação de senha, troca de e-mail, confirmação de e-mail) |
 
-- PostgreSQL 18, chaves `GENERATED ALWAYS AS IDENTITY`, dinheiro em `numeric(10,2)` e datas em `timestamptz` (UTC). Nomes de tabela, coluna e estado em português; o backend mapeia para inglês com `@map` do Prisma.
+- PostgreSQL 17, chaves `GENERATED ALWAYS AS IDENTITY`, dinheiro em `numeric(10,2)` e datas em `timestamptz` (UTC). Nomes de tabela, coluna e estado em português; o backend mapeia para inglês com `@map` do Prisma.
 - Estrutura criada e evoluída **só pelo Prisma**: migração `0_init` mais uma migração manual (`CHECK`, índices parciais, view `anuncio_visivel` e papéis). O dump de 07/10/2026 não é restaurado.
 - Três papéis de banco: `unishop_migrator`, `unishop_app` e `unishop_backup` (somente leitura).
 - Nenhuma FK apaga em cascata: anúncio tem exclusão lógica e usuário é anonimizado (LGPD), de modo que o pedido pago sobrevive.

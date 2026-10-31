@@ -16,7 +16,7 @@ language: pt-BR
 # Documentação Técnica — Banco de Dados
 
 - Versão 0.2 · 16/10/2026
-- SGBD: PostgreSQL 18 nos documentos e no Docker; o provedor é o Supabase (usado só como banco), e a **versão do projeto precisa ser conferida** em *Database → Settings* (Deploy, pendência 13)
+- SGBD: PostgreSQL 17 (projeto Supabase na 17.11, conferido em 31/10/2026, igual ao Docker); o provedor é o Supabase (usado só como banco)
 - Responsável: Ana Clara · Revisores: Felipe Bessa (backend), Pedro Cândido (API), Francisco Magno (integração front-back)
 - Base: MER do Unishop, dump de 07/10/2026, Regras de Negócio v0.4, Backend v0.3 e API v0.3
 
@@ -827,11 +827,11 @@ O banco **não** é restaurado a partir do dump no Supabase. A estrutura é cria
 
 ### Gerar uma cópia (backup)
 
-O backup é o do Deploy (workflow agendado com `pg_dump` na versão 18, usando `DATABASE_URL_BACKUP`, somente leitura). Para um dump manual:
+O backup é o do Deploy (workflow agendado com `pg_dump` na versão 17, usando `DATABASE_URL_BACKUP`, somente leitura). Para um dump manual:
 
 ```bash
-pg_dump "$DATABASE_URL_BACKUP" --schema-only -f unishop_schema.sql   # só a estrutura
-pg_dump "$DATABASE_URL_BACKUP" -f unishop_completo.sql               # estrutura + dados
+pg_dump "$DATABASE_URL_BACKUP" --schema=public --enable-row-security --schema-only -f unishop_schema.sql   # só a estrutura
+pg_dump "$DATABASE_URL_BACKUP" --schema=public --enable-row-security -f unishop_completo.sql               # estrutura + dados
 ```
 
 ### Popular (seed)
@@ -899,7 +899,7 @@ Este é o conteúdo da **segunda migração** (seção 11): tudo que o Prisma n�
 ```sql
 -- ============================================================
 -- Unishop · migração manual · v0.2
--- Aplicar depois da migração 0_init do Prisma · PostgreSQL 18
+-- Aplicar depois da migração 0_init do Prisma · PostgreSQL 17
 -- ============================================================
 BEGIN;
 
@@ -1122,7 +1122,7 @@ INSERT INTO public.pagamento (id_pedido, forma_pagamento, status_pagamento) VALU
 
 | Tema | Decisão |
 |---|---|
-| SGBD | PostgreSQL 18 nos documentos (conferir a versão do projeto Supabase, Deploy pendência 13), em desenvolvimento, CI, backup e produção |
+| SGBD | PostgreSQL 17 (projeto Supabase na 17.11, conferido em 31/10/2026), em desenvolvimento, CI, backup e produção |
 | Migração | Só pelo Prisma: baseline `0_init` mais uma migração manual (seção 14). O dump não é restaurado no Supabase |
 | Chaves | Numéricas, `GENERATED ALWAYS AS IDENTITY` |
 | Dinheiro | `numeric(10,2)` |
@@ -1142,7 +1142,7 @@ INSERT INTO public.pagamento (id_pedido, forma_pagamento, status_pagamento) VALU
 
 | # | Pendência | Proposta |
 |---|---|---|
-| 1 | Criação dos papéis no Supabase pelo SQL Editor, teste de login de cada um pelo pooler (`papel.ref-do-projeto`), revogação do acesso de `anon` e `authenticated` e aplicação da RLS com política por papel (migração `2_rls_politicas`; passo a passo no Deploy §7.5) | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |
+| 1 | **Aplicada em 31/10/2026 no projeto `UNISHOP DB` (papéis criados, `unishop_migrator` dono das tabelas, políticas `app_all` e `backup_select`, `anon` e `authenticated` sem privilégio, `2_rls_politicas` registrada); falta o teste de login de cada papel pelo pooler e repetir no `unishop-dev`.** Original: Criação dos papéis no Supabase pelo SQL Editor, teste de login de cada um pelo pooler (`papel.ref-do-projeto`), revogação do acesso de `anon` e `authenticated` e aplicação da RLS com política por papel (migração `2_rls_politicas`; passo a passo no Deploy §7.5) | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |
 | 2 | Regras que o banco não garante: admin não compra, dono não compra o próprio anúncio, mínimo de 1 imagem, admin não remove o último admin | Backend (`authorizeRole`, `OWN_LISTING`, transação). Triggers são opcionais |
 | 3 | Busca por texto no nome do anúncio | `ILIKE` no MVP; `pg_trgm` se a busca ficar lenta |
 | 4 | Atualizar o MER conforme a seção 12 | Ajuste no `.drawio` (fora desta entrega) |
