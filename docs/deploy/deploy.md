@@ -499,6 +499,16 @@ A RLS fica ligada nas 8 tabelas, com política só para `unishop_app` (leitura e
    END $$;
    ```
 
+   **Banco vazio (caso do `unishop-dev`):** não há tabelas para trocar de dono, mas o `unishop_migrator` precisa de permissão para criar objetos. Sem a segunda linha, o `prisma migrate deploy` falha na `0_init` com `permission denied for database postgres` (erro 42501), porque o `CREATE SCHEMA IF NOT EXISTS "public"` exige `CREATE` no banco mesmo quando o schema já existe (visto em 31/10/2026 no `unishop-dev`):
+
+   ```sql
+   GRANT unishop_migrator TO postgres;
+   GRANT USAGE, CREATE ON SCHEMA public TO unishop_migrator;
+   GRANT CREATE ON DATABASE postgres TO unishop_migrator;
+   ```
+
+   Se a `0_init` já falhou, marque-a como desfeita antes de repetir: `npx prisma migrate resolve --rolled-back 0_init`.
+
    Se o Supabase recusar a troca de dono, deixe o `postgres` como dono, pule o passo 4 (`migrate deploy`) e use a alternativa do passo 4, registrando a exceção na seção 17.3.
 
 3. **Permissões**: rode o bloco "Papéis e permissões" do `docs/BancoDeDados/bd.md` (`GRANT` para `unishop_app` e `unishop_backup`, `ALTER DEFAULT PRIVILEGES` e `REVOKE` de `anon` e `authenticated`). Confira que `anon` e `authenticated` ficaram sem privilégio:

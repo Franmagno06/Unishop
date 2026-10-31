@@ -1056,6 +1056,9 @@ Os papéis são criados pelo *SQL Editor* do Supabase, com o usuário `postgres`
 
 -- Quem migra é dono do schema (as tabelas ficam com ele como dono)
 GRANT ALL ON SCHEMA public TO unishop_migrator;
+-- Banco vazio: a 0_init começa com CREATE SCHEMA IF NOT EXISTS "public", que exige CREATE no banco
+-- (sem isto: "permission denied for database postgres", erro 42501)
+GRANT CREATE ON DATABASE postgres TO unishop_migrator;
 
 -- A aplicação lê e escreve, mas não altera estrutura
 GRANT USAGE ON SCHEMA public TO unishop_app, unishop_backup;
