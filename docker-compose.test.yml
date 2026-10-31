@@ -1,7 +1,7 @@
 # docker-compose.test.yml — banco descartável para o Vitest + Supertest
 services:
   db_test:
-    image: postgres:18-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER: test
       POSTGRES_PASSWORD: test
@@ -9,7 +9,7 @@ services:
     ports:
       - "127.0.0.1:5433:5432"
     tmpfs:
-      - /var/lib/postgresql   # PostgreSQL 18
+      - /var/lib/postgresql/data   # PostgreSQL 17
     healthcheck:             # o `up --wait` do npm run test:db espera o banco responder
       test: ["CMD-SHELL", "pg_isready -U test -d unishop_test"]
       interval: 2s

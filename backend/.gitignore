@@ -2,9 +2,26 @@ node_modules/
 dist/
 .env
 .env.*
+.env *
+*.env
 !.env.example
+!.env.*.example
 uploads/
 *.log
 .vercel/
 
 src/generated/
+
+# Segredos e dados sensíveis (nunca versionar)
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
+# Backups do banco: contêm dados pessoais de alunos (LGPD)
+backups/
+*.dump
+*.dump.gz
+*.sql.gz
+*.backup

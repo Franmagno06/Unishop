@@ -22,7 +22,7 @@
     {
       "id": 4,
       "prompt": "o preview da vercel precisa de banco com dados reais pra testar a migracao, posso copiar o banco de producao do supabase pro de preview? e como fica o backup?",
-      "expected_output": "Não: previews nascem do branch development com dados fictícios (LGPD); o branch de dev nunca deriva do production. Backup diário por workflow do GitHub Actions com DATABASE_URL_BACKUP (papel unishop_backup, somente leitura), pg_dump 18, retenção de 7 dias, repositório privado; restauração testada em banco descartável (6 categorias na tabela categoria) e anonimização reaplicada após restaurar.",
+      "expected_output": "Não: previews nascem do branch development com dados fictícios (LGPD); o branch de dev nunca deriva do production. Backup diário por workflow do GitHub Actions com DATABASE_URL_BACKUP (papel unishop_backup, somente leitura), pg_dump 17, retenção de 7 dias, repositório privado; restauração testada em banco descartável (6 categorias na tabela categoria) e anonimização reaplicada após restaurar.",
       "files": []
     }
   ]

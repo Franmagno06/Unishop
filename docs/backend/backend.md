@@ -134,7 +134,7 @@ As versões exatas ficam no `package.json`; aqui só se registra a escolha.
 |---|---|---|
 | Linguagem e runtime | Node.js (LTS) + TypeScript | Código tipado e uma linguagem só no projeto inteiro |
 | Framework web | Express | Rotas, middlewares e respostas HTTP |
-| Banco de dados | PostgreSQL 18 | Dados do sistema (detalhes no documento de Banco de Dados) |
+| Banco de dados | PostgreSQL 17 | Dados do sistema (detalhes no documento de Banco de Dados) |
 | Acesso ao banco | Prisma (ORM) | Consultas parametrizadas e migrações versionadas (ADR-001) |
 | Validação | Zod | Valida toda entrada no servidor (RNF005) e gera os tipos |
 | Autenticação | jsonwebtoken (JWT) + bcrypt | Sessão com validade e senha com hash (RN-ACE-05, RN-ACE-11) |
@@ -340,7 +340,7 @@ ADMIN_PASSWORD=
 |---|---|---|---|---|
 | Desenvolvimento | PostgreSQL no Docker | Caixa de teste (Mailtrap) | Sandbox do gateway + túnel público (ngrok ou Cloudflare Tunnel) para o webhook | Cloudinary, pasta de testes |
 | Testes automáticos | PostgreSQL de teste, recriado a cada execução | Mock | Mock do provider | Mock |
-| Produção | PostgreSQL no Supabase (projeto `unishop-prod`; versão a conferir, documentos assumem 18), com backup diário pelo workflow do GitHub Actions (o plano gratuito não tem restauração a ponto no tempo) | Resend | Mercado Pago com credenciais de **teste** (RN-PAG-10) | Cloudinary |
+| Produção | PostgreSQL no Supabase (projeto `unishop-prod`; PostgreSQL 17.11, conferido em 31/10/2026), com backup diário pelo workflow do GitHub Actions (o plano gratuito não tem restauração a ponto no tempo) | Resend | Mercado Pago com credenciais de **teste** (RN-PAG-10) | Cloudinary |
 
 
 ## 5. Estrutura de pastas

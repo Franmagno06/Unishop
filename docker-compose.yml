@@ -1,7 +1,7 @@
 # docker-compose.yml — só o banco; API e frontend rodam com npm run dev
 services:
   db:
-    image: postgres:18-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER: dev
       POSTGRES_PASSWORD: dev
@@ -9,7 +9,7 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      - unishop_dev_data:/var/lib/postgresql   # PostgreSQL 18: o volume vai em /var/lib/postgresql
+      - unishop_dev_data:/var/lib/postgresql/data
 
 volumes:
   unishop_dev_data:
