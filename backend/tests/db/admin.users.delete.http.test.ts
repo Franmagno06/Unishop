@@ -61,6 +61,16 @@ describe('DELETE /admin/users/:id', () => {
     expect(row.whatsapp).toBe('')
   })
 
+  it('LGPD: nenhum anúncio do usuário guarda telefone, inclusive o já excluído antes da conta', async () => {
+    const user = await createUser()
+    const early = await createListing(user.id, { whatsapp: '85911110000', deletedAt: new Date() })
+    const live = await createListing(user.id, { whatsapp: '85922220000' })
+    expect((await del(user.id)).status).toBe(204)
+    const rows = await testDb.listing.findMany({ where: { id: { in: [early.id, live.id] } } })
+    expect(rows.map((r) => r.whatsapp)).toEqual(['', ''])
+    expect(rows.find((r) => r.id === early.id)?.deletedAt).not.toBeNull()
+  })
+
   it('RN-ADM-06: o e-mail original fica livre para um novo cadastro', async () => {
     const user = await createUser({ email: 'livre@edu.unifor.br' })
     await del(user.id)

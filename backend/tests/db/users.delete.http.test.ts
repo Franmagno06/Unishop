@@ -37,6 +37,22 @@ describe('DELETE /users/me (banco real)', () => {
     expect(await orderStatus(order.id)).toBe('cancelado')
   })
 
+  it('LGPD: nenhum anúncio do usuário guarda telefone, inclusive o já excluído antes da conta', async () => {
+    const me = await createUser()
+    const early = await createListing(me.id, { whatsapp: '85911110000' })
+    const other = await createListing(me.id, { whatsapp: '85922220000' })
+    expect(
+      (
+        await request(app)
+          .delete(`/api/v1/listings/${early.id}`)
+          .set(auth({ id: me.id }))
+      ).status,
+    ).toBe(204)
+    expect((await delMe(me.id)).status).toBe(204)
+    const rows = await testDb.listing.findMany({ where: { id: { in: [early.id, other.id] } } })
+    expect(rows.map((r) => r.whatsapp)).toEqual(['', ''])
+  })
+
   it('RN-PER-06: bloqueada com pedido Pago como comprador (409 HAS_OPEN_PAID_ORDERS)', async () => {
     const me = await createUser()
     const seller = await createUser()

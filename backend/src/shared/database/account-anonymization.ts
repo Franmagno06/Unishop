@@ -50,8 +50,10 @@ export async function anonymizeAccountTx(
   const fields = anonymizedFields(userId)
   const { count } = await tx.listing.updateMany({
     where: { userId, deletedAt: null },
-    data: { deletedAt: at, ...fields.listing },
+    data: { deletedAt: at },
   })
+  // LGPD: o telefone sai de TODOS os anúncios, inclusive dos que já tinham sido excluídos antes.
+  await tx.listing.updateMany({ where: { userId }, data: fields.listing })
   await tx.userToken.deleteMany({ where: { userId } })
   await tx.user.update({ where: { id: userId }, data: fields.user })
   return { status: 'ok', cancelledOrderIds, deletedListings: count }
