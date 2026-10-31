@@ -269,10 +269,23 @@ describe('PATCH /admin/users/:id', () => {
       patch(other.id, { status: 'suspended' }, auth({ id: admin.id, role: 'admin' })),
       patch(admin.id, { status: 'suspended' }, auth({ id: other.id, role: 'admin' })),
     ])
-    expect([a.status, b.status].sort()).toEqual([200, 409])
-    const failed = a.status === 409 ? a : b
-    expect(failed.body.error.code).toBe('ADMIN_PROTECTED')
+    // O perdedor já foi suspenso pelo vencedor quando entra na trava: é recusado como autor suspenso.
+    expect([a.status, b.status].sort()).toEqual([200, 403])
+    const failed = a.status === 403 ? a : b
+    expect(failed.body.error.code).toBe('ACCOUNT_SUSPENDED')
     expect(await testDb.user.count({ where: { role: 'admin', accountStatus: 'ativa' } })).toBe(1)
+  })
+
+  it('RN-ADM-12: autor suspenso depois de gerar o token é recusado; o alvo não muda e não há log', async () => {
+    const author = await createUser({ role: 'admin' })
+    const target = await createUser()
+    const headers = auth({ id: author.id, role: 'admin' }) // token gerado antes da suspensão
+    await testDb.user.update({ where: { id: author.id }, data: { accountStatus: 'suspensa' } })
+    const res = await patch(target.id, { status: 'suspended' }, headers)
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe('ACCOUNT_SUSPENDED')
+    expect(await accountStatusOf(target.id)).toBe('ativa')
+    expect(await testDb.auditLog.count()).toBe(0)
   })
 
   it('RN-ADM-12: admin suspende outro admin quando sobra um ativo', async () => {

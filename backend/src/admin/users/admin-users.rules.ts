@@ -8,6 +8,14 @@ export function isOnline(lastSeen: Date | null, status: AccountStatus, now: Date
   return lastSeen.getTime() >= now.getTime() - ONLINE_WINDOW_MS
 }
 
+// RN-ADM-12: com os admins ativos já travados (FOR UPDATE), o autor precisa estar entre eles. Se foi
+// suspenso por outro admin depois do authenticate, a ação é recusada com o mesmo erro do authenticate.
+export function assertActorStillActive(actorId: number, activeAdminIds: number[]): void {
+  if (!activeAdminIds.includes(actorId)) {
+    throw new AppError(403, 'ACCOUNT_SUSPENDED', 'Sua conta está suspensa.')
+  }
+}
+
 export type ProtectionInput = {
   actorId: number
   action: 'suspend' | 'delete'

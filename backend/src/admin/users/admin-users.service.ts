@@ -2,7 +2,7 @@ import { NEW_USERS_WINDOW_DAYS, ONLINE_WINDOW_MS } from '../../config/constants'
 import { AppError, notFound } from '../../shared/errors/app-error'
 import { buildMeta, type Pagination } from '../../shared/utils/pagination'
 import { buildAuditDetails } from '../audit-logs/audit-logs.details'
-import { assertAdminProtection, isOnline } from './admin-users.rules'
+import { assertActorStillActive, assertAdminProtection, isOnline } from './admin-users.rules'
 import type {
   AdminUserDetail,
   AdminUserRecord,
@@ -60,6 +60,7 @@ export function createAdminUsersService({
     const action = to === 'suspended' ? 'suspend_user' : 'reactivate_user'
     const result = await users.changeStatus(targetId, to, {
       guard(target) {
+        assertActorStillActive(actorId, target.activeAdminIds)
         if (to === 'suspended' && target.id === actorId) {
           assertAdminProtection({ actorId, action: 'suspend', target, activeAdminIds: [] })
         }

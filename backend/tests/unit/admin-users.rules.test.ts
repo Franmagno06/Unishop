@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { assertAdminProtection, isOnline } from '../../src/admin/users/admin-users.rules'
+import {
+  assertActorStillActive,
+  assertAdminProtection,
+  isOnline,
+} from '../../src/admin/users/admin-users.rules'
 
 const now = new Date('2026-10-31T12:00:00.000Z')
 const ago = (ms: number) => new Date(now.getTime() - ms)
@@ -16,6 +20,17 @@ describe('isOnline', () => {
   })
   it('RN-ADM-03: sem último acesso não está logado', () => {
     expect(isOnline(null, 'active', now)).toBe(false)
+  })
+})
+
+describe('assertActorStillActive', () => {
+  it('RN-ADM-12: autor fora dos admins ativos travados é recusado (403 ACCOUNT_SUSPENDED)', () => {
+    expect(() => assertActorStillActive(1, [2, 3])).toThrowError(
+      expect.objectContaining({ status: 403, code: 'ACCOUNT_SUSPENDED' }),
+    )
+  })
+  it('RN-ADM-12: autor entre os admins ativos passa', () => {
+    expect(() => assertActorStillActive(2, [2, 3])).not.toThrow()
   })
 })
 
