@@ -1,0 +1,141 @@
+import type { Prisma } from '../../generated/prisma/client'
+import type { Db } from '../../shared/database/prisma'
+import { LISTING_STATUS_FROM_DB } from '../../shared/database/status-maps'
+import { escapeLike } from '../../shared/utils/like'
+import { decimalToCents } from '../../shared/utils/money'
+import { toSkipTake } from '../../shared/utils/pagination'
+import type {
+  AdminListingDetail,
+  AdminListingRow,
+  AdminListingsRepository,
+} from './admin-listings.types'
+
+function statusOf(raw: string) {
+  const status = LISTING_STATUS_FROM_DB[raw]
+  if (!status) throw new Error(`Status de anúncio desconhecido: ${raw}`)
+  return status
+}
+
+const rowSelect = {
+  id: true,
+  name: true,
+  price: true,
+  status: true,
+  categoryId: true,
+  publishedAt: true,
+  category: { select: { name: true } },
+  user: { select: { id: true, name: true } },
+  images: { where: { position: 1 }, take: 1, select: { url: true } },
+} satisfies Prisma.ListingSelect
+
+const detailSelect = {
+  id: true,
+  name: true,
+  description: true,
+  price: true,
+  quantity: true,
+  status: true,
+  whatsapp: true,
+  categoryId: true,
+  views: true,
+  contacts: true,
+  publishedAt: true,
+  category: { select: { name: true } },
+  user: { select: { id: true, name: true, email: true, whatsapp: true } },
+  images: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
+} satisfies Prisma.ListingSelect
+
+type DetailRow = Prisma.ListingGetPayload<{ select: typeof detailSelect }>
+
+function toDetail(row: DetailRow): AdminListingDetail {
+  return {
+    id: row.id,
+    title: row.name,
+    description: row.description,
+    priceInCents: decimalToCents(row.price),
+    quantity: row.quantity,
+    categoryId: row.categoryId,
+    categoryName: row.category.name,
+    status: statusOf(row.status),
+    whatsapp: row.whatsapp,
+    seller: {
+      id: row.user.id,
+      name: row.user.name,
+      email: row.user.email,
+      whatsapp: row.user.whatsapp,
+    },
+    images: row.images,
+    views: row.views,
+    whatsappContacts: row.contacts,
+    publishedAt: row.publishedAt,
+  }
+}
+
+// Aceita o cliente ou a transação, para devolver o detalhe depois de uma escrita.
+export async function findAdminListingDetail(
+  db: Pick<Db, 'listing'> | Prisma.TransactionClient,
+  id: number,
+): Promise<AdminListingDetail | null> {
+  const row = await db.listing.findFirst({ where: { id, deletedAt: null }, select: detailSelect })
+  return row ? toDetail(row) : null
+}
+
+export function createPrismaAdminListingsRepository(db: Db): AdminListingsRepository {
+  return {
+    async list(filters, pagination) {
+      const search = filters.search ? escapeLike(filters.search) : undefined
+      const where: Prisma.ListingWhereInput = {
+        deletedAt: null,
+        ...(filters.categoryId !== undefined && { categoryId: filters.categoryId }),
+        ...(search && {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { user: { name: { contains: search, mode: 'insensitive' } } },
+          ],
+        }),
+      }
+      const [rows, total] = await db.$transaction([
+        db.listing.findMany({
+          where,
+          select: rowSelect,
+          orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+          ...toSkipTake(pagination),
+        }),
+        db.listing.count({ where }),
+      ])
+      const items: AdminListingRow[] = rows.map((r) => ({
+        id: r.id,
+        title: r.name,
+        priceInCents: decimalToCents(r.price),
+        categoryId: r.categoryId,
+        categoryName: r.category.name,
+        status: statusOf(r.status),
+        imageUrl: r.images[0]?.url ?? null,
+        seller: { id: r.user.id, name: r.user.name },
+        publishedAt: r.publishedAt,
+      }))
+      return { items, total }
+    },
+
+    // Uma consulta só; o bigint do COUNT vira number.
+    async stats(monthStart) {
+      const [row] = await db.$queryRaw<{ active: bigint; paused: bigint; sold_in_month: bigint }[]>`
+        SELECT COUNT(*) FILTER (WHERE status = 'ativo')                                   AS active,
+               COUNT(*) FILTER (WHERE status = 'pausado')                                 AS paused,
+               COUNT(*) FILTER (WHERE status = 'vendido' AND vendido_em >= ${monthStart}) AS sold_in_month
+          FROM anuncio
+         WHERE excluido_em IS NULL`
+      return {
+        active: Number(row?.active ?? 0),
+        paused: Number(row?.paused ?? 0),
+        soldInMonth: Number(row?.sold_in_month ?? 0),
+      }
+    },
+
+    findDetail: (id) => findAdminListingDetail(db, id),
+
+    changeStatus() {
+      throw new Error('Fatia H: ainda não implementado')
+    },
+  }
+}

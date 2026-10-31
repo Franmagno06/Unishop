@@ -26,6 +26,10 @@ import { createPrismaProfileRepository } from './modules/users/users.repository'
 import { createUsersRoutes } from './modules/users/users.routes'
 import { createUsersService } from './modules/users/users.service'
 import type { ProfileRepository } from './modules/users/users.types'
+import { createPrismaAdminListingsRepository } from './admin/listings/admin-listings.repository'
+import { createAdminListingsRoutes } from './admin/listings/admin-listings.routes'
+import { createAdminListingsService } from './admin/listings/admin-listings.service'
+import type { AdminListingsRepository } from './admin/listings/admin-listings.types'
 import { createAdminRoutes } from './admin/admin.routes'
 import { createPrismaAdminUsersRepository } from './admin/users/admin-users.repository'
 import { createAdminUsersRoutes } from './admin/users/admin-users.routes'
@@ -49,6 +53,7 @@ import type { StorageProvider } from './shared/providers/storage/storage.provide
 export type AdminDeps = {
   auditLogs: AuditLogRepository
   users?: AdminUsersRepository
+  listings?: AdminListingsRepository
 }
 
 export type AppDeps = {
@@ -134,6 +139,14 @@ export function createApp(deps?: AppDeps) {
           auditLogs: createAuditLogsRoutes(
             createAuditLogsService({ auditLogs: deps.admin.auditLogs }),
           ),
+          ...(deps.admin.listings && {
+            listings: createAdminListingsRoutes(
+              createAdminListingsService({
+                listings: deps.admin.listings,
+                ...(deps.now && { now: deps.now }),
+              }),
+            ),
+          }),
           ...(deps.admin.users && {
             users: createAdminUsersRoutes(
               createAdminUsersService({
@@ -202,6 +215,7 @@ export const app = createApp({
   admin: {
     auditLogs: createPrismaAuditLogRepository(prisma),
     users: createPrismaAdminUsersRepository(prisma),
+    listings: createPrismaAdminListingsRepository(prisma),
   },
   uploadsDir: UPLOADS_DIR,
 })

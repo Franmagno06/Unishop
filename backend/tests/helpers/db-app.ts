@@ -1,5 +1,6 @@
 import { createPrismaAdminUsersRepository } from '../../src/admin/users/admin-users.repository'
 import type { AuditWriter } from '../../src/admin/audit-logs/audit-logs.types'
+import { createPrismaAdminListingsRepository } from '../../src/admin/listings/admin-listings.repository'
 import { createApp } from '../../src/app'
 import { createPrismaAuditLogRepository } from '../../src/admin/audit-logs/audit-logs.repository'
 import { createJwt } from '../../src/config/jwt'
@@ -31,6 +32,9 @@ export function buildDbApp(
     storage: storage.provider,
     admin: {
       auditLogs: createPrismaAuditLogRepository(testDb),
+      listings: createPrismaAdminListingsRepository(testDb, {
+        ...(overrides.writeAuditLog && { writeAuditLog: overrides.writeAuditLog }),
+      }),
       users: createPrismaAdminUsersRepository(testDb, {
         ...(overrides.writeAuditLog && { writeAuditLog: overrides.writeAuditLog }),
       }),

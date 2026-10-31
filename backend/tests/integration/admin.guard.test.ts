@@ -11,6 +11,7 @@ import {
   unreachable,
 } from '../helpers/fakes'
 import type { AuditLogRepository } from '../../src/admin/audit-logs/audit-logs.types'
+import type { AdminListingsRepository } from '../../src/admin/listings/admin-listings.types'
 import type { AdminUsersRepository } from '../../src/admin/users/admin-users.types'
 
 // Rotas admin cobertas pela proteção única. Cada fatia acrescenta as suas linhas aqui.
@@ -22,6 +23,9 @@ const ADMIN_ROUTES: { method: 'get' | 'patch' | 'delete'; path: string }[] = [
   { method: 'get', path: '/api/v1/admin/users/1' },
   { method: 'patch', path: '/api/v1/admin/users/1' },
   { method: 'delete', path: '/api/v1/admin/users/1' },
+  { method: 'get', path: '/api/v1/admin/listings' },
+  { method: 'get', path: '/api/v1/admin/listings/stats' },
+  { method: 'get', path: '/api/v1/admin/listings/1' },
 ]
 
 let app: ReturnType<typeof createApp>
@@ -59,6 +63,7 @@ beforeEach(() => {
     admin: {
       auditLogs: unreachable<AuditLogRepository>('auditLogs'),
       users: unreachable<AdminUsersRepository>('adminUsers'),
+      listings: unreachable<AdminListingsRepository>('adminListings'),
     },
   })
   const jwt = createJwt(process.env.JWT_SECRET!, '2h')
