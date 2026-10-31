@@ -1,4 +1,9 @@
 import type { Prisma } from '../../generated/prisma/client'
+import {
+  cancelUnpaidOrders,
+  hasOpenPaidOrders,
+  lockOpenOrders,
+} from '../../shared/database/open-orders'
 import { listingVisibleWhere } from '../../shared/database/listing-visibility'
 import type { Db } from '../../shared/database/prisma'
 import { LISTING_STATUS_FROM_DB, LISTING_STATUS_TO_DB } from '../../shared/database/status-maps'
@@ -181,15 +186,16 @@ export function createPrismaListingRepository(db: Db): ListingRepository {
       return count === 1
     },
 
-    // RN-ANU-09: a trava no anúncio e a conferência dos pedidos ficam na mesma transação.
+    // RN-ANU-09: pedidos travados ANTES do anúncio (ordem usuario -> pedido -> anuncio, como a liquidação
+    // do pagamento); pago/retirada combinada bloqueia; Pendente e Em negociação são cancelados.
     async softDelete(id) {
       return db.$transaction(async (tx) => {
+        const orders = await lockOpenOrders(tx, { listingId: id })
         await lockListing(tx, id)
-        const open = await tx.order.count({
-          where: { listingId: id, status: { in: ['pago', 'retirada_combinada'] } },
-        })
-        if (open > 0) return 'blocked' as const
-        await tx.listing.update({ where: { id }, data: { deletedAt: new Date() } })
+        if (hasOpenPaidOrders(orders)) return 'blocked' as const
+        const now = new Date()
+        await cancelUnpaidOrders(tx, orders, now)
+        await tx.listing.update({ where: { id }, data: { deletedAt: now } })
         return 'ok' as const
       })
     },

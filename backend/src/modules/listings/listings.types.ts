@@ -89,7 +89,7 @@ export interface ListingRepository {
   update(id: number, patch: ListingPatch): Promise<boolean>
   /** Troca o estado só se ainda estiver em um dos de origem; `false` se outra requisição chegou antes. */
   changeStatus(id: number, from: ListingStatus[], to: ListingStatus): Promise<boolean>
-  /** Exclusão lógica; `blocked` com pedido Pago ou em Retirada combinada em aberto (RN-ANU-09). */
+  /** Exclusão lógica; `blocked` com pedido Pago ou em Retirada combinada em aberto; cancela Pendente e Em negociação (RN-ANU-09). */
   softDelete(id: number): Promise<'ok' | 'blocked'>
   /** Pedidos recebidos pelo anúncio, de qualquer estado (RN-ANU-08). */
   countOrders(id: number): Promise<number>

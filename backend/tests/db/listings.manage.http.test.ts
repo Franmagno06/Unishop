@@ -281,6 +281,43 @@ describe('DELETE /listings/:id', () => {
     expect((await call('delete', `/${listing.id}`)).status).toBe(204)
   })
 
+  it('RN-ANU-09: excluir cancela os pedidos Pendente e Em negociação do anúncio', async () => {
+    const listing = await createListing(seller.id)
+    const buyer2 = await createUser()
+    const pendente = await createOrder(listing.id, other.id, seller.id, {
+      status: 'pendente',
+      negotiationType: 'pagamento_site',
+    })
+    const negociacao = await createOrder(listing.id, buyer2.id, seller.id, {
+      status: 'em_negociacao',
+    })
+    const concluido = await createOrder(listing.id, other.id, seller.id, { status: 'concluido' })
+
+    expect((await call('delete', `/${listing.id}`)).status).toBe(204)
+    const status = async (id: number) =>
+      (await testDb.order.findUniqueOrThrow({ where: { id } })).status
+    expect(await status(pendente.id)).toBe('cancelado')
+    expect(await status(negociacao.id)).toBe('cancelado')
+    expect(await status(concluido.id)).toBe('concluido')
+  })
+
+  it('RN-ANU-09: exclusão bloqueada não cancela nada', async () => {
+    const listing = await createListing(seller.id)
+    const pago = await createOrder(listing.id, other.id, seller.id, {
+      status: 'pago',
+      negotiationType: 'pagamento_site',
+    })
+    const pendente = await createOrder(listing.id, admin.id, seller.id, { status: 'pendente' })
+
+    const res = await call('delete', `/${listing.id}`)
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('HAS_OPEN_PAID_ORDERS')
+    const status = async (id: number) =>
+      (await testDb.order.findUniqueOrThrow({ where: { id } })).status
+    expect(await status(pago.id)).toBe('pago')
+    expect(await status(pendente.id)).toBe('pendente')
+  })
+
   it('RN-ANU-04: terceiro e admin recebem 403; oculto de outro 404; excluído de novo 404; visitante 401', async () => {
     const listing = await createListing(seller.id)
     const paused = await createListing(seller.id, { status: 'pausado' })
