@@ -80,6 +80,24 @@ describe('GET /admin/audit-logs', () => {
     expect(typeof res.body.data[0].at).toBe('string')
   })
 
+  it('RN-ADM-10: ação gravada que a API não conhece (editar_usuario) vem como no banco, sem derrubar o GET', async () => {
+    await testDb.auditLog.create({
+      data: {
+        adminId: admin.id,
+        action: 'editar_usuario',
+        entity: 'usuario',
+        entityId: student.id,
+      },
+    })
+    await write(entry())
+    const res = await get()
+    expect(res.status).toBe(200)
+    expect(res.body.data.map((l: { action: string }) => l.action).sort()).toEqual([
+      'editar_usuario',
+      'suspend_user',
+    ])
+  })
+
   it('RN-ADM-10: filtra por responsável, por ação e por período', async () => {
     await write(entry())
     await write(entry({ adminId: other.id, action: 'reactivate_user' }))

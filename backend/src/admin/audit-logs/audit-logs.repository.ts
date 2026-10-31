@@ -26,12 +26,6 @@ const ENTITY_FROM_DB = Object.fromEntries(
   Object.entries(ENTITY_TO_DB).map(([k, v]) => [v, k]),
 ) as Record<string, AuditEntity>
 
-function fromDb<T>(map: Record<string, T>, value: string, what: string): T {
-  const found = map[value]
-  if (found === undefined) throw new Error(`log_admin.${what} desconhecido: ${value}`)
-  return found
-}
-
 /** Grava UMA linha em log_admin usando o tx recebido. Nunca abre transação própria (RN-ADM-10). */
 export const writeAuditLog: AuditWriter = async (tx, entry) => {
   await tx.auditLog.create({
@@ -71,8 +65,9 @@ export function createPrismaAuditLogRepository(db: Db): AuditLogRepository {
         items: rows.map((r) => ({
           id: r.id,
           admin: { id: r.admin.id, name: r.admin.name },
-          action: fromDb(ACTION_FROM_DB, r.action, 'acao'),
-          target: { type: fromDb(ENTITY_FROM_DB, r.entity, 'entidade'), id: r.entityId },
+          // Valor que a API não conhece (ex.: editar_usuario do bd.md): devolve o bruto do banco, sem lançar.
+          action: ACTION_FROM_DB[r.action] ?? r.action,
+          target: { type: ENTITY_FROM_DB[r.entity] ?? r.entity, id: r.entityId },
           at: r.createdAt,
           changes: r.details,
         })),

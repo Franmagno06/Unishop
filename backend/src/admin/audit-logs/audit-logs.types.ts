@@ -33,8 +33,9 @@ export type AuditLogFilters = {
 export type AuditLogView = {
   id: number
   admin: { id: number; name: string }
-  action: AuditAction
-  target: { type: AuditEntity; id: number }
+  /** Ação da API; se o banco tiver um valor sem equivalente, vem o texto bruto do banco. */
+  action: AuditAction | (string & {})
+  target: { type: AuditEntity | (string & {}); id: number }
   at: Date
   changes: unknown
 }
