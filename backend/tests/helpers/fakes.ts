@@ -261,3 +261,14 @@ export function createFakeStorage() {
   }
   return { provider, uploaded, removed }
 }
+
+// Repository que nunca deveria ser chamado (a proteção da área admin barra antes).
+export const unreachable = <T extends object>(name: string) =>
+  new Proxy(
+    {},
+    {
+      get: (_t, key) => () => {
+        throw new Error(`${name}.${String(key)} não deveria ser chamado`)
+      },
+    },
+  ) as T

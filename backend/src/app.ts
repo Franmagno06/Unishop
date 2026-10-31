@@ -26,6 +26,7 @@ import { createPrismaProfileRepository } from './modules/users/users.repository'
 import { createUsersRoutes } from './modules/users/users.routes'
 import { createUsersService } from './modules/users/users.service'
 import type { ProfileRepository } from './modules/users/users.types'
+import { createAdminRoutes } from './admin/admin.routes'
 import { createAuthenticate } from './shared/middlewares/authenticate'
 import { errorHandler, notFoundHandler } from './shared/middlewares/error-handler'
 import { createRateLimiter } from './shared/middlewares/rate-limiter'
@@ -110,6 +111,8 @@ export function createApp(deps?: AppDeps) {
       })
       app.use('/api/v1/listings', createListingsRoutes(listingsService, authenticate))
     }
+    // RN-ADM-01: toda a área admin atrás de uma proteção só.
+    app.use('/api/v1/admin', createAdminRoutes(authenticate))
   }
 
   // Imagens do driver local. O Helmet manda `same-origin`, o que impediria o front (outra porta)
