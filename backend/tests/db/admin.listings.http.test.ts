@@ -103,6 +103,22 @@ describe('GET /admin/listings', () => {
 })
 
 describe('GET /admin/listings/:id', () => {
+  it('id acima do limite do int4 dá 400 VALIDATION_ERROR (GET, PATCH e DELETE), não 500', async () => {
+    const huge = '99999999999'
+    const bad = [
+      await get(`/${huge}`),
+      await request(app)
+        .patch(`/api/v1/admin/listings/${huge}`)
+        .send({ status: 'paused' })
+        .set(adminAuth()),
+      await request(app).delete(`/api/v1/admin/listings/${huge}`).set(adminAuth()),
+    ]
+    for (const res of bad) {
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('VALIDATION_ERROR')
+    }
+  })
+
   it('RF023: detalhe mostra dados, imagens, vendedor e indicadores; 404 para excluído ou inexistente', async () => {
     const l = await createListing(seller.id, {
       name: 'Livro',

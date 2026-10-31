@@ -133,6 +133,22 @@ describe('GET /admin/users/:id', () => {
     expect(raw).not.toMatch(/passwordHash|googleSub/)
   })
 
+  it('id acima do limite do int4 dá 400 VALIDATION_ERROR (GET, PATCH e DELETE), não 500', async () => {
+    const huge = '99999999999'
+    const bad = [
+      await get(`/${huge}`),
+      await request(app)
+        .patch(`/api/v1/admin/users/${huge}`)
+        .send({ status: 'suspended' })
+        .set(adminAuth()),
+      await request(app).delete(`/api/v1/admin/users/${huge}`).set(adminAuth()),
+    ]
+    for (const res of bad) {
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('VALIDATION_ERROR')
+    }
+  })
+
   it('RN-ADM-04: detalhe de conta excluída ou inexistente dá 404, e id inválido dá 400', async () => {
     const gone = await createUser({ accountStatus: 'excluida' })
     expect((await get(`/${gone.id}`)).status).toBe(404)

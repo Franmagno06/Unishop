@@ -115,6 +115,12 @@ describe('GET /admin/audit-logs', () => {
     expect(byPeriod.body.data[0].action).toBe('reactivate_user')
   })
 
+  it('adminId acima do limite do int4 dá 400 VALIDATION_ERROR', async () => {
+    const res = await get({ adminId: '99999999999' })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('VALIDATION_ERROR')
+  })
+
   it('período invertido, ação desconhecida ou página inválida dão 400 VALIDATION_ERROR', async () => {
     for (const q of [
       { from: '2026-02-01T00:00:00Z', to: '2026-01-01T00:00:00Z' },

@@ -11,6 +11,9 @@ export const BCRYPT_COST = 12
 export const PASSWORD_RESET_MINUTES = 30 // RN-ACE-10
 export const LAST_SEEN_THROTTLE_MS = 60_000
 
+// Maior valor de uma chave int4 do PostgreSQL: id maior que isso estoura a consulta (500); vira 400.
+export const MAX_DB_ID = 2_147_483_647
+
 export const PAGINATION = { defaultLimit: 20, maxLimit: 50 } as const
 
 // Limites do anúncio (Regras §9, RN-ANU-12) e das imagens (RN-ANU-03, desvio de 4 MB confirmado em 16/10/2026).
