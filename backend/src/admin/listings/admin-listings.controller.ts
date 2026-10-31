@@ -3,6 +3,7 @@ import type { z } from 'zod'
 import {
   adminListingIdParamSchema,
   type listAdminListingsQuerySchema,
+  type updateAdminListingSchema,
 } from './admin-listings.schemas'
 import type { AdminListingsService } from './admin-listings.service'
 
@@ -20,6 +21,12 @@ export function createAdminListingsController(service: AdminListingsService) {
     async get(req: Request, res: Response) {
       const { id } = adminListingIdParamSchema.parse(req.params) // ZodError vira 400 no errorHandler
       res.json({ data: await service.get(id) })
+    },
+    // RN-ADM-08, 10
+    async update(req: Request, res: Response) {
+      const { id } = adminListingIdParamSchema.parse(req.params)
+      const { status } = req.body as z.output<typeof updateAdminListingSchema>
+      res.json({ data: await service.updateStatus(req.user!.id, id, status) })
     },
   }
 }

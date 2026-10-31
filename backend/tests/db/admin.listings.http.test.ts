@@ -141,3 +141,116 @@ describe('GET /admin/listings/:id', () => {
     expect((await get('/abc')).status).toBe(400)
   })
 })
+
+describe('PATCH /admin/listings/:id', () => {
+  const patch = (id: number, body: object, as = adminAuth()) =>
+    request(app).patch(`/api/v1/admin/listings/${id}`).send(body).set(as)
+  const rowOf = (id: number) => testDb.listing.findUniqueOrThrow({ where: { id } })
+
+  it('RN-ADM-08: admin pausa e reativa um anúncio de outro aluno', async () => {
+    const l = await createListing(seller.id)
+    const paused = await patch(l.id, { status: 'paused' })
+    expect(paused.status).toBe(200)
+    expect(paused.body.data).toMatchObject({ id: l.id, status: 'paused' })
+    expect((await rowOf(l.id)).status).toBe('pausado')
+    const active = await patch(l.id, { status: 'active' })
+    expect(active.body.data.status).toBe('active')
+    expect((await rowOf(l.id)).status).toBe('ativo')
+  })
+
+  it('RN-ADM-08: só o admin reverte Vendido, e a reversão vai para o log como revert_sold', async () => {
+    const l = await createListing(seller.id, {
+      status: 'vendido',
+      quantity: 0,
+      soldAt: new Date(),
+    })
+    const res = await patch(l.id, { status: 'paused' })
+    expect(res.status).toBe(200)
+    const row = await rowOf(l.id)
+    expect(row.status).toBe('pausado')
+    expect(row.soldAt).toBeNull()
+    const log = await testDb.auditLog.findFirstOrThrow()
+    expect(log).toMatchObject({
+      adminId: admin.id,
+      action: 'reverter_vendido',
+      entity: 'anuncio',
+      entityId: l.id,
+    })
+    expect(log.details).toEqual({ status: { from: 'sold', to: 'paused' } })
+  })
+
+  it('Regras §4: Vendido direto para Ativo (sem unidades) dá 409 INVALID_STATE e nada muda', async () => {
+    const l = await createListing(seller.id, { status: 'vendido', quantity: 0, soldAt: new Date() })
+    const res = await patch(l.id, { status: 'active' })
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('INVALID_STATE')
+    expect((await rowOf(l.id)).status).toBe('vendido')
+    expect(await testDb.auditLog.count()).toBe(0)
+  })
+
+  it('Q9: admin reativa anúncio de dono suspenso (o anúncio continua oculto até a conta voltar)', async () => {
+    const suspended = await createUser({ accountStatus: 'suspensa' })
+    const l = await createListing(suspended.id, { status: 'pausado' })
+    expect((await patch(l.id, { status: 'active' })).status).toBe(200)
+  })
+
+  it('RN-ADM-08: PATCH com título, preço, quantidade ou vendedor dá 400 e nada muda', async () => {
+    const l = await createListing(seller.id, { name: 'Original' })
+    for (const body of [
+      { title: 'Outro' },
+      { priceInCents: 500 },
+      { quantity: 9 },
+      { sellerId: admin.id },
+      { status: 'paused', title: 'Outro' },
+    ]) {
+      const res = await patch(l.id, body)
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('VALIDATION_ERROR')
+    }
+    expect(await rowOf(l.id)).toMatchObject({ name: 'Original', status: 'ativo' })
+  })
+
+  it('RN-ADM-08: status sold ou desconhecido dá 400', async () => {
+    const l = await createListing(seller.id)
+    for (const status of ['sold', 'deleted', 'pausado']) {
+      expect((await patch(l.id, { status })).status).toBe(400)
+    }
+  })
+
+  it('RN-ADM-10: pausar e reativar gravam log edit_listing com status anterior e novo', async () => {
+    const l = await createListing(seller.id)
+    await patch(l.id, { status: 'paused' })
+    await patch(l.id, { status: 'active' })
+    const logs = await testDb.auditLog.findMany({ orderBy: { id: 'asc' } })
+    expect(logs.map((x) => x.action)).toEqual(['editar_anuncio', 'editar_anuncio'])
+    expect(logs[0]?.details).toEqual({ status: { from: 'active', to: 'paused' } })
+    expect(logs[1]?.details).toEqual({ status: { from: 'paused', to: 'active' } })
+  })
+
+  it('RN-ADM-10: se o log falha, o status não muda', async () => {
+    const failing = buildDbApp({
+      writeAuditLog: async () => {
+        throw new Error('falha simulada')
+      },
+    })
+    const l = await createListing(seller.id)
+    const res = await request(failing.app)
+      .patch(`/api/v1/admin/listings/${l.id}`)
+      .send({ status: 'paused' })
+      .set(failing.auth({ id: admin.id, role: 'admin' }))
+    expect(res.status).toBe(500)
+    expect((await rowOf(l.id)).status).toBe('ativo')
+    expect(await testDb.auditLog.count()).toBe(0)
+  })
+
+  it('PATCH em anúncio excluído ou inexistente dá 404; mesmo status dá 409', async () => {
+    const gone = await createListing(seller.id, { deletedAt: new Date() })
+    expect((await patch(gone.id, { status: 'paused' })).status).toBe(404)
+    expect((await patch(99999, { status: 'paused' })).status).toBe(404)
+    const l = await createListing(seller.id)
+    const same = await patch(l.id, { status: 'active' })
+    expect(same.status).toBe(409)
+    expect(same.body.error.code).toBe('INVALID_STATE')
+    expect(await testDb.auditLog.count()).toBe(0)
+  })
+})

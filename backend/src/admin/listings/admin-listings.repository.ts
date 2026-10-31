@@ -1,6 +1,8 @@
 import type { Prisma } from '../../generated/prisma/client'
 import type { Db } from '../../shared/database/prisma'
-import { LISTING_STATUS_FROM_DB } from '../../shared/database/status-maps'
+import { writeAuditLog } from '../audit-logs/audit-logs.repository'
+import type { AuditWriter } from '../audit-logs/audit-logs.types'
+import { LISTING_STATUS_FROM_DB, LISTING_STATUS_TO_DB } from '../../shared/database/status-maps'
 import { escapeLike } from '../../shared/utils/like'
 import { decimalToCents } from '../../shared/utils/money'
 import { toSkipTake } from '../../shared/utils/pagination'
@@ -80,7 +82,10 @@ export async function findAdminListingDetail(
   return row ? toDetail(row) : null
 }
 
-export function createPrismaAdminListingsRepository(db: Db): AdminListingsRepository {
+export function createPrismaAdminListingsRepository(
+  db: Db,
+  { writeAuditLog: audit = writeAuditLog }: { writeAuditLog?: AuditWriter } = {},
+): AdminListingsRepository {
   return {
     async list(filters, pagination) {
       const search = filters.search ? escapeLike(filters.search) : undefined
@@ -134,8 +139,22 @@ export function createPrismaAdminListingsRepository(db: Db): AdminListingsReposi
 
     findDetail: (id) => findAdminListingDetail(db, id),
 
-    changeStatus() {
-      throw new Error('Fatia H: ainda não implementado')
+    // RN-ADM-08, 10: anúncio travado, regra, troca e log na mesma transação.
+    async changeStatus(id, to, hooks) {
+      return db.$transaction(async (tx) => {
+        const [row] = await tx.$queryRaw<{ status: string; quantity: number; deleted: boolean }[]>`
+          SELECT status, quantidade AS quantity, (excluido_em IS NOT NULL) AS deleted
+            FROM anuncio WHERE id_anuncio = ${id} FOR UPDATE`
+        if (!row || row.deleted) return 'not_found' as const
+        const snapshot = { id, status: statusOf(row.status), quantity: row.quantity }
+        const { clearSoldAt } = hooks.guard(snapshot)
+        await tx.listing.update({
+          where: { id },
+          data: { status: LISTING_STATUS_TO_DB[to], ...(clearSoldAt && { soldAt: null }) },
+        })
+        await audit(tx, hooks.audit(snapshot))
+        return (await findAdminListingDetail(tx, id))!
+      })
     },
   }
 }

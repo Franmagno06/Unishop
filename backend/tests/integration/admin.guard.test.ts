@@ -26,6 +26,7 @@ const ADMIN_ROUTES: { method: 'get' | 'patch' | 'delete'; path: string }[] = [
   { method: 'get', path: '/api/v1/admin/listings' },
   { method: 'get', path: '/api/v1/admin/listings/stats' },
   { method: 'get', path: '/api/v1/admin/listings/1' },
+  { method: 'patch', path: '/api/v1/admin/listings/1' },
 ]
 
 let app: ReturnType<typeof createApp>

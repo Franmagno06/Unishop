@@ -14,3 +14,7 @@ export const listAdminListingsQuerySchema = paginationSchema.extend({
 })
 
 export const adminListingIdParamSchema = z.object({ id: z.coerce.number().int().positive() })
+
+// RN-ADM-08: o admin altera só o status (Ativo ou Pausado); qualquer outra chave dá 400.
+// "sold" não entra: o admin não marca como vendido.
+export const updateAdminListingSchema = z.strictObject({ status: z.enum(['active', 'paused']) })
