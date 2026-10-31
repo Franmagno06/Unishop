@@ -1,4 +1,5 @@
 import { createApp } from '../../src/app'
+import { createPrismaAuditLogRepository } from '../../src/admin/audit-logs/audit-logs.repository'
 import { createJwt } from '../../src/config/jwt'
 import {
   createPrismaTokenRepository,
@@ -24,6 +25,7 @@ export function buildDbApp(overrides: { listings?: Partial<ListingRepository> } 
     categories: createPrismaCategoryRepository(testDb),
     listings: { ...createPrismaListingRepository(testDb), ...overrides.listings },
     storage: storage.provider,
+    admin: { auditLogs: createPrismaAuditLogRepository(testDb) },
   })
   const jwt = createJwt(process.env.JWT_SECRET!, '2h')
   const auth = (user: { id: number; role?: 'student' | 'admin' }) => ({

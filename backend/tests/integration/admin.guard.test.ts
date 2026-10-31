@@ -13,6 +13,7 @@ import {
 // Rotas admin cobertas pela proteção única. Cada fatia acrescenta as suas linhas aqui.
 const ADMIN_ROUTES: { method: 'get' | 'patch' | 'delete'; path: string }[] = [
   { method: 'get', path: '/api/v1/admin/ping-inexistente' },
+  { method: 'get', path: '/api/v1/admin/audit-logs' },
 ]
 
 let app: ReturnType<typeof createApp>

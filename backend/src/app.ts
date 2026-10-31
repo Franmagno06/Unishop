@@ -27,6 +27,10 @@ import { createUsersRoutes } from './modules/users/users.routes'
 import { createUsersService } from './modules/users/users.service'
 import type { ProfileRepository } from './modules/users/users.types'
 import { createAdminRoutes } from './admin/admin.routes'
+import { createPrismaAuditLogRepository } from './admin/audit-logs/audit-logs.repository'
+import { createAuditLogsRoutes } from './admin/audit-logs/audit-logs.routes'
+import { createAuditLogsService } from './admin/audit-logs/audit-logs.service'
+import type { AuditLogRepository } from './admin/audit-logs/audit-logs.types'
 import { createAuthenticate } from './shared/middlewares/authenticate'
 import { errorHandler, notFoundHandler } from './shared/middlewares/error-handler'
 import { createRateLimiter } from './shared/middlewares/rate-limiter'
@@ -37,6 +41,11 @@ import type { OAuthProvider } from './shared/providers/oauth/oauth.provider'
 import { createLocalStorageProvider } from './shared/providers/storage/local.provider'
 import type { StorageProvider } from './shared/providers/storage/storage.provider'
 
+/** Repositories da área admin (src/admin/). As fatias seguintes acrescentam `users` e `listings`. */
+export type AdminDeps = {
+  auditLogs: AuditLogRepository
+}
+
 export type AppDeps = {
   users: UserRepository
   profiles: ProfileRepository
@@ -46,6 +55,7 @@ export type AppDeps = {
   categories?: CategoryRepository
   listings?: ListingRepository
   storage?: StorageProvider
+  admin?: AdminDeps
   /** Pasta servida em /uploads. Só com o driver local (desenvolvimento e teste). */
   uploadsDir?: string
   now?: () => Date
@@ -112,7 +122,16 @@ export function createApp(deps?: AppDeps) {
       app.use('/api/v1/listings', createListingsRoutes(listingsService, authenticate))
     }
     // RN-ADM-01: toda a área admin atrás de uma proteção só.
-    app.use('/api/v1/admin', createAdminRoutes(authenticate))
+    app.use(
+      '/api/v1/admin',
+      createAdminRoutes(authenticate, {
+        ...(deps.admin && {
+          auditLogs: createAuditLogsRoutes(
+            createAuditLogsService({ auditLogs: deps.admin.auditLogs }),
+          ),
+        }),
+      }),
+    )
   }
 
   // Imagens do driver local. O Helmet manda `same-origin`, o que impediria o front (outra porta)
@@ -167,6 +186,7 @@ export const app = createApp({
   categories: createPrismaCategoryRepository(prisma),
   listings: createPrismaListingRepository(prisma),
   storage: pickStorageProvider(),
+  admin: { auditLogs: createPrismaAuditLogRepository(prisma) },
   uploadsDir: UPLOADS_DIR,
 })
 export default app // a Vercel usa este export; nada aqui chama listen
