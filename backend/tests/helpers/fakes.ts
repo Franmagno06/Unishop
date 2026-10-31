@@ -1,3 +1,10 @@
+import type { StorageProvider } from '../../src/shared/providers/storage/storage.provider'
+import type { CategoryRepository } from '../../src/modules/categories/categories.types'
+import type {
+  ListingDetailRecord,
+  ListingRepository,
+  ListingSummaryRecord,
+} from '../../src/modules/listings/listings.types'
 import { AppError } from '../../src/shared/errors/app-error'
 import type { ProfileRepository } from '../../src/modules/users/users.types'
 import type {
@@ -9,10 +16,7 @@ import type {
   UserRecord,
   UserRepository,
 } from '../../src/modules/auth/auth.types'
-import type {
-  MailProvider,
-  PasswordResetMail,
-} from '../../src/shared/providers/mail/mail.provider'
+import type { MailProvider, PasswordResetMail } from '../../src/shared/providers/mail/mail.provider'
 import type { GoogleIdentity, OAuthProvider } from '../../src/shared/providers/oauth/oauth.provider'
 
 // Repositories em memória: testam as regras sem banco. Os testes contra o banco real entram
@@ -176,6 +180,9 @@ export function createFakeProfiles(userRows: UserRecord[]) {
         }
       }
     },
+    async setPhoto(id, url) {
+      find(id).photoUrl = url
+    },
     async anonymize(id) {
       const user = find(id)
       Object.assign(user, {
@@ -191,4 +198,66 @@ export function createFakeProfiles(userRows: UserRecord[]) {
     },
   }
   return { repo, listings }
+}
+
+// Categorias em memória: cada linha já traz a contagem de anúncios visíveis (a regra de visibilidade
+// é testada no banco, em tests/db).
+export function createFakeCategories(
+  rows: { id: number; name: string; activeListingCount: number }[],
+) {
+  const repo: CategoryRepository = { listWithCounts: async () => rows.map((r) => ({ ...r })) }
+  return { repo }
+}
+
+// Anúncios em memória para as regras da rota (404 por visibilidade, visualização, serialização).
+// Filtro, ordenação e paginação de verdade são testados no banco (tests/db/listings.http.test.ts).
+export function createFakeListings(
+  details: ListingDetailRecord[],
+  summaries: ListingSummaryRecord[] = [],
+) {
+  const views = new Map<number, number>()
+  const repo: ListingRepository = {
+    findVisiblePage: async (_filters, pagination) => ({
+      items: summaries.slice((pagination.page - 1) * pagination.limit).slice(0, pagination.limit),
+      total: summaries.length,
+    }),
+    findRecent: async (limit) => summaries.slice(0, limit),
+    findById: async (id) => details.find((d) => d.id === id) ?? null,
+    incrementViews: async (id) => void views.set(id, (views.get(id) ?? 0) + 1),
+    categoryExists: async () => true,
+    findByOwner: async () => details,
+    update: async () => true,
+    changeStatus: async () => true,
+    softDelete: async () => 'ok',
+    countOrders: async () => 0,
+    createWithImage: async () => {
+      throw new Error('fora do escopo deste fake')
+    },
+    addImage: async () => {
+      throw new Error('fora do escopo deste fake')
+    },
+    removeImage: async () => {
+      throw new Error('fora do escopo deste fake')
+    },
+  }
+  return { repo, views }
+}
+
+// Storage em memória: guarda o que foi enviado e o que foi removido.
+export function createFakeStorage() {
+  const uploaded: { publicId: string; url: string }[] = []
+  const removed: string[] = []
+  let n = 0
+  const provider: StorageProvider = {
+    async upload({ folder }) {
+      const publicId = `${folder}/fake-${++n}.png`
+      const result = { publicId, url: `http://x/uploads/${publicId}` }
+      uploaded.push(result)
+      return result
+    },
+    async remove(publicId) {
+      removed.push(publicId)
+    },
+  }
+  return { provider, uploaded, removed }
 }

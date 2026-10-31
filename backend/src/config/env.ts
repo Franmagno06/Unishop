@@ -38,6 +38,7 @@ const schema = z.object({
   MAIL_DRIVER: z.enum(['console', 'mailtrap', 'resend']).default('console'),
   STORAGE_DRIVER: z.enum(['local', 'cloudinary']).default('local'),
   CLOUDINARY_UPLOAD_FOLDER: z.string().default('unishop-dev'),
+  API_PUBLIC_URL: z.string().optional(), // base das URLs de imagem do driver local; padrão http://localhost:PORT
   ANTIBOT_DRIVER: z.enum(['noop', 'turnstile']).default('noop'),
 
   ADMIN_EMAIL: z.string().optional(),

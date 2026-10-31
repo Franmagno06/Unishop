@@ -30,6 +30,10 @@ export function createPrismaProfileRepository(db: Db): ProfileRepository {
       }
     },
 
+    async setPhoto(id, url) {
+      await db.user.update({ where: { id }, data: { photoUrl: url } })
+    },
+
     // RN-PER-06: a linha continua (pedidos pagos mantêm o histórico), mas sem dado pessoal. Os links
     // pendentes (recuperação de senha) somem para ninguém reabrir a conta.
     async anonymize(id) {
