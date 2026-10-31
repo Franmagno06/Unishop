@@ -13,3 +13,7 @@ export const listAdminUsersQuerySchema = paginationSchema.extend({
 })
 
 export const adminUserIdParamSchema = z.object({ id: z.coerce.number().int().positive() })
+
+// RN-ADM-04: o admin edita só o status da conta; qualquer outra chave dá 400 (strictObject).
+// `excluida` não entra: vem só da ação Excluir.
+export const updateAdminUserSchema = z.strictObject({ status: z.enum(['active', 'suspended']) })

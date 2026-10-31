@@ -2,12 +2,15 @@ import type { Prisma } from '../../generated/prisma/client'
 import type { Db } from '../../shared/database/prisma'
 import {
   ACCOUNT_STATUS_FROM_DB,
+  ACCOUNT_STATUS_TO_DB,
   LISTING_STATUS_FROM_DB,
   ROLE_FROM_DB,
 } from '../../shared/database/status-maps'
 import { escapeLike } from '../../shared/utils/like'
 import { decimalToCents } from '../../shared/utils/money'
 import { toSkipTake } from '../../shared/utils/pagination'
+import { writeAuditLog } from '../audit-logs/audit-logs.repository'
+import type { AuditWriter } from '../audit-logs/audit-logs.types'
 import type { AdminUserRecord, AdminUsersRepository, AdminUserRowRecord } from './admin-users.types'
 
 const userSelect = {
@@ -44,7 +47,22 @@ function toRecord(row: UserRow): AdminUserRecord {
   }
 }
 
-export function createPrismaAdminUsersRepository(db: Db): AdminUsersRepository {
+// Decisão 2, opção (a): FOR UPDATE nos admins ativos, em ordem de id, no início da transação.
+// Isolada para trocar por advisory lock se o gestor decidir. Duas transações que mexem em admins
+// esperam uma pela outra; ao seguir, o PostgreSQL relê as linhas e não vê mais o admin suspenso.
+async function lockActiveAdminIds(tx: Prisma.TransactionClient): Promise<number[]> {
+  const rows = await tx.$queryRaw<{ id: number }[]>`
+    SELECT id_usuario AS id FROM usuario
+     WHERE tipo_usuario = 'admin' AND status_conta = 'ativa'
+     ORDER BY id_usuario
+       FOR UPDATE`
+  return rows.map((r) => r.id)
+}
+
+export function createPrismaAdminUsersRepository(
+  db: Db,
+  { writeAuditLog: audit = writeAuditLog }: { writeAuditLog?: AuditWriter } = {},
+): AdminUsersRepository {
   return {
     // RN-ADM-02: só alunos ativos e suspensos; contagem de anúncios na mesma consulta (sem N+1).
     async listStudents(filters, pagination) {
@@ -134,6 +152,27 @@ export function createPrismaAdminUsersRepository(db: Db): AdminUsersRepository {
         listings,
         stats: { listings: listings.length, sales, purchases },
       }
+    },
+
+    async changeStatus(targetId, to, hooks) {
+      return db.$transaction(async (tx) => {
+        const activeAdminIds = await lockActiveAdminIds(tx)
+        const [target] = await tx.$queryRaw<{ id: number; role: string; status: string }[]>`
+          SELECT id_usuario AS id, tipo_usuario AS role, status_conta AS status
+            FROM usuario WHERE id_usuario = ${targetId} FOR UPDATE`
+        const role = target && ROLE_FROM_DB[target.role]
+        const status = target && ACCOUNT_STATUS_FROM_DB[target.status]
+        if (!target || !role || !status || status === 'deleted') return 'not_found' as const
+        const snapshot = { id: target.id, role, status, activeAdminIds }
+        hooks.guard(snapshot)
+        const row = await tx.user.update({
+          where: { id: targetId },
+          data: { accountStatus: ACCOUNT_STATUS_TO_DB[to] },
+          select: userSelect,
+        })
+        await audit(tx, hooks.audit(snapshot))
+        return toRecord(row)
+      })
     },
   }
 }

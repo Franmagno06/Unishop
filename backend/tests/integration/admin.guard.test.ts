@@ -8,7 +8,10 @@ import {
   createFakeProfiles,
   createFakeTokens,
   createFakeUsers,
+  unreachable,
 } from '../helpers/fakes'
+import type { AuditLogRepository } from '../../src/admin/audit-logs/audit-logs.types'
+import type { AdminUsersRepository } from '../../src/admin/users/admin-users.types'
 
 // Rotas admin cobertas pela proteção única. Cada fatia acrescenta as suas linhas aqui.
 const ADMIN_ROUTES: { method: 'get' | 'patch' | 'delete'; path: string }[] = [
@@ -17,6 +20,7 @@ const ADMIN_ROUTES: { method: 'get' | 'patch' | 'delete'; path: string }[] = [
   { method: 'get', path: '/api/v1/admin/users' },
   { method: 'get', path: '/api/v1/admin/users/stats' },
   { method: 'get', path: '/api/v1/admin/users/1' },
+  { method: 'patch', path: '/api/v1/admin/users/1' },
 ]
 
 let app: ReturnType<typeof createApp>
@@ -50,6 +54,11 @@ beforeEach(() => {
     tokens: createFakeTokens().repo,
     mail: createFakeMail().provider,
     oauth: createFakeOAuth().provider,
+    // Repositories que nunca devem ser chamados: a proteção (e a validação) barram antes.
+    admin: {
+      auditLogs: unreachable<AuditLogRepository>('auditLogs'),
+      users: unreachable<AdminUsersRepository>('adminUsers'),
+    },
   })
   const jwt = createJwt(process.env.JWT_SECRET!, '2h')
   student = { Authorization: `Bearer ${jwt.sign({ id: 1, role: 'student' })}` }
@@ -79,5 +88,14 @@ describe('proteção da área admin', () => {
     const res = await request(app).get('/api/v1/admin/ping-inexistente').set(admin)
     expect(res.status).toBe(404)
     expect(res.body.error.code).toBe('NOT_FOUND')
+  })
+
+  it('RN-ADM-04: PATCH com campo além de status dá 400 VALIDATION_ERROR (antes do service)', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/users/5')
+      .set(admin)
+      .send({ status: 'suspended', name: 'Outro' })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('VALIDATION_ERROR')
   })
 })

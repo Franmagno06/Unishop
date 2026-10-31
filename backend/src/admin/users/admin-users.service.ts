@@ -1,7 +1,8 @@
 import { NEW_USERS_WINDOW_DAYS, ONLINE_WINDOW_MS } from '../../config/constants'
-import { notFound } from '../../shared/errors/app-error'
+import { AppError, notFound } from '../../shared/errors/app-error'
 import { buildMeta, type Pagination } from '../../shared/utils/pagination'
-import { isOnline } from './admin-users.rules'
+import { buildAuditDetails } from '../audit-logs/audit-logs.details'
+import { assertAdminProtection, isOnline } from './admin-users.rules'
 import type {
   AdminUserDetail,
   AdminUserRecord,
@@ -49,6 +50,43 @@ export function createAdminUsersService({
     return { ...detail, user: toView(detail.user, now()) }
   }
 
-  return { list, stats, get }
+  // RN-ADM-04, 05, 10, 12. Validações na ordem da Decisão 2: alvo inexistente (404), a si mesmo,
+  // mesmo status (INVALID_STATE, Q5) e último admin ativo. As que dependem do estado rodam com as linhas travadas.
+  async function updateStatus(
+    actorId: number,
+    targetId: number,
+    to: 'active' | 'suspended',
+  ): Promise<AdminUserView> {
+    const action = to === 'suspended' ? 'suspend_user' : 'reactivate_user'
+    const result = await users.changeStatus(targetId, to, {
+      guard(target) {
+        if (to === 'suspended' && target.id === actorId) {
+          assertAdminProtection({ actorId, action: 'suspend', target, activeAdminIds: [] })
+        }
+        if (target.status === to) {
+          throw new AppError(409, 'INVALID_STATE', 'A conta já está nesse estado.')
+        }
+        if (to === 'suspended') {
+          assertAdminProtection({
+            actorId,
+            action: 'suspend',
+            target,
+            activeAdminIds: target.activeAdminIds,
+          })
+        }
+      },
+      audit: (target) => ({
+        adminId: actorId,
+        action,
+        entity: 'user',
+        entityId: targetId,
+        details: buildAuditDetails(action, { kind: 'status', from: target.status, to }),
+      }),
+    })
+    if (result === 'not_found') throw notFound('Usuário não encontrado.')
+    return toView(result, now())
+  }
+
+  return { list, stats, get, updateStatus }
 }
 export type AdminUsersService = ReturnType<typeof createAdminUsersService>

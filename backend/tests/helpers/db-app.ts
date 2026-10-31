@@ -1,4 +1,5 @@
 import { createPrismaAdminUsersRepository } from '../../src/admin/users/admin-users.repository'
+import type { AuditWriter } from '../../src/admin/audit-logs/audit-logs.types'
 import { createApp } from '../../src/app'
 import { createPrismaAuditLogRepository } from '../../src/admin/audit-logs/audit-logs.repository'
 import { createJwt } from '../../src/config/jwt'
@@ -15,7 +16,9 @@ import { testDb } from './db'
 
 // App completo com os repositories reais (Prisma) sobre o banco de teste. Os e-mails, o Google e o
 // storage continuam falsos. O token é assinado direto, sem passar pelo login (bcrypt custo 12 é lento).
-export function buildDbApp(overrides: { listings?: Partial<ListingRepository> } = {}) {
+export function buildDbApp(
+  overrides: { listings?: Partial<ListingRepository>; writeAuditLog?: AuditWriter } = {},
+) {
   const storage = createFakeStorage()
   const app = createApp({
     users: createPrismaUserRepository(testDb),
@@ -28,7 +31,9 @@ export function buildDbApp(overrides: { listings?: Partial<ListingRepository> } 
     storage: storage.provider,
     admin: {
       auditLogs: createPrismaAuditLogRepository(testDb),
-      users: createPrismaAdminUsersRepository(testDb),
+      users: createPrismaAdminUsersRepository(testDb, {
+        ...(overrides.writeAuditLog && { writeAuditLog: overrides.writeAuditLog }),
+      }),
     },
   })
   const jwt = createJwt(process.env.JWT_SECRET!, '2h')
