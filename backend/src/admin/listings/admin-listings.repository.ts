@@ -2,6 +2,11 @@ import type { Prisma } from '../../generated/prisma/client'
 import type { Db } from '../../shared/database/prisma'
 import { writeAuditLog } from '../audit-logs/audit-logs.repository'
 import type { AuditWriter } from '../audit-logs/audit-logs.types'
+import {
+  cancelUnpaidOrders,
+  hasOpenPaidOrders,
+  lockOpenOrders,
+} from '../../shared/database/open-orders'
 import { LISTING_STATUS_FROM_DB, LISTING_STATUS_TO_DB } from '../../shared/database/status-maps'
 import { escapeLike } from '../../shared/utils/like'
 import { decimalToCents } from '../../shared/utils/money'
@@ -138,6 +143,28 @@ export function createPrismaAdminListingsRepository(
     },
 
     findDetail: (id) => findAdminListingDetail(db, id),
+
+    // Ordem das travas: pedido antes de anuncio (a mesma da liquidação do pagamento).
+    async softDelete(id, hooks) {
+      return db.$transaction(async (tx) => {
+        const orders = await lockOpenOrders(tx, { listingId: id })
+        const [row] = await tx.$queryRaw<
+          { title: string; deleted: boolean; seller_name: string; seller_email: string }[]
+        >`
+          SELECT a.nome AS title, (a.excluido_em IS NOT NULL) AS deleted,
+                 u.nome AS seller_name, u.email AS seller_email
+            FROM anuncio a JOIN usuario u ON u.id_usuario = a.id_usuario
+           WHERE a.id_anuncio = ${id}
+             FOR UPDATE OF a`
+        if (!row || row.deleted) return 'not_found' as const
+        if (hasOpenPaidOrders(orders)) return 'blocked' as const
+        const now = new Date()
+        const cancelledOrderIds = await cancelUnpaidOrders(tx, orders, now)
+        await tx.listing.update({ where: { id }, data: { deletedAt: now } })
+        await audit(tx, hooks.audit({ cancelledOrderIds }))
+        return { seller: { name: row.seller_name, email: row.seller_email }, title: row.title }
+      })
+    },
 
     // RN-ADM-08, 10: anúncio travado, regra, troca e log na mesma transação.
     async changeStatus(id, to, hooks) {

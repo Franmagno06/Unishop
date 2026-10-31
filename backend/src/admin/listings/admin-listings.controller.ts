@@ -28,5 +28,11 @@ export function createAdminListingsController(service: AdminListingsService) {
       const { status } = req.body as z.output<typeof updateAdminListingSchema>
       res.json({ data: await service.updateStatus(req.user!.id, id, status) })
     },
+    // RN-ADM-09: sem corpo; a confirmação é do modal do frontend (Q6) e o motivo fica fora (Q1).
+    async remove(req: Request, res: Response) {
+      const { id } = adminListingIdParamSchema.parse(req.params)
+      await service.remove(req.user!.id, id)
+      res.status(204).end()
+    },
   }
 }

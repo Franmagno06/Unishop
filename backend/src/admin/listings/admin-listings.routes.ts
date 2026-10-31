@@ -12,5 +12,6 @@ export function createAdminListingsRoutes(service: AdminListingsService) {
   router.get('/stats', c.stats) // RN-ADM-07 (antes de /:id)
   router.get('/:id', c.get) // RF023
   router.patch('/:id', validateBody(updateAdminListingSchema), c.update) // RN-ADM-08, 10
+  router.delete('/:id', c.remove) // RN-ADM-09, 10, RN-NOT-02
   return router
 }

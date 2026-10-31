@@ -46,6 +46,15 @@ export interface AdminListingsRepository {
   /** null se não existe ou está excluído. */
   findDetail(id: number): Promise<AdminListingDetail | null>
   /**
+   * RN-ADM-09, 10: transação única: pedidos, depois o anúncio (nessa ordem); 'blocked' com pedido pago ou
+   * com retirada combinada; cancela Pendente e Em negociação; marca excluido_em e grava o log.
+   * Devolve o vendedor e o título para o aviso por e-mail (enviado depois do commit).
+   */
+  softDelete(
+    id: number,
+    hooks: { audit: (r: { cancelledOrderIds: number[] }) => AuditEntry },
+  ): Promise<'not_found' | 'blocked' | { seller: { name: string; email: string }; title: string }>
+  /**
    * RN-ADM-08, 10: trava o anúncio, chama `guard` (pode lançar e diz se limpa `vendido_em`), troca o
    * status e grava o log na mesma transação.
    */

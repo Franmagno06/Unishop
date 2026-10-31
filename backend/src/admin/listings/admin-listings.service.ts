@@ -1,14 +1,17 @@
-import { AppError, notFound } from '../../shared/errors/app-error'
+import { AppError, hasOpenPaidOrders, notFound } from '../../shared/errors/app-error'
 import { buildMeta, type Pagination } from '../../shared/utils/pagination'
+import type { MailProvider } from '../../shared/providers/mail/mail.provider'
 import { buildAuditDetails } from '../audit-logs/audit-logs.details'
 import { assertAdminCanTransition, startOfSalesMonth } from './admin-listings.rules'
 import type { AdminListingFilters, AdminListingsRepository } from './admin-listings.types'
 
 export function createAdminListingsService({
   listings,
+  mail,
   now = () => new Date(),
 }: {
   listings: AdminListingsRepository
+  mail: MailProvider
   now?: () => Date
 }) {
   // RN-ADM-07
@@ -53,6 +56,31 @@ export function createAdminListingsService({
     return result
   }
 
-  return { list, stats, get, updateStatus }
+  // RN-ADM-09, 10, RN-NOT-02: o e-mail sai depois do commit; falha no envio não desfaz a exclusão
+  // (e o log de aplicação leva só o id do anúncio, nunca e-mail nem nome). Etapa 10: waitUntil.
+  async function remove(actorId: number, id: number): Promise<void> {
+    const result = await listings.softDelete(id, {
+      audit: ({ cancelledOrderIds }) => ({
+        adminId: actorId,
+        action: 'delete_listing',
+        entity: 'listing',
+        entityId: id,
+        details: buildAuditDetails('delete_listing', { kind: 'delete', cancelledOrderIds }),
+      }),
+    })
+    if (result === 'not_found') throw notFound('Produto não encontrado.')
+    if (result === 'blocked') {
+      throw hasOpenPaidOrders('Há pedido pago ou com retirada combinada em aberto.')
+    }
+    await mail
+      .sendListingRemoved({
+        to: result.seller.email,
+        name: result.seller.name,
+        listingTitle: result.title,
+      })
+      .catch(() => console.error({ event: 'listing_removed_mail_failed', listingId: id }))
+  }
+
+  return { list, stats, get, updateStatus, remove }
 }
 export type AdminListingsService = ReturnType<typeof createAdminListingsService>

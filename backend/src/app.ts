@@ -143,6 +143,7 @@ export function createApp(deps?: AppDeps) {
             listings: createAdminListingsRoutes(
               createAdminListingsService({
                 listings: deps.admin.listings,
+                mail: deps.mail,
                 ...(deps.now && { now: deps.now }),
               }),
             ),
