@@ -1,5 +1,6 @@
 import type { Prisma } from '../../generated/prisma/client'
 import type { Db } from '../../shared/database/prisma'
+import { lockActiveAdminIds } from '../users/admin-users.repository'
 import { writeAuditLog } from '../audit-logs/audit-logs.repository'
 import type { AuditWriter } from '../audit-logs/audit-logs.types'
 import {
@@ -147,6 +148,7 @@ export function createPrismaAdminListingsRepository(
     // Ordem das travas: pedido antes de anuncio (a mesma da liquidação do pagamento).
     async softDelete(id, hooks) {
       return db.$transaction(async (tx) => {
+        hooks.guardActor(await lockActiveAdminIds(tx)) // usuario antes de pedido e anuncio
         const orders = await lockOpenOrders(tx, { listingId: id })
         const [row] = await tx.$queryRaw<
           { title: string; deleted: boolean; seller_name: string; seller_email: string }[]
@@ -169,6 +171,7 @@ export function createPrismaAdminListingsRepository(
     // RN-ADM-08, 10: anúncio travado, regra, troca e log na mesma transação.
     async changeStatus(id, to, hooks) {
       return db.$transaction(async (tx) => {
+        hooks.guardActor(await lockActiveAdminIds(tx)) // usuario antes de anuncio
         const [row] = await tx.$queryRaw<{ status: string; quantity: number; deleted: boolean }[]>`
           SELECT status, quantidade AS quantity, (excluido_em IS NOT NULL) AS deleted
             FROM anuncio WHERE id_anuncio = ${id} FOR UPDATE`

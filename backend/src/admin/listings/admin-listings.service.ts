@@ -1,6 +1,7 @@
 import { AppError, hasOpenPaidOrders, notFound } from '../../shared/errors/app-error'
 import { buildMeta, type Pagination } from '../../shared/utils/pagination'
 import type { MailProvider } from '../../shared/providers/mail/mail.provider'
+import { assertActorStillActive } from '../users/admin-users.rules'
 import { buildAuditDetails } from '../audit-logs/audit-logs.details'
 import { assertAdminCanTransition, startOfSalesMonth } from './admin-listings.rules'
 import type { AdminListingFilters, AdminListingsRepository } from './admin-listings.types'
@@ -35,6 +36,8 @@ export function createAdminListingsService({
   // RN-ADM-08, 10: mesmo status dá 409 (Q5); a troca em si segue a Decisão 4.
   async function updateStatus(actorId: number, id: number, to: 'active' | 'paused') {
     const result = await listings.changeStatus(id, to, {
+      // RN-ADM-12: o autor continua admin ativo dentro da transação (mesma regra dos usuários).
+      guardActor: (activeAdminIds) => assertActorStillActive(actorId, activeAdminIds),
       guard(listing) {
         if (listing.status === to) {
           throw new AppError(409, 'INVALID_STATE', 'O anúncio já está nesse estado.')
@@ -60,6 +63,7 @@ export function createAdminListingsService({
   // (e o log de aplicação leva só o id do anúncio, nunca e-mail nem nome). Etapa 10: waitUntil.
   async function remove(actorId: number, id: number): Promise<void> {
     const result = await listings.softDelete(id, {
+      guardActor: (activeAdminIds) => assertActorStillActive(actorId, activeAdminIds),
       audit: ({ cancelledOrderIds }) => ({
         adminId: actorId,
         action: 'delete_listing',

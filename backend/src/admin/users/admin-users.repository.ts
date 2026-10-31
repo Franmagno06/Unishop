@@ -56,7 +56,7 @@ function toRecord(row: UserRow): AdminUserRecord {
 // Decisão 2, opção (a): FOR UPDATE nos admins ativos, em ordem de id, no início da transação.
 // Isolada para trocar por advisory lock se o gestor decidir. Duas transações que mexem em admins
 // esperam uma pela outra; ao seguir, o PostgreSQL relê as linhas e não vê mais o admin suspenso.
-async function lockActiveAdminIds(tx: Prisma.TransactionClient): Promise<number[]> {
+export async function lockActiveAdminIds(tx: Prisma.TransactionClient): Promise<number[]> {
   const rows = await tx.$queryRaw<{ id: number }[]>`
     SELECT id_usuario AS id FROM usuario
      WHERE tipo_usuario = 'admin' AND status_conta = 'ativa'

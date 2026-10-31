@@ -1,3 +1,5 @@
+import { createAdminListingsService } from '../../src/admin/listings/admin-listings.service'
+import { createPrismaAdminListingsRepository } from '../../src/admin/listings/admin-listings.repository'
 import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { buildDbApp } from '../helpers/db-app'
@@ -239,6 +241,21 @@ describe('PATCH /admin/listings/:id', () => {
       .send({ status: 'paused' })
       .set(failing.auth({ id: admin.id, role: 'admin' }))
     expect(res.status).toBe(500)
+    expect((await rowOf(l.id)).status).toBe('ativo')
+    expect(await testDb.auditLog.count()).toBe(0)
+  })
+
+  it('RN-ADM-12: autor suspenso depois do authenticate é recusado na transação (403) e o status não muda', async () => {
+    const author = await createUser({ role: 'admin', accountStatus: 'suspensa' })
+    const l = await createListing(seller.id)
+    const service = createAdminListingsService({
+      listings: createPrismaAdminListingsRepository(testDb),
+      mail: { sendPasswordReset: async () => {}, sendListingRemoved: async () => {} },
+    })
+    await expect(service.updateStatus(author.id, l.id, 'paused')).rejects.toMatchObject({
+      status: 403,
+      code: 'ACCOUNT_SUSPENDED',
+    })
     expect((await rowOf(l.id)).status).toBe('ativo')
     expect(await testDb.auditLog.count()).toBe(0)
   })

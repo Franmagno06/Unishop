@@ -1,3 +1,5 @@
+import { createAdminListingsService } from '../../src/admin/listings/admin-listings.service'
+import { createPrismaAdminListingsRepository } from '../../src/admin/listings/admin-listings.repository'
 import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { buildDbApp } from '../helpers/db-app'
@@ -141,6 +143,22 @@ describe('DELETE /admin/listings/:id', () => {
     expect((await rowOf(l.id)).deletedAt).toBeNull()
     expect(await orderStatus(order.id)).toBe('em_negociacao')
     expect(c.mail.listingRemoved).toHaveLength(0)
+  })
+
+  it('RN-ADM-12: autor suspenso depois do authenticate é recusado na transação (403) e nada é excluído', async () => {
+    const author = await createUser({ role: 'admin', accountStatus: 'suspensa' })
+    const l = await createListing(seller.id)
+    const service = createAdminListingsService({
+      listings: createPrismaAdminListingsRepository(testDb),
+      mail: ctx.mail.provider,
+    })
+    await expect(service.remove(author.id, l.id)).rejects.toMatchObject({
+      status: 403,
+      code: 'ACCOUNT_SUSPENDED',
+    })
+    expect((await rowOf(l.id)).deletedAt).toBeNull()
+    expect(await testDb.auditLog.count()).toBe(0)
+    expect(ctx.mail.listingRemoved).toHaveLength(0)
   })
 
   it('DELETE de produto já excluído ou inexistente dá 404; id inválido dá 400', async () => {

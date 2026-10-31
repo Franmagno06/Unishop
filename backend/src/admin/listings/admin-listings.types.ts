@@ -52,7 +52,10 @@ export interface AdminListingsRepository {
    */
   softDelete(
     id: number,
-    hooks: { audit: (r: { cancelledOrderIds: number[] }) => AuditEntry },
+    hooks: {
+      guardActor: (activeAdminIds: number[]) => void
+      audit: (r: { cancelledOrderIds: number[] }) => AuditEntry
+    },
   ): Promise<'not_found' | 'blocked' | { seller: { name: string; email: string }; title: string }>
   /**
    * RN-ADM-08, 10: trava o anúncio, chama `guard` (pode lançar e diz se limpa `vendido_em`), troca o
@@ -62,6 +65,7 @@ export interface AdminListingsRepository {
     id: number,
     to: 'active' | 'paused',
     hooks: {
+      guardActor: (activeAdminIds: number[]) => void
       guard: (s: ListingSnapshot) => { clearSoldAt: boolean }
       audit: (s: ListingSnapshot) => AuditEntry
     },
