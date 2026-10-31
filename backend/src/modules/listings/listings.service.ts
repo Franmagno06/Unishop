@@ -173,7 +173,9 @@ export function createListingsService({ listings, users, storage }: ListingsDeps
   // as imagens ficam, porque o pedido congela a URL da imagem (RN-PED-01).
   async function remove(userId: number, id: number) {
     await loadOwned(userId, id)
-    if ((await listings.softDelete(id)) === 'blocked') {
+    const result = await listings.softDelete(id)
+    if (result === 'not_found') throw notFound('Anúncio não encontrado.')
+    if (result === 'blocked') {
       throw hasOpenPaidOrders(
         'Há pedido pago ou com retirada combinada em aberto. Conclua a entrega antes de excluir.',
       )

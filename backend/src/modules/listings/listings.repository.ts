@@ -191,7 +191,9 @@ export function createPrismaListingRepository(db: Db): ListingRepository {
     async softDelete(id) {
       return db.$transaction(async (tx) => {
         const orders = await lockOpenOrders(tx, { listingId: id })
-        await lockListing(tx, id)
+        const [row] = await tx.$queryRaw<{ deleted: boolean }[]>`
+          SELECT (excluido_em IS NOT NULL) AS deleted FROM anuncio WHERE id_anuncio = ${id} FOR UPDATE`
+        if (!row || row.deleted) return 'not_found' as const // outra requisição excluiu antes
         if (hasOpenPaidOrders(orders)) return 'blocked' as const
         const now = new Date()
         await cancelUnpaidOrders(tx, orders, now)

@@ -1,5 +1,6 @@
 import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { createPrismaListingRepository } from '../../src/modules/listings/listings.repository'
 import { buildDbApp } from '../helpers/db-app'
 import { createListing, createOrder, createUser, resetDb, testDb } from '../helpers/db'
 
@@ -279,6 +280,21 @@ describe('DELETE /listings/:id', () => {
     await createOrder(listing.id, other.id, seller.id, { status: 'concluido' })
     await createOrder(listing.id, admin.id, seller.id, { status: 'cancelado' })
     expect((await call('delete', `/${listing.id}`)).status).toBe(204)
+  })
+
+  it('RN-ANU-09: exclusão concorrente — já excluído depois da leitura dá 404 e não sobrescreve excluido_em', async () => {
+    const listing = await createListing(seller.id)
+    const stale = (await createPrismaListingRepository(testDb).findById(listing.id))!
+    const first = new Date('2026-10-01T10:00:00.000Z')
+    await testDb.listing.update({ where: { id: listing.id }, data: { deletedAt: first } })
+    // A leitura do service ainda enxerga o anúncio vivo (outra requisição excluiu logo depois dela).
+    const racing = buildDbApp({ listings: { findById: async () => stale } })
+    const res = await request(racing.app)
+      .delete(`/api/v1/listings/${listing.id}`)
+      .set(racing.auth(seller))
+    expect(res.status).toBe(404)
+    const row = await testDb.listing.findUniqueOrThrow({ where: { id: listing.id } })
+    expect(row.deletedAt?.toISOString()).toBe(first.toISOString())
   })
 
   it('RN-ANU-09: excluir cancela os pedidos Pendente e Em negociação do anúncio', async () => {
