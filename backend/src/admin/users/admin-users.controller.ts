@@ -28,5 +28,11 @@ export function createAdminUsersController(service: AdminUsersService) {
       const { status } = req.body as z.output<typeof updateAdminUserSchema>
       res.json({ data: await service.updateStatus(req.user!.id, id, status) })
     },
+    // RN-ADM-06: sem corpo; a confirmação é do modal do frontend (Q6).
+    async remove(req: Request, res: Response) {
+      const { id } = adminUserIdParamSchema.parse(req.params)
+      await service.deleteUser(req.user!.id, id)
+      res.status(204).end()
+    },
   }
 }

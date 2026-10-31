@@ -6,12 +6,18 @@ import {
   LISTING_STATUS_FROM_DB,
   ROLE_FROM_DB,
 } from '../../shared/database/status-maps'
+import { anonymizeAccountTx } from '../../shared/database/account-anonymization'
 import { escapeLike } from '../../shared/utils/like'
 import { decimalToCents } from '../../shared/utils/money'
 import { toSkipTake } from '../../shared/utils/pagination'
 import { writeAuditLog } from '../audit-logs/audit-logs.repository'
 import type { AuditWriter } from '../audit-logs/audit-logs.types'
-import type { AdminUserRecord, AdminUsersRepository, AdminUserRowRecord } from './admin-users.types'
+import type {
+  AdminUserRecord,
+  AdminUsersRepository,
+  AdminUserRowRecord,
+  TargetSnapshot,
+} from './admin-users.types'
 
 const userSelect = {
   id: true,
@@ -57,6 +63,21 @@ async function lockActiveAdminIds(tx: Prisma.TransactionClient): Promise<number[
      ORDER BY id_usuario
        FOR UPDATE`
   return rows.map((r) => r.id)
+}
+
+// Ordem das travas: admins ativos (por id) e depois o alvo. Devolve o estado lido com tudo travado.
+async function lockTarget(
+  tx: Prisma.TransactionClient,
+  targetId: number,
+): Promise<TargetSnapshot | 'not_found'> {
+  const activeAdminIds = await lockActiveAdminIds(tx)
+  const [target] = await tx.$queryRaw<{ id: number; role: string; status: string }[]>`
+    SELECT id_usuario AS id, tipo_usuario AS role, status_conta AS status
+      FROM usuario WHERE id_usuario = ${targetId} FOR UPDATE`
+  const role = target && ROLE_FROM_DB[target.role]
+  const status = target && ACCOUNT_STATUS_FROM_DB[target.status]
+  if (!target || !role || !status || status === 'deleted') return 'not_found'
+  return { id: target.id, role, status, activeAdminIds }
 }
 
 export function createPrismaAdminUsersRepository(
@@ -154,16 +175,22 @@ export function createPrismaAdminUsersRepository(
       }
     },
 
+    async deleteUser(targetId, hooks) {
+      return db.$transaction(async (tx) => {
+        const target = await lockTarget(tx, targetId)
+        if (target === 'not_found') return 'not_found' as const
+        hooks.guard(target)
+        const result = await anonymizeAccountTx(tx, targetId, new Date())
+        if (result.status !== 'ok') return result.status
+        await audit(tx, hooks.audit(target, result))
+        return 'ok' as const
+      })
+    },
+
     async changeStatus(targetId, to, hooks) {
       return db.$transaction(async (tx) => {
-        const activeAdminIds = await lockActiveAdminIds(tx)
-        const [target] = await tx.$queryRaw<{ id: number; role: string; status: string }[]>`
-          SELECT id_usuario AS id, tipo_usuario AS role, status_conta AS status
-            FROM usuario WHERE id_usuario = ${targetId} FOR UPDATE`
-        const role = target && ROLE_FROM_DB[target.role]
-        const status = target && ACCOUNT_STATUS_FROM_DB[target.status]
-        if (!target || !role || !status || status === 'deleted') return 'not_found' as const
-        const snapshot = { id: target.id, role, status, activeAdminIds }
+        const snapshot = await lockTarget(tx, targetId)
+        if (snapshot === 'not_found') return 'not_found' as const
         hooks.guard(snapshot)
         const row = await tx.user.update({
           where: { id: targetId },

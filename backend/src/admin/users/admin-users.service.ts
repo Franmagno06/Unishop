@@ -1,5 +1,5 @@
 import { NEW_USERS_WINDOW_DAYS, ONLINE_WINDOW_MS } from '../../config/constants'
-import { AppError, notFound } from '../../shared/errors/app-error'
+import { AppError, hasOpenPaidOrders, notFound } from '../../shared/errors/app-error'
 import { buildMeta, type Pagination } from '../../shared/utils/pagination'
 import { buildAuditDetails } from '../audit-logs/audit-logs.details'
 import { assertActorStillActive, assertAdminProtection, isOnline } from './admin-users.rules'
@@ -88,6 +88,32 @@ export function createAdminUsersService({
     return toView(result, now())
   }
 
-  return { list, stats, get, updateStatus }
+  // RN-ADM-06, 10, 12: mesma proteção do PATCH (autor ainda ativo; nunca a si mesmo; último admin ativo).
+  async function deleteUser(actorId: number, targetId: number): Promise<void> {
+    const result = await users.deleteUser(targetId, {
+      guard(target) {
+        assertActorStillActive(actorId, target.activeAdminIds)
+        assertAdminProtection({
+          actorId,
+          action: 'delete',
+          target,
+          activeAdminIds: target.activeAdminIds,
+        })
+      },
+      audit: (_target, r) => ({
+        adminId: actorId,
+        action: 'delete_user',
+        entity: 'user',
+        entityId: targetId,
+        details: buildAuditDetails('delete_user', { kind: 'delete', ...r }),
+      }),
+    })
+    if (result === 'not_found') throw notFound('Usuário não encontrado.')
+    if (result === 'blocked') {
+      throw hasOpenPaidOrders('Há pedido pago ou com retirada combinada em aberto.')
+    }
+  }
+
+  return { list, stats, get, updateStatus, deleteUser }
 }
 export type AdminUsersService = ReturnType<typeof createAdminUsersService>

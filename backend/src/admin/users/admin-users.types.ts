@@ -60,4 +60,18 @@ export interface AdminUsersRepository {
     to: 'active' | 'suspended',
     hooks: { guard: (s: TargetSnapshot) => void; audit: (s: TargetSnapshot) => AuditEntry },
   ): Promise<'not_found' | AdminUserRecord>
+  /**
+   * RN-ADM-06, 10, 12: transação única: trava admins ativos e alvo, guard, anonimiza (como RN-PER-06) e
+   * grava o log. 'blocked' com pedido pago ou com retirada combinada em aberto (nada muda, sem log).
+   */
+  deleteUser(
+    targetId: number,
+    hooks: {
+      guard: (s: TargetSnapshot) => void
+      audit: (
+        s: TargetSnapshot,
+        r: { cancelledOrderIds: number[]; deletedListings: number },
+      ) => AuditEntry
+    },
+  ): Promise<'not_found' | 'blocked' | 'ok'>
 }

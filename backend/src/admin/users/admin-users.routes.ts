@@ -12,5 +12,6 @@ export function createAdminUsersRoutes(service: AdminUsersService) {
   router.get('/stats', c.stats) // RN-ADM-02 (antes de /:id)
   router.get('/:id', c.get) // RN-ADM-04
   router.patch('/:id', validateBody(updateAdminUserSchema), c.update) // RN-ADM-04, 05, 10, 12
+  router.delete('/:id', c.remove) // RN-ADM-06, 10, 12
   return router
 }

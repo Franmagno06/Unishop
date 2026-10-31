@@ -195,6 +195,7 @@ export function createFakeProfiles(userRows: UserRecord[]) {
         photoUrl: null,
         status: 'deleted',
       })
+      return 'ok'
     },
   }
   return { repo, listings }
