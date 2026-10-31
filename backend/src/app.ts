@@ -27,6 +27,10 @@ import { createUsersRoutes } from './modules/users/users.routes'
 import { createUsersService } from './modules/users/users.service'
 import type { ProfileRepository } from './modules/users/users.types'
 import { createAdminRoutes } from './admin/admin.routes'
+import { createPrismaAdminUsersRepository } from './admin/users/admin-users.repository'
+import { createAdminUsersRoutes } from './admin/users/admin-users.routes'
+import { createAdminUsersService } from './admin/users/admin-users.service'
+import type { AdminUsersRepository } from './admin/users/admin-users.types'
 import { createPrismaAuditLogRepository } from './admin/audit-logs/audit-logs.repository'
 import { createAuditLogsRoutes } from './admin/audit-logs/audit-logs.routes'
 import { createAuditLogsService } from './admin/audit-logs/audit-logs.service'
@@ -44,6 +48,7 @@ import type { StorageProvider } from './shared/providers/storage/storage.provide
 /** Repositories da área admin (src/admin/). As fatias seguintes acrescentam `users` e `listings`. */
 export type AdminDeps = {
   auditLogs: AuditLogRepository
+  users?: AdminUsersRepository
 }
 
 export type AppDeps = {
@@ -129,6 +134,14 @@ export function createApp(deps?: AppDeps) {
           auditLogs: createAuditLogsRoutes(
             createAuditLogsService({ auditLogs: deps.admin.auditLogs }),
           ),
+          ...(deps.admin.users && {
+            users: createAdminUsersRoutes(
+              createAdminUsersService({
+                users: deps.admin.users,
+                ...(deps.now && { now: deps.now }),
+              }),
+            ),
+          }),
         }),
       }),
     )
@@ -186,7 +199,10 @@ export const app = createApp({
   categories: createPrismaCategoryRepository(prisma),
   listings: createPrismaListingRepository(prisma),
   storage: pickStorageProvider(),
-  admin: { auditLogs: createPrismaAuditLogRepository(prisma) },
+  admin: {
+    auditLogs: createPrismaAuditLogRepository(prisma),
+    users: createPrismaAdminUsersRepository(prisma),
+  },
   uploadsDir: UPLOADS_DIR,
 })
 export default app // a Vercel usa este export; nada aqui chama listen

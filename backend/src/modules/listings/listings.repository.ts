@@ -1,6 +1,8 @@
 import type { Prisma } from '../../generated/prisma/client'
 import { listingVisibleWhere } from '../../shared/database/listing-visibility'
 import type { Db } from '../../shared/database/prisma'
+import { LISTING_STATUS_FROM_DB, LISTING_STATUS_TO_DB } from '../../shared/database/status-maps'
+import { escapeLike } from '../../shared/utils/like'
 import { centsToDecimal, decimalToCents } from '../../shared/utils/money'
 import { toSkipTake } from '../../shared/utils/pagination'
 import type {
@@ -8,21 +10,11 @@ import type {
   ListingDetailRecord,
   ListingRepository,
   ListingSort,
-  ListingStatus,
   ListingSummaryRecord,
 } from './listings.types'
 
-const STATUS: Record<string, ListingStatus> = {
-  ativo: 'active',
-  pausado: 'paused',
-  vendido: 'sold',
-}
-
-const DB_STATUS: Record<ListingStatus, string> = {
-  active: 'ativo',
-  paused: 'pausado',
-  sold: 'vendido',
-}
+const STATUS = LISTING_STATUS_FROM_DB
+const DB_STATUS = LISTING_STATUS_TO_DB
 
 const ORDER: Record<ListingSort, Prisma.ListingOrderByWithRelationInput[]> = {
   recent: [{ publishedAt: 'desc' }, { id: 'desc' }],
@@ -51,9 +43,6 @@ const toSummary = (row: SummaryRow): ListingSummaryRecord => ({
   imageUrl: row.images[0]?.url ?? null,
   publishedAt: row.publishedAt,
 })
-
-// A barra invertida, % e _ têm sentido especial no LIKE: o texto do aluno entra como texto comum.
-const escapeLike = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`)
 
 function whereOf(filters: ListFilters): Prisma.ListingWhereInput {
   const { categoryId, search, minPriceCents, maxPriceCents } = filters

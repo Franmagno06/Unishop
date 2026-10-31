@@ -14,6 +14,9 @@ import {
 const ADMIN_ROUTES: { method: 'get' | 'patch' | 'delete'; path: string }[] = [
   { method: 'get', path: '/api/v1/admin/ping-inexistente' },
   { method: 'get', path: '/api/v1/admin/audit-logs' },
+  { method: 'get', path: '/api/v1/admin/users' },
+  { method: 'get', path: '/api/v1/admin/users/stats' },
+  { method: 'get', path: '/api/v1/admin/users/1' },
 ]
 
 let app: ReturnType<typeof createApp>

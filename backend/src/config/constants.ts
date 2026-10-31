@@ -31,3 +31,7 @@ export const IMAGE_LIMITS = {
   maxPerListing: 5,
   mimeTypes: ['image/jpeg', 'image/png'],
 } as const
+
+// Área admin: "logado agora" = atividade nos últimos 5 minutos (RN-ADM-03); "novos" = últimos 7 dias (RN-ADM-02).
+export const ONLINE_WINDOW_MS = 5 * 60_000
+export const NEW_USERS_WINDOW_DAYS = 7
