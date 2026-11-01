@@ -24,6 +24,12 @@
       "prompt": "preciso decidir se a confirmacao de email por link e a tela de notificacoes entram na primeira entrega",
       "expected_output": "Seção 8: ambas ficam para depois do MVP (confirmação atrás da chave EMAIL_VERIFICATION_REQUIRED; notificação só por e-mail, sem tela). Login com Google entra no MVP; Apple fora.",
       "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "qual o prazo do link de troca de email e o admin pode trocar o proprio email?",
+      "expected_output": "Link de 30 minutos e uso único (D3, por analogia à RN-ACE-10; RN-PER-02 não define prazo, registrado em Regras §6); aluno e admin podem trocar (D6), sempre @edu.unifor.br e e-mail único; sessões continuam, o endereço antigo não é avisado e senha atual/revogação de sessão não estão definidos.",
+      "files": []
     }
   ]
 }

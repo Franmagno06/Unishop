@@ -3,7 +3,7 @@ name: unishop-rules
 description: Regras de negócio do Unishop (códigos RN-ACE, RN-PER, RN-CAT, RN-ANU, RN-EST, RN-PED, RN-PAG, RN-NOT, RN-ADM), ciclo de vida de anúncio, pedido e conta, permissões por ator (visitante, aluno, admin), escopo do MVP, limites de campos, itens proibidos e desvios do PDF. Use SEMPRE que o usuário perguntar "qual é a regra", "pode ou não pode", "isso entra no MVP", "qual o limite do campo", citar um RF, RNF ou RN-XXX-nn, escrever critério de aceite ou teste de regra, decidir comportamento de tela ou rota que a documentação não mostra, ou conferir se um documento contradiz as regras, mesmo que não diga "regra de negócio" ou "Unishop".
 metadata:
   author: unishop-team
-  version: "0.1.2"
+  version: "0.1.3"
 ---
 
 # Regras de negócio do Unishop
@@ -85,3 +85,8 @@ Imagem de 4 MB (RF015.2, RF024.4, RNF005; confirmado 16/10) · produção com cr
 ## Skills que complementam esta
 
 `unishop-backend` (como o servidor aplica), `unishop-frontend` (como a tela mostra), `unishop-database` (o que o banco garante), `unishop-api` (serviços externos), `unishop-deploy` (produção).
+
+## Atualização de 01/11/2026 (Regras v0.4.3)
+
+- Troca de e-mail (RN-PER-02), decisões da seção 6: link de **30 min** (D3), sessões continuam, `google_sub` mantido, `verificacao = true`, outros links pendentes invalidados, endereço antigo não avisado (D5); aluno e admin podem trocar (D6). Senha atual e revogação de sessões: não definidos.
+- Filtro por forma de contato da listagem (`contact`) e "local no campus": **sem regra** (D9, pendência 7 das Regras §11); a forma de negociação nasce no pedido.
