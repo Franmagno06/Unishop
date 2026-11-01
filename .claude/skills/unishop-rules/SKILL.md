@@ -3,12 +3,12 @@ name: unishop-rules
 description: Regras de negócio do Unishop (códigos RN-ACE, RN-PER, RN-CAT, RN-ANU, RN-EST, RN-PED, RN-PAG, RN-NOT, RN-ADM), ciclo de vida de anúncio, pedido e conta, permissões por ator (visitante, aluno, admin), escopo do MVP, limites de campos, itens proibidos e desvios do PDF. Use SEMPRE que o usuário perguntar "qual é a regra", "pode ou não pode", "isso entra no MVP", "qual o limite do campo", citar um RF, RNF ou RN-XXX-nn, escrever critério de aceite ou teste de regra, decidir comportamento de tela ou rota que a documentação não mostra, ou conferir se um documento contradiz as regras, mesmo que não diga "regra de negócio" ou "Unishop".
 metadata:
   author: unishop-team
-  version: "0.1.1"
+  version: "0.1.2"
 ---
 
 # Regras de negócio do Unishop
 
-Índice operacional. Fonte completa e autoritativa: [`docs/regras-de-negócio/regras-de-negócio.md`](../../../docs/regras-de-negócio/regras-de-negócio.md) (v0.4.1, de 27/10/2026; consolidação: Francisco). Este arquivo **não lista as 88 regras**: aponta onde está cada uma e guarda o que mais se consulta. Para o texto exato de uma regra, abra o documento na seção indicada.
+Índice operacional. Fonte completa e autoritativa: [`docs/regras-de-negócio/regras-de-negócio.md`](../../../docs/regras-de-negócio/regras-de-negócio.md) (v0.4.2, de 01/11/2026; consolidação: Francisco). Este arquivo **não lista as 88 regras**: aponta onde está cada uma e guarda o que mais se consulta. Para o texto exato de uma regra, abra o documento na seção indicada.
 
 Se uma regra não estiver no documento, no PDF (`Trabalho Desenvolvimento Web 2026.pdf`) ou nas decisões do grupo (CLAUDE.md), diga que **não está definida**; não invente. Quando duas fontes discordam: PDF > decisões do grupo > Regras de Negócio > Banco de Dados > Backend e Frontend > API e Deploy > Figma; corrige-se o de menor precedência.
 

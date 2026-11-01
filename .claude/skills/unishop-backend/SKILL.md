@@ -3,12 +3,12 @@ name: unishop-backend
 description: Regras e arquitetura do backend do Unishop (Node.js + Express + TypeScript, Prisma, PostgreSQL, JWT). Use SEMPRE que o usuário criar, editar ou revisar rotas, controllers, services, repositories, middlewares, providers, jobs, autenticação (e-mail e senha, Google, troca de senha), pagamentos (cartão, Pix, webhook, estorno), estoque, pedidos, anúncios, imagens, área admin, logs de auditoria ou erros da API do Unishop, mesmo que não diga "backend" ou "Unishop" explicitamente.
 metadata:
   author: unishop-team
-  version: "0.3.1"
+  version: "0.3.2"
 ---
 
 # Backend do Unishop
 
-Resumo operacional da API REST do Unishop (`/api/v1`). Fonte completa e autoritativa: [`docs/backend/backend.md`](../../../docs/backend/backend.md) (v0.3, de 16/10/2026, baseada nas Regras de Negócio v0.4 e no Banco de Dados v0.2). Em dúvida, releia a seção relevante do doc; este arquivo não o substitui. A seção 9 do doc lista todas as rotas e a seção 20 mapeia cada `RN-XXX-nn` ao arquivo onde ela deve morar.
+Resumo operacional da API REST do Unishop (`/api/v1`). Fonte completa e autoritativa: [`docs/backend/backend.md`](../../../docs/backend/backend.md) (v0.3.1, de 01/11/2026, baseada nas Regras de Negócio v0.4 e no Banco de Dados v0.2). Em dúvida, releia a seção relevante do doc; este arquivo não o substitui. A seção 9 do doc lista todas as rotas e a seção 20 mapeia cada `RN-XXX-nn` ao arquivo onde ela deve morar.
 
 Outras fontes: regras e limites de campos → skill `unishop-rules` ([`docs/regras-de-negócio/regras-de-negócio.md`](../../../docs/regras-de-negócio/regras-de-negócio.md)); tabelas, colunas e `@map` do Prisma → skill `unishop-database` ([`docs/BancoDeDados/bd.md`](../../../docs/BancoDeDados/bd.md)); providers, segredos e webhook → `unishop-api`; Vercel + Supabase → `unishop-deploy`.
 

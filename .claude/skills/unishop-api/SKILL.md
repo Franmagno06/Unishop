@@ -3,12 +3,12 @@ name: unishop-api
 description: APIs externas e segurança do Unishop (Google Identity, Mercado Pago, Resend/Mailtrap, Cloudinary, WhatsApp wa.me, Turnstile, Supabase (só o banco), Sentry, UptimeRobot, GitHub Actions), modelo "backend-cofre", providers, webhook assinado, segredos e variáveis de ambiente. Use SEMPRE que o usuário integrar, trocar, testar ou revisar qualquer serviço externo, mexer em `shared/providers`, `config/env.ts`, `.env`, chaves, tokens, webhook, assinatura HMAC, idempotência, estorno, timeout/retry, drivers mock, travas de produção, custos e limites gratuitos ou ADRs, mesmo que não diga "API externa" ou "Unishop".
 metadata:
   author: unishop-team
-  version: "0.3.1"
+  version: "0.3.2"
 ---
 
 # APIs externas e segurança do Unishop
 
-Resumo operacional. Fonte completa e autoritativa: [`docs/api/api.md`](../../../docs/api/api.md) (v0.3, de 16/10/2026, alinhada às Regras v0.4, Banco v0.2, Backend v0.3 e Deploy v0.3). Em dúvida, releia a seção citada; este arquivo não a substitui. O **contrato da API própria** (`/api/v1`) é outro assunto: rotas e regras estão no `unishop-backend`, e o `openapi.yaml` ainda não existe.
+Resumo operacional. Fonte completa e autoritativa: [`docs/api/api.md`](../../../docs/api/api.md) (v0.3.1, de 01/11/2026, alinhada às Regras v0.4.2, Banco v0.2.1, Backend v0.3.1 e Deploy v0.3.1). Em dúvida, releia a seção citada; este arquivo não a substitui. O **contrato da API própria** (`/api/v1`) é outro assunto: rotas e regras estão no `unishop-backend`, e o `openapi.yaml` ainda não existe.
 
 Prioridade entre fontes (CLAUDE.md): PDF do trabalho > decisões do grupo > `docs/` > Figma. Se algo não está documentado, diga que não está definido; não invente campo, rota nem regra. Os limites gratuitos do `api.md` foram conferidos em 16/10/2026 e mudam: confirme na página do provedor antes de depender deles.
 
