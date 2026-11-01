@@ -24,9 +24,15 @@ export function createAdminUsersService({
   })
 
   // RN-ADM-02, 03
-  async function list(filters: { search?: string | undefined }, pagination: Pagination) {
+  async function list(
+    filters: { search?: string | undefined; presence?: 'all' | 'online' | 'offline' | undefined },
+    pagination: Pagination,
+  ) {
     const at = now()
-    const { items, total } = await users.listStudents(filters, pagination)
+    const { items, total } = await users.listStudents(
+      { ...filters, onlineSince: new Date(at.getTime() - ONLINE_WINDOW_MS) },
+      pagination,
+    )
     const data: AdminUserRow[] = items.map((u) => ({
       ...toView(u, at),
       listingsCount: u.listingsCount,

@@ -96,6 +96,92 @@ describe('GET /admin/users', () => {
   })
 })
 
+describe('GET /admin/users?presence= (RN-ADM-02, 03)', () => {
+  const T = new Date('2026-11-01T12:00:00.000Z')
+  const at = (ms: number) => new Date(T.getTime() - ms)
+  // Relógio fixo: a fronteira de 5 minutos não depende da velocidade do teste.
+  const fixed = buildDbApp({ now: () => T })
+  const list = (query: object = {}) =>
+    request(fixed.app)
+      .get('/api/v1/admin/users')
+      .query(query)
+      .set(fixed.auth({ id: admin.id, role: 'admin' }))
+  const names = (res: { body: { data: { name: string }[] } }) =>
+    res.body.data.map((u) => u.name).sort()
+
+  it('1: a fronteira é inclusiva: 5 min exatos é online; 5 min + 1 s é offline', async () => {
+    await createUser({ name: 'Borda', lastSeen: at(5 * MIN) })
+    await createUser({ name: 'Passou', lastSeen: at(5 * MIN + 1000) })
+    expect(names(await list({ presence: 'online' }))).toEqual(['Borda'])
+    expect(names(await list({ presence: 'offline' }))).toEqual(['Passou'])
+  })
+
+  it('2: suspenso com acesso recente é offline, nunca online', async () => {
+    await createUser({ name: 'Suspenso', accountStatus: 'suspensa', lastSeen: at(1 * MIN) })
+    expect(names(await list({ presence: 'online' }))).toEqual([])
+    expect(names(await list({ presence: 'offline' }))).toEqual(['Suspenso'])
+  })
+
+  it('3: último acesso nulo é offline', async () => {
+    await createUser({ name: 'Nunca', lastSeen: null })
+    expect(names(await list({ presence: 'online' }))).toEqual([])
+    expect(names(await list({ presence: 'offline' }))).toEqual(['Nunca'])
+  })
+
+  it('4: search combinado com presence é a interseção', async () => {
+    await createUser({ name: 'Ana On', lastSeen: at(1 * MIN) })
+    await createUser({ name: 'Ana Off', lastSeen: at(1 * DAY) })
+    await createUser({ name: 'Beto On', lastSeen: at(1 * MIN) })
+    expect(names(await list({ presence: 'online', search: 'ana' }))).toEqual(['Ana On'])
+    expect(names(await list({ presence: 'offline', search: 'ana' }))).toEqual(['Ana Off'])
+    expect(names(await list({ search: 'ana' }))).toEqual(['Ana Off', 'Ana On'])
+  })
+
+  it('5: total e totalPages refletem o filtro e a página 2 não repete itens', async () => {
+    for (let i = 0; i < 5; i++) await createUser({ name: `On ${i}`, lastSeen: at(1 * MIN) })
+    for (let i = 0; i < 3; i++) await createUser({ name: `Off ${i}`, lastSeen: at(1 * DAY) })
+    const p1 = await list({ presence: 'online', limit: 2, page: 1 })
+    const p2 = await list({ presence: 'online', limit: 2, page: 2 })
+    const p3 = await list({ presence: 'online', limit: 2, page: 3 })
+    expect(p1.body.meta).toEqual({ page: 1, limit: 2, total: 5, totalPages: 3 })
+    const ids = [...p1.body.data, ...p2.body.data, ...p3.body.data].map((u: { id: number }) => u.id)
+    expect(ids).toHaveLength(5)
+    expect(new Set(ids).size).toBe(5)
+    expect((await list({ presence: 'offline', limit: 2 })).body.meta.total).toBe(3)
+  })
+
+  it('6: online + offline = all, e total(online) = stats.online', async () => {
+    await createUser({ lastSeen: at(1 * MIN) })
+    await createUser({ lastSeen: at(2 * MIN) })
+    await createUser({ lastSeen: at(1 * DAY) })
+    await createUser({ lastSeen: null })
+    await createUser({ accountStatus: 'suspensa', lastSeen: at(1 * MIN) })
+    const total = async (presence?: string) =>
+      (await list(presence ? { presence } : {})).body.meta.total as number
+    expect((await total('online')) + (await total('offline'))).toBe(await total('all'))
+    expect(await total()).toBe(await total('all')) // padrão = all
+    const stats = await request(fixed.app)
+      .get('/api/v1/admin/users/stats')
+      .set(fixed.auth({ id: admin.id, role: 'admin' }))
+    expect(await total('online')).toBe(stats.body.data.online)
+  })
+
+  it('7: presence inválido dá 400 VALIDATION_ERROR', async () => {
+    const res = await list({ presence: 'xyz' })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('VALIDATION_ERROR')
+  })
+
+  it('8: aluno na rota dá 403', async () => {
+    const student = await createUser()
+    const res = await request(fixed.app)
+      .get('/api/v1/admin/users')
+      .query({ presence: 'online' })
+      .set(fixed.auth({ id: student.id }))
+    expect(res.status).toBe(403)
+  })
+})
+
 describe('GET /admin/users/:id', () => {
   it('RN-ADM-04: detalhe mostra os dados só para consulta, com anúncios e indicadores; nunca hash de senha nem google_sub', async () => {
     const seller = await createUser({ name: 'Vendedora', googleSub: 'sub-secreto' })

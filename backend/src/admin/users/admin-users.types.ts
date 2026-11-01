@@ -43,9 +43,16 @@ export type TargetSnapshot = {
   activeAdminIds: number[]
 }
 
+// RN-ADM-02, 03: `onlineSince` é o limite inclusivo da janela de 5 min (calculado com o relógio injetado).
+export type AdminUserFilters = {
+  search?: string | undefined
+  presence?: 'all' | 'online' | 'offline' | undefined
+  onlineSince?: Date | undefined
+}
+
 export interface AdminUsersRepository {
   listStudents(
-    filters: { search?: string | undefined },
+    filters: AdminUserFilters,
     pagination: Pagination,
   ): Promise<{ items: AdminUserRowRecord[]; total: number }>
   stats(onlineSince: Date, weekAgo: Date): Promise<UserStats>

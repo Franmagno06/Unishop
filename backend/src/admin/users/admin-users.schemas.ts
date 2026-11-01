@@ -10,6 +10,8 @@ export const listAdminUsersQuerySchema = paginationSchema.extend({
     .max(LISTING_LIMITS.searchMax)
     .transform((v) => v || undefined)
     .optional(),
+  // RN-ADM-03: filtro de presença; padrão `all`.
+  presence: z.enum(['all', 'online', 'offline']).default('all'),
 })
 
 export const adminUserIdParamSchema = z.object({

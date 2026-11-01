@@ -27,6 +27,8 @@ export function buildDbApp(
     listings?: Partial<ListingRepository>
     writeAuditLog?: AuditWriter
     mail?: MailProvider
+    /** Relógio fixo, para testar fronteiras de tempo. */
+    now?: () => Date
   } = {},
 ) {
   const storage = createFakeStorage()
@@ -54,6 +56,7 @@ export function buildDbApp(
     payments: createPrismaPaymentRepository(testDb),
     gateway,
     db: testDb,
+    ...(overrides.now && { now: overrides.now }),
   })
   const jwt = createJwt(process.env.JWT_SECRET!, '2h')
   const auth = (user: { id: number; role?: 'student' | 'admin' }) => ({
