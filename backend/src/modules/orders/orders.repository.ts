@@ -1,0 +1,269 @@
+import { Prisma, type PrismaClient } from '../../generated/prisma/client'
+import { decrementStock, lockListingRow, lockOrder } from '../../shared/database/stock'
+import { centsToDecimal, decimalToCents } from '../../shared/utils/money'
+import type {
+  CancelReason,
+  ListingForOrder,
+  Negotiation,
+  OrderRecord,
+  OrderRepository,
+  OrderStatus,
+} from './orders.types'
+
+const STATUS_FROM_DB: Record<string, OrderStatus> = {
+  pendente: 'pending',
+  pago: 'paid',
+  retirada_combinada: 'pickup_arranged',
+  concluido: 'completed',
+  em_negociacao: 'negotiating',
+  cancelado: 'cancelled',
+}
+const STATUS_TO_DB = Object.fromEntries(
+  Object.entries(STATUS_FROM_DB).map(([db, api]) => [api, db]),
+) as Record<OrderStatus, string>
+
+const REASON_FROM_DB: Record<string, CancelReason> = {
+  vencido: 'expired',
+  sem_estoque: 'out_of_stock',
+  anuncio_indisponivel: 'listing_unavailable',
+}
+export const REASON_TO_DB: Record<CancelReason, string> = {
+  expired: 'vencido',
+  out_of_stock: 'sem_estoque',
+  listing_unavailable: 'anuncio_indisponivel',
+}
+
+const LISTING_STATUS = { ativo: 'active', pausado: 'paused', vendido: 'sold' } as const
+
+const include = {
+  buyer: { select: { name: true } },
+  seller: { select: { name: true } },
+  listing: { select: { description: true, whatsapp: true } },
+  payments: { orderBy: { id: 'desc' }, select: { method: true, status: true } },
+} satisfies Prisma.OrderInclude
+
+type OrderRow = Prisma.OrderGetPayload<{ include: typeof include }>
+
+function toRecord(row: OrderRow): OrderRecord {
+  const last = row.payments[0]
+  return {
+    id: row.id,
+    listingId: row.listingId,
+    buyerId: row.buyerId,
+    sellerId: row.sellerId,
+    negotiation: row.negotiationType === 'whatsapp' ? 'whatsapp' : 'site_payment',
+    status: STATUS_FROM_DB[row.status]!,
+    productName: row.productName,
+    imageUrl: row.imageUrl,
+    quantity: row.quantity,
+    unitPriceInCents: decimalToCents(row.unitPrice),
+    feeInCents: decimalToCents(row.serviceFee),
+    totalInCents: decimalToCents(row.totalAmount),
+    createdAt: row.createdAt,
+    completedAt: row.completedAt,
+    cancelReason: row.cancelReason ? (REASON_FROM_DB[row.cancelReason] ?? null) : null,
+    buyerName: row.buyer.name,
+    sellerName: row.seller.name,
+    sellerWhatsapp: row.listing.whatsapp,
+    listingDescription: row.listing.description,
+    payment: last ? { method: last.method === 'pix' ? 'pix' : 'card', status: last.status } : null,
+    refunded: row.payments.some((p) => p.status === 'estornado'),
+  }
+}
+
+// Pedido cancelado: a cobrança em aberto deixa de valer. Um aviso de pagamento que chegue depois
+// ainda é liquidado (e estornado) pela liquidação, que aceita linhas pendente e expirado (RN-PAG-13).
+const expirePendingPayments = (tx: Prisma.TransactionClient, orderId: number) =>
+  tx.payment.updateMany({ where: { orderId, status: 'pendente' }, data: { status: 'expirado' } })
+
+export function createPrismaOrderRepository(db: PrismaClient): OrderRepository {
+  const findById = async (id: number) => {
+    const row = await db.order.findUnique({ where: { id }, include })
+    return row ? toRecord(row) : null
+  }
+
+  return {
+    async findListing(listingId) {
+      const row = await db.listing.findUnique({
+        where: { id: listingId },
+        include: {
+          user: { select: { accountStatus: true } },
+          images: { orderBy: { position: 'asc' }, take: 1, select: { url: true } },
+        },
+      })
+      if (!row) return null
+      const listing: ListingForOrder = {
+        id: row.id,
+        ownerId: row.userId,
+        ownerActive: row.user.accountStatus === 'ativa',
+        status: LISTING_STATUS[row.status as keyof typeof LISTING_STATUS] ?? 'paused',
+        deleted: row.deletedAt !== null,
+        quantity: row.quantity,
+        priceInCents: decimalToCents(row.price),
+        title: row.name,
+        imageUrl: row.images[0]?.url ?? null,
+      }
+      return listing
+    },
+
+    async incrementContacts(listingId) {
+      await db.listing.update({ where: { id: listingId }, data: { contacts: { increment: 1 } } })
+    },
+
+    async createOrReuse(data) {
+      const forma: string = data.negotiation === 'whatsapp' ? 'whatsapp' : 'pagamento_site'
+      const status = data.negotiation === 'whatsapp' ? 'em_negociacao' : 'pendente'
+      const total = data.listing.priceInCents * data.quantity + data.feeInCents
+      const where = {
+        buyerId: data.buyerId,
+        listingId: data.listing.id,
+        negotiationType: forma,
+        status,
+      }
+
+      const reuse = async () => {
+        const open = await db.order.findFirst({ where })
+        if (!open) return null
+        // Só o pedido Pendente tem valor a atualizar; a quantidade nova refaz o total (RN-PED-10).
+        await db.order.updateMany({
+          where: { id: open.id, status },
+          data: {
+            quantity: data.quantity,
+            unitPrice: centsToDecimal(data.listing.priceInCents),
+            serviceFee: centsToDecimal(data.feeInCents),
+            totalAmount: centsToDecimal(total),
+            updatedAt: new Date(),
+          },
+        })
+        return (await findById(open.id))!
+      }
+
+      const existing = await reuse()
+      if (existing) return { order: existing, created: false }
+      try {
+        const row = await db.order.create({
+          data: {
+            listingId: data.listing.id,
+            buyerId: data.buyerId,
+            sellerId: data.listing.ownerId,
+            negotiationType: forma,
+            status,
+            productName: data.listing.title,
+            imageUrl: data.listing.imageUrl,
+            quantity: data.quantity,
+            unitPrice: centsToDecimal(data.listing.priceInCents),
+            serviceFee: centsToDecimal(data.feeInCents),
+            totalAmount: centsToDecimal(total),
+          },
+          include,
+        })
+        return { order: toRecord(row), created: true }
+      } catch (err) {
+        // Dois cliques ao mesmo tempo: o índice único barrou o segundo; devolve o pedido do primeiro.
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          const raced = await reuse()
+          if (raced) return { order: raced, created: false }
+        }
+        throw err
+      }
+    },
+
+    findById,
+
+    async findByBuyer(buyerId) {
+      const rows = await db.order.findMany({
+        where: { buyerId },
+        include,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      })
+      return rows.map(toRecord)
+    },
+
+    async findBySeller(sellerId, listingId) {
+      const rows = await db.order.findMany({
+        where: { sellerId, ...(listingId !== undefined && { listingId }) },
+        include,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      })
+      return rows.map(toRecord)
+    },
+
+    async transition(id, from, to) {
+      const res = await db.order.updateMany({
+        where: { id, status: { in: from.map((s) => STATUS_TO_DB[s]) } },
+        data: { status: STATUS_TO_DB[to], updatedAt: new Date() },
+      })
+      return res.count === 1
+    },
+
+    // RN-EST-03, 04, 06 e RN-PED-13: trava o pedido, desconta o estoque com UPDATE condicional e só
+    // então conclui. Se o estoque não bastar, nada muda e o pedido segue Em negociação.
+    async completeNegotiation(id) {
+      return db.$transaction(async (tx) => {
+        await lockOrder(tx, id)
+        const order = await tx.order.findUnique({ where: { id } })
+        if (!order || order.status !== 'em_negociacao') return 'not_open' as const
+        await lockListingRow(tx, order.listingId)
+        if (!(await decrementStock(tx, order.listingId, order.quantity))) {
+          return 'out_of_stock' as const
+        }
+        await tx.order.update({
+          where: { id },
+          data: { status: 'concluido', completedAt: new Date(), updatedAt: new Date() },
+        })
+        return 'ok' as const
+      })
+    },
+
+    async completePickup(id) {
+      const res = await db.order.updateMany({
+        where: { id, status: 'retirada_combinada' },
+        data: { status: 'concluido', completedAt: new Date(), updatedAt: new Date() },
+      })
+      return res.count === 1
+    },
+
+    async cancel(id, from, reason) {
+      return db.$transaction(async (tx) => {
+        const res = await tx.order.updateMany({
+          where: { id, status: { in: from.map((s) => STATUS_TO_DB[s]) } },
+          data: {
+            status: 'cancelado',
+            cancelReason: reason ? REASON_TO_DB[reason] : null,
+            updatedAt: new Date(),
+          },
+        })
+        if (res.count === 1) await expirePendingPayments(tx, id)
+        return res.count === 1
+      })
+    },
+
+    async expire(id, createdBefore) {
+      return db.$transaction(async (tx) => {
+        const res = await tx.order.updateMany({
+          where: { id, status: 'pendente', createdAt: { lte: createdBefore } },
+          data: { status: 'cancelado', cancelReason: 'vencido', updatedAt: new Date() },
+        })
+        if (res.count === 1) await expirePendingPayments(tx, id)
+        return res.count === 1
+      })
+    },
+
+    async findExpiredIds(createdBefore) {
+      const rows = await db.order.findMany({
+        where: { status: 'pendente', createdAt: { lte: createdBefore } },
+        select: { id: true },
+      })
+      return rows.map((r) => r.id)
+    },
+
+    async findPendingGatewayId(orderId) {
+      const row = await db.payment.findFirst({
+        where: { orderId, status: 'pendente', gatewayTxId: { not: null } },
+        select: { gatewayTxId: true },
+      })
+      return row?.gatewayTxId ?? null
+    },
+  }
+}
+export type { Negotiation }

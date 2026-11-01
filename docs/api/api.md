@@ -1,9 +1,9 @@
 ---
 title: Documentação Técnica — API (APIs externas e segurança)
 project: Unishop
-version: 0.3.1
+version: 0.3.2
 date: 2026-11-01
-changelog: "0.3.1 — papéis do banco resolvidos; Prisma 7 sem directUrl; pendências de providers e do openapi.yaml revisadas contra o código."
+changelog: "0.3.2 — ADR-002 decidido: Mercado Pago pela Payments API (provider escrito, ainda sem prova de conceito no sandbox); pendência nº 1 reduzida à prova de conceito; guia mercado-pago-passo-a-passo.md. 0.3.1 — papéis do banco resolvidos; Prisma 7 sem directUrl; pendências de providers e do openapi.yaml revisadas contra o código."
 status: vigente com pendências
 owners: Pedro Cândido (engenheiro de API)
 reviewers: Felipe Bessa (backend), Francisco Magno (integração front-back)
@@ -245,7 +245,7 @@ export async function verifyGoogleIdToken(idToken: string) {
 | Custo | Sem mensalidade. Há **tarifa por transação em produção** (conferir). O ambiente de testes é gratuito |
 | Onde consultar | mercadopago.com.br/developers |
 
-> **Gateway decidido: Mercado Pago (ADR-002).** Falta escolher a forma de integração. O Mercado Pago oferece duas: a **Payments API** (`/v1/payments`) e a **Orders API** (`/v1/orders`), que o próprio provedor destaca como evolução. Os conceitos que usamos são os mesmos nas duas (token do cartão, chave de idempotência, expiração do Pix, webhook assinado e estorno). O adaptador esconde a diferença; **confirme na documentação vigente os nomes exatos dos campos antes de implementar.**
+> **Gateway decidido: Mercado Pago (ADR-002), pela Payments API (decidido por Pedro em 01/11/2026).** O Mercado Pago oferece duas formas: a **Payments API** (`/v1/payments`) e a **Orders API** (`/v1/orders`), que o próprio provedor destaca como evolução. Os conceitos que usamos são os mesmos nas duas (token do cartão, chave de idempotência, expiração do Pix, webhook assinado e estorno), e o adaptador (`mercadopago.provider`) esconde a diferença; trocar de API depois muda só esse arquivo. O provider já está escrito, mas **nunca foi chamado contra o Mercado Pago real**: falta a prova de conceito do Pix de teste e conferir se o CPF do pagador é exigido. Passo a passo em [`mercado-pago-passo-a-passo.md`](mercado-pago-passo-a-passo.md). **Confirme na documentação vigente os nomes exatos dos campos.**
 
 
 ### Operações que o Unishop usa
@@ -1334,7 +1334,7 @@ Numeração única para todos os documentos (a mesma do Backend e do Deploy):
 | ADR | Tema | Estado |
 |---|---|---|
 | ADR-001 | ORM (Prisma) | **Decidido** |
-| ADR-002 | Gateway de pagamento (Mercado Pago) e forma de integração (Payments API ou Orders API) | **Gateway decidido: Mercado Pago.** Falta escolher a Payments API ou a Orders API |
+| ADR-002 | Gateway de pagamento (Mercado Pago) e forma de integração (Payments API ou Orders API) | **Decidido: Mercado Pago pela Payments API** (Pedro, 01/11/2026). Falta validar no sandbox (prova de conceito do Pix) |
 | ADR-003 | Login social só com Google (MVP), sem Apple; e-mail e senha continuam | Decidido |
 | ADR-004 | Armazenamento de imagens: Cloudinary no MVP (R2 fica como alternativa) | **Decidido** |
 | ADR-005 | Hospedagem e banco: Vercel + Supabase (`docs/deploy/deploy.md`); revisado em 30/10/2026, antes era Neon | **Decidido** |
@@ -1350,7 +1350,7 @@ As propostas que o grupo fechou em 15/10/2026 (Sentry adiado, Turnstile depois d
 
 | # | Pendência | Proposta |
 |---|---|---|
-| 1 | Escolher a Payments API ou a Orders API do Mercado Pago (ADR-002; o gateway já está decidido) | Decidir depois de ler a documentação vigente e testar no sandbox, junto da prova de conceito do Pix de teste (Deploy, seção 17) |
+| 1 | ~~Escolher a Payments API ou a Orders API~~ **Escolhida a Payments API (01/11/2026).** Falta a prova de conceito no sandbox: Pix de teste gerar o webhook de aprovação e conferir se o CPF do pagador é exigido | Seguir `mercado-pago-passo-a-passo.md` com credenciais de teste e túnel (Deploy, seção 17) |
 | 2 | Domínio próprio para o Resend verificar (SPF e DKIM). Quem controla o DNS? | Registrar um domínio do projeto; sem ele, só testes com Mailtrap |
 | 3 | O e-mail `@edu.unifor.br` está vinculado a uma conta Google e entrega `email_verified`? | Testar com um e-mail real antes de fechar o RF002.6 |
 | 4 | Termos do plano gratuito do UptimeRobot (uso não comercial) | Conferir; se for barrado, usar StatusCake |

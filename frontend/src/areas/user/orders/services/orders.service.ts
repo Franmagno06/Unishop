@@ -1,4 +1,6 @@
-import { ApiError } from '../../../../shared/lib/api'
+import { api, ApiError } from '../../../../shared/lib/api'
+import { MOCK_MODE } from '../../../../shared/lib/mock-mode'
+import { tokenizeCard } from '../../checkout/services/mercadopago'
 import { getListingById } from '../../listings/services/listings.service'
 import { createReview } from '../../listings/services/reviews.service'
 import type { NewReview } from '../../listings/types/review.types'
@@ -61,6 +63,11 @@ function totalOf(unitPriceInCents: number, quantity: number, feeInCents: number)
 // POST /orders (RN-PED-01, 02 e 10). Cria o pedido Pendente sem reservar estoque; se a pessoa já
 // tem um pedido aberto desse anúncio, reaproveita (atualizando a quantidade).
 export async function createOrder({ listingId, quantity }: NewOrder): Promise<Order> {
+  // Com a API real (fora do modo de demonstração). O `import.meta.env.DEV` escrito aqui deixa o Vite
+  // apagar o código de exemplo do build de produção.
+  if (!(import.meta.env.DEV && MOCK_MODE)) {
+    return (await api<{ data: Order }>('/orders', { method: 'POST', body: { listingId, quantity } })).data
+  }
   const listing = await getListingById(listingId)
   if (!listing) {
     throw new ApiError(409, 'LISTING_UNAVAILABLE', 'Este anúncio não está mais disponível.')
@@ -106,6 +113,9 @@ export async function createOrder({ listingId, quantity }: NewOrder): Promise<Or
 
 // GET /orders/:id. É a fonte do "pago" que a tela mostra (RN-PAG-11).
 export async function getOrderById(orderId: number, signal?: AbortSignal): Promise<Order> {
+  if (!(import.meta.env.DEV && MOCK_MODE)) {
+    return (await api<{ data: Order }>(`/orders/${orderId}`, { signal })).data
+  }
   signal?.throwIfAborted()
   return { ...requireOrder(orderId) }
 }
@@ -113,6 +123,12 @@ export async function getOrderById(orderId: number, signal?: AbortSignal): Promi
 // POST /payments/card. Os dados do cartão só passam por esta função; nada é guardado nem
 // registrado (RN-PAG-02). Recusado: 402, e a pessoa tenta de novo no mesmo pedido (RN-PAG-07).
 export async function payWithCard(orderId: number, card: CardPaymentInput): Promise<Order> {
+  if (!(import.meta.env.DEV && MOCK_MODE)) {
+    // O cartão vira token no SDK do Mercado Pago; só o token vai ao backend (RN-PAG-02).
+    const { token, paymentMethodId, issuerId, installments } = await tokenizeCard(card)
+    const body = { orderId, token, paymentMethodId, installments, ...(issuerId && { issuerId }) }
+    return (await api<{ data: Order }>('/payments/card', { method: 'POST', body })).data
+  }
   requirePayable(orderId)
   await delay(PROCESSING_MS)
   const order = requirePayable(orderId)
@@ -134,6 +150,9 @@ export async function payWithCard(orderId: number, card: CardPaymentInput): Prom
 
 // POST /payments/pix: gera a cobrança. Repetir a chamada devolve a mesma (um Pix em andamento por pedido).
 export async function createPixCharge(orderId: number): Promise<PixCharge> {
+  if (!(import.meta.env.DEV && MOCK_MODE)) {
+    return (await api<{ data: PixCharge }>('/payments/pix', { method: 'POST', body: { orderId } })).data
+  }
   const order = requirePayable(orderId)
   const existing = pixCharges.get(orderId)
   if (existing) return { ...existing }
@@ -148,6 +167,15 @@ export async function createPixCharge(orderId: number): Promise<PixCharge> {
 // Botão "Já paguei" (Figma 09b). SÓ DA DEMONSTRAÇÃO: marca o pedido como Pago. Com a API, o botão
 // apenas consulta GET /orders/:id e quem confirma é o webhook assinado (RN-PAG-05 e 11).
 export async function confirmPixPayment(orderId: number): Promise<Order> {
+  if (!(import.meta.env.DEV && MOCK_MODE)) {
+    // Em desenvolvimento com o gateway falso do backend, aprova a cobrança como se o webhook tivesse
+    // chegado. A rota só existe nesse caso; com o Mercado Pago real (ou em produção) ela dá 404 e o
+    // botão só consulta o pedido: quem confirma o pagamento é o webhook assinado (RN-PAG-05 e 11).
+    if (import.meta.env.DEV) {
+      await api(`/payments/dev/orders/${orderId}/approve`, { method: 'POST' }).catch(() => undefined)
+    }
+    return getOrderById(orderId)
+  }
   const order = requirePayable(orderId)
   await delay(PROCESSING_MS)
   order.status = 'paid'

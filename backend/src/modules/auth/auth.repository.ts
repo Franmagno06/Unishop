@@ -2,12 +2,7 @@ import { AppError } from '../../shared/errors/app-error'
 import type { Db } from '../../shared/database/prisma'
 import type { User } from '../../generated/prisma/client'
 import type { UserRole } from '../../shared/types/express'
-import type {
-  AccountStatus,
-  TokenRepository,
-  UserRecord,
-  UserRepository,
-} from './auth.types'
+import type { AccountStatus, TokenRepository, UserRecord, UserRepository } from './auth.types'
 
 // O banco guarda os valores em português (bd.md §7); o código usa inglês.
 const ROLE_FROM_DB: Record<string, UserRole> = { aluno: 'student', admin: 'admin' }

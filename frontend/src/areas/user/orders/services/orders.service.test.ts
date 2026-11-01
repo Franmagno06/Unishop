@@ -12,6 +12,8 @@ import {
   TEST_CARDS,
 } from './orders.service'
 
+vi.mock('../../../../shared/lib/mock-mode', () => ({ MOCK_MODE: true })) // estes testes usam os dados de exemplo (modo de demonstração)
+
 const card = (number: string) => ({ number, holder: 'Aluno Teste', expiry: '12/99', cvv: '123' })
 
 beforeEach(() => resetOrdersForTests())

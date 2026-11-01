@@ -3,7 +3,7 @@ name: unishop-backend
 description: Regras e arquitetura do backend do Unishop (Node.js + Express + TypeScript, Prisma, PostgreSQL, JWT). Use SEMPRE que o usuário criar, editar ou revisar rotas, controllers, services, repositories, middlewares, providers, jobs, autenticação (e-mail e senha, Google, troca de senha), pagamentos (cartão, Pix, webhook, estorno), estoque, pedidos, anúncios, imagens, área admin, logs de auditoria ou erros da API do Unishop, mesmo que não diga "backend" ou "Unishop" explicitamente.
 metadata:
   author: unishop-team
-  version: "0.3.2"
+  version: "0.3.3"
 ---
 
 # Backend do Unishop
@@ -12,7 +12,7 @@ Resumo operacional da API REST do Unishop (`/api/v1`). Fonte completa e autorita
 
 Outras fontes: regras e limites de campos → skill `unishop-rules` ([`docs/regras-de-negócio/regras-de-negócio.md`](../../../docs/regras-de-negócio/regras-de-negócio.md)); tabelas, colunas e `@map` do Prisma → skill `unishop-database` ([`docs/BancoDeDados/bd.md`](../../../docs/BancoDeDados/bd.md)); providers, segredos e webhook → `unishop-api`; Vercel + Supabase → `unishop-deploy`.
 
-Prioridade entre fontes (CLAUDE.md): PDF do trabalho > decisões do grupo > docs em `docs/` > Figma. Se algo não está documentado, diga que não está definido; não invente rota, campo ou regra. Pendências abertas que tocam o backend: Payments API × Orders API do Mercado Pago (ADR-002), `email_verified` do Google com e-mail institucional, `openapi.yaml` inexistente.
+Prioridade entre fontes (CLAUDE.md): PDF do trabalho > decisões do grupo > docs em `docs/` > Figma. Se algo não está documentado, diga que não está definido; não invente rota, campo ou regra. Pendências abertas que tocam o backend: prova de conceito do Mercado Pago (Payments API escolhida; provider nunca testado contra a API real), `email_verified` do Google com e-mail institucional, `openapi.yaml` inexistente.
 
 ## Arquitetura
 
@@ -55,6 +55,16 @@ Estrutura: `src/modules/` (aluno: auth, users, categories, listings, orders, pay
 - **Auditoria:** toda edição/suspensão/exclusão do admin grava `log_admin` na **mesma transação** da ação (sem log, sem ação).
 - **Upload:** JPG/PNG, tipo conferido pelo conteúdo real (file-type); de 1 a 5 imagens por anúncio; **uma imagem por requisição, até 4 MB** (limite de 4,5 MB da Vercel; desvio do PDF confirmado pelo grupo em 16/10/2026). A primeira vai em `POST /listings`; as demais em `POST /listings/:id/images`; remoção em `DELETE /listings/:id/images/:imageId` (o anúncio mantém pelo menos 1). Se o banco falhar após o upload, remover do storage.
 - **Nunca em log:** senha, JWT, token de cartão, corpo de `/auth` e `/payments`, WhatsApp completo.
+
+## O que já existe no código (01/11/2026; conferir em `backend/src` antes de criar algo parecido)
+
+- **Rotas de pedidos** (`modules/orders`): `POST /orders` (pagamento no site), `POST /orders/contact` (WhatsApp), `GET /orders/mine`, `/received`, `/:id`, `POST /orders/:id/arrange-pickup`, `confirm-receipt`, `complete`, `cancel`. Só o papel `student` pede. Códigos: `OWN_LISTING`, `OUT_OF_STOCK`, `LISTING_UNAVAILABLE`, `INVALID_STATE`. O cancelamento sob demanda do Pendente com mais de 30 min está em `expireIfDue`.
+- **Rotas de pagamento** (`modules/payments`): `POST /payments/card` (corpo `.strict()`: só token, `paymentMethodId`, `issuerId`, `installments`), `POST /payments/pix`, `POST /payments/webhook` (sem JWT, limite de 300/min). Códigos: `PAYMENT_DECLINED` (402), `PIX_EXPIRED`, `ORDER_CANCELLED`, `PAYMENT_IN_PROGRESS`. `POST /payments/dev/orders/:id/approve` é só simulador (mock com `APP_ENV` `development` ou `test`); **nunca** contar com ela em produção.
+- **Liquidação:** `settle` em `payments.service`, transação com trava (`lockOrder`); ramos Pago, `estorno_pendente` (sem estoque, anúncio indisponível, pagamento tardio), `MAX_REFUND_ATTEMPTS` (10 tentativas de estorno). Estoque atômico em `shared/database/stock.ts` (`decrementStock`, `lockOrder`, `lockListingRow`); ao zerar vira `vendido` com `vendido_em` por causa do `CHECK ck_anuncio_ativo_com_estoque`.
+- **Gateway** (`shared/providers/payment`): interface `PaymentGateway`, `mock.provider` (tokens `mock_approved`, `mock_declined`, `mock_pending`; `setStatus`, `failNextRefund`, `failNextCreate`, `signedWebhook`) e `mercadopago.provider` (Payments API; erro vira 502 `EXTERNAL_SERVICE_ERROR`). `buildPaymentGateway` e o `superRefine` do `env.ts` impedem subir com mock em `APP_ENV=production`, com `PAYMENT_MODE=production` fora de produção ou com `mercadopago` sem `MP_ACCESS_TOKEN` e `MP_WEBHOOK_SECRET`. O mercadopago **nunca rodou contra a API real**.
+- **E-mail:** `MailProvider` ganhou `sendSaleConfirmed` e `sendOrderRefunded`; o e-mail sai com `runInBackground` (`shared/utils/background.ts`, `waitUntil`) e os testes usam `flushBackground`.
+- **Jobs** (`src/jobs`): `registry.ts`, `jobs.routes.ts` (`GET /api/v1/internal/jobs/:name`) e `scheduler.ts` (só o `dev-server`): `expire-pix-payments`, `reconcile-pending-payments`, `cleanup-expired-tokens`. Rota técnica `GET /health/db` existe.
+- **Ainda não existem:** módulo `notifications`, `src/admin/` e `openapi.yaml`. Guia de chaves e teste real: `docs/api/mercado-pago-passo-a-passo.md`.
 
 ## Convenções
 

@@ -3,7 +3,7 @@ name: unishop-deploy
 description: Deploy do Unishop em produção na Vercel (frontend e API serverless) com PostgreSQL no Supabase: ambientes, variáveis e segredos por ambiente, `APP_ENV`, `app.ts`/`dev-server.ts`, `vercel.json`, build com Prisma, CORS, jobs agendados por endpoint (Vercel Cron e agendador externo), upload de imagem, `waitUntil`, backup no GitHub Actions, rollback e checklist. Use SEMPRE que o usuário falar de deploy, publicar, "colocar no ar", Vercel, Supabase, variáveis de ambiente de produção, preview, domínio, HTTPS, CRON_SECRET, cron, migração em produção, seed, backup, restauração, rollback ou limites do plano Hobby, mesmo que não diga "deploy" ou "Unishop".
 metadata:
   author: unishop-team
-  version: "0.3.2"
+  version: "0.3.3"
 ---
 
 # Deploy do Unishop (Vercel + Supabase)
@@ -80,4 +80,4 @@ Do computador do usuário (Git Bash ou WSL; no Windows os comandos do guia são 
 
 ## Pendências que bloqueiam ou mudam o deploy
 
-Numeração da seção 17.3 do deploy v0.3.1. Abertas: plano/equipe do Hobby (1) · **domínio próprio para o Resend** (3) · RNF012 a RNF016 não mapeados (6) · login com Google em `vercel.app` (7) · prova de conceito do Pix de teste do Mercado Pago e Payments × Orders API (10) · nome da tabela de categorias no teste de restauração, que é `categoria` (11) · criar e testar os três papéis no Supabase (12) · versão do PostgreSQL do Supabase (13). Decididas: exceção da regra 4 (2), cron-job.org a cada 30 min (4), 4 MB (5), rate limit em memória (8). Cite a pendência em vez de decidir sozinho.
+Numeração da seção 17.3 do deploy v0.3.1. Abertas: plano/equipe do Hobby (1) · **domínio próprio para o Resend** (3) · RNF012 a RNF016 não mapeados (6) · login com Google em `vercel.app` (7) · prova de conceito do Pix de teste do Mercado Pago (Payments API já escolhida) (10) · nome da tabela de categorias no teste de restauração, que é `categoria` (11) · criar e testar os três papéis no Supabase (12) · versão do PostgreSQL do Supabase (13). Decididas: exceção da regra 4 (2), cron-job.org a cada 30 min (4), 4 MB (5), rate limit em memória (8). Cite a pendência em vez de decidir sozinho.

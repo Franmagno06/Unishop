@@ -220,12 +220,23 @@ describe('PaymentPage · Pix', () => {
   })
 
   it('fora do modo de demonstração, o controle de teste não aparece', async () => {
+    const order = await createOrder({ listingId: 1, quantity: 1 }) // com o exemplo ligado
     demo.on = false
-    const order = await createOrder({ listingId: 1, quantity: 1 })
-    renderApp(`/pagamento/${order.id}`)
-    await userEvent.click(await screen.findByRole('tab', { name: 'Pix' }))
-    await screen.findByLabelText('Código Pix copia e cola')
-    expect(screen.queryByRole('button', { name: 'Simular Pix expirado' })).not.toBeInTheDocument()
+    // Fora do modo de demonstração a tela fala com a API: simulamos as duas respostas.
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const data = String(input).includes('/payments/pix')
+        ? { code: '00020126-pix-da-api', expiresAt: order.expiresAt }
+        : order
+      return new Response(JSON.stringify({ data }), { status: 200 })
+    })
+    try {
+      renderApp(`/pagamento/${order.id}`)
+      await userEvent.click(await screen.findByRole('tab', { name: 'Pix' }))
+      await screen.findByLabelText('Código Pix copia e cola')
+      expect(screen.queryByRole('button', { name: 'Simular Pix expirado' })).not.toBeInTheDocument()
+    } finally {
+      fetchSpy.mockRestore()
+    }
   })
 })
 
