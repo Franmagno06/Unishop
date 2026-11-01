@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { vi, describe, expect, it } from 'vitest'
 import { getCategories } from './categories.service'
+
+vi.mock('../../../../shared/lib/mock-mode', () => ({ MOCK_MODE: true })) // estes testes usam os dados de exemplo (modo de demonstração)
 
 describe('getCategories (dados de exemplo)', () => {
   it('devolve as 6 categorias fixas (RN-CAT-01)', async () => {

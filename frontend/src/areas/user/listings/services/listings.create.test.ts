@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { vi, describe, expect, it } from 'vitest'
 import { ApiError } from '../../../../shared/lib/api'
 import { createListing, getListings, getProfileWhatsapp } from './listings.service'
+
+vi.mock('../../../../shared/lib/mock-mode', () => ({ MOCK_MODE: true })) // estes testes usam os dados de exemplo (modo de demonstração)
 
 const base = {
   title: 'Item do teste de serviço',

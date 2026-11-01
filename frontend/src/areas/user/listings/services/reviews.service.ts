@@ -1,9 +1,12 @@
+import { ApiError } from '../../../../shared/lib/api'
 import { getCurrentUser } from '../../../../shared/lib/current-user'
+import { MOCK_MODE } from '../../../../shared/lib/mock-mode'
 import type { NewReview, Review } from '../types/review.types'
 
 // Avaliações de exemplo no formato assumido de GET/POST /listings/:id/reviews (a rota ainda não está
-// no backend.md §9). Em memória: o que se publica some ao recarregar. Quando a API existir, só este
-// arquivo muda.
+// no backend.md §9). Em memória: o que se publica some ao recarregar. Avaliações estão **fora do MVP**
+// (decidido em 01/11/2026): na API real não há rota, então a lista vem vazia e criar é recusado.
+// Só em modo de demonstração (MOCK_MODE) valem os exemplos.
 const DELAY_MS = 250
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -37,11 +40,15 @@ function exampleReviews(listingId: number): Review[] {
 }
 
 export async function getReviews(listingId: number): Promise<Review[]> {
+  if (!(import.meta.env.DEV && MOCK_MODE)) return []
   await wait(DELAY_MS)
   return [...(created.get(listingId) ?? []), ...exampleReviews(listingId)]
 }
 
 export async function createReview(listingId: number, review: NewReview): Promise<Review> {
+  if (!(import.meta.env.DEV && MOCK_MODE)) {
+    throw new ApiError(501, 'NOT_IMPLEMENTED', 'As avaliações ainda não estão disponíveis.')
+  }
   await wait(DELAY_MS)
   const item: Review = {
     id: nextId++,

@@ -1,8 +1,9 @@
 ---
 title: Documentação Técnica — Backend
 project: Unishop
-version: 0.3
-date: 2026-10-16
+version: 0.3.1
+date: 2026-11-01
+changelog: "0.3.1 — seção 21 revisada contra o código (módulos auth, users, categories e listings implementados) e pendências novas."
 status: vigente com pendências
 owners: Felipe Bessa (backend)
 reviewers: Pedro Cândido (engenheiro de API), Ana Clara (banco de dados), Francisco Magno (integração front-back)
@@ -1871,4 +1872,11 @@ As propostas da v0.2 viraram regra. A tabela mostra onde cada uma foi resolvida.
 |---|---|---|
 | 1 | O e-mail `@edu.unifor.br` entrega `email_verified = true` no login com Google? (antiga nº 6) | Testar com um e-mail institucional real antes de fechar o login com Google. Se não entregar, o domínio continua conferido pelo e-mail e a confirmação por link (RN-ACE-07) passa a valer só para o cadastro por senha |
 | 2 | O `openapi.yaml` ainda não existe, e este documento, o frontend e as skills dependem dele (antiga nº 17) | Pedro escreve a partir da seção 9 e do `docs/api/api.md` |
+| 3 | **Estado da implementação (01/11/2026):** existem os módulos `auth`, `users`, `categories` e `listings`; não existem `orders`, `payments`, `notifications`, `admin/` nem `jobs/` | Seguir o `roteiro-backend.md` (etapas 6 a 11); ao escrever o `openapi.yaml`, conferir a seção 9 contra as rotas reais |
+| 4 | **Valores dos estados:** o `schema.prisma` usa `String` e os repositories convertem português ↔ inglês; as seções 7 e 11 e o `bd.md` §7 falam em enum com `@map` | Decidir com Ana Clara e Felipe: manter a conversão nos repositories (e corrigir os textos) ou migrar para enums |
+| 5 | **Etapa 1 do roteiro incompleta:** faltam `GET /health/db`, `shared/security` (`Secret`, `redact`), `@vercel/functions`, a regra `no-restricted-imports` do ESLint e a trava de produção por `APP_ENV` em `env.ts` (hoje só o e-mail de console, em `app.ts`) | Fechar antes da Etapa 6 |
+| 6 | **Etapa 3 do roteiro incompleta:** faltam `buildProviders`, `http-client`, `PaymentGateway` com `mock.provider` e `AntiBotProvider` (hoje só `MailProvider` de console, `StorageProvider` local e o Google real) | Fechar antes das etapas 6 e 7 |
+| 7 | **`DELETE /users/me`** anonimiza sem conferir pedido Pago ou em Retirada combinada em aberto (409 `HAS_OPEN_PAID_ORDERS`, RN-PER-06) | Completar quando os pedidos existirem (Etapas 6 e 9) |
+| 8 | ~~**Migração `3_motivo_cancelamento`** (P9)~~ **Feita em 01/11/2026** (dev e Docker); falta o `unishop-prod` | Aplicar com `migrate deploy` (`bd.md`, seção 15) |
+| 9 | **Fora do MVP (01/11/2026):** reembolso, cancelamento de pedido Pago, avaliações e suporte (Etapa 12 do roteiro) | Não criar rotas nem tabelas para isso |
 | 3 | Payments API ou Orders API do Mercado Pago (ADR-002 ainda em aberto neste ponto) | Decidir antes de implementar `createPixPayment`; o resto do backend só conhece a interface `PaymentGateway` |

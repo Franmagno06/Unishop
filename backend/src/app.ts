@@ -9,7 +9,21 @@ import {
   createPrismaTokenRepository,
   createPrismaUserRepository,
 } from './modules/auth/auth.repository'
+import type { PrismaClient } from './generated/prisma/client'
+import { createJobRegistry } from './jobs/registry'
+import { createJobsRoutes } from './jobs/jobs.routes'
+import { createPrismaOrderRepository } from './modules/orders/orders.repository'
+import { createOrdersRoutes } from './modules/orders/orders.routes'
+import { createOrdersService } from './modules/orders/orders.service'
+import type { OrderRepository } from './modules/orders/orders.types'
+import { createPrismaPaymentRepository } from './modules/payments/payments.repository'
+import { createPaymentsRoutes } from './modules/payments/payments.routes'
+import { createPaymentsService } from './modules/payments/payments.service'
+import type { PaymentRepository } from './modules/payments/payments.types'
 import { prisma } from './shared/database/prisma'
+import { buildPaymentGateway } from './shared/providers/payment'
+import type { MockPaymentGateway } from './shared/providers/payment/mock.provider'
+import type { PaymentGateway } from './shared/providers/payment/payment.gateway'
 import { consoleMailProvider } from './shared/providers/mail/console.provider'
 import { createAuthService } from './modules/auth/auth.service'
 import { createAuthRoutes } from './modules/auth/auth.routes'
@@ -66,6 +80,12 @@ export type AppDeps = {
   listings?: ListingRepository
   storage?: StorageProvider
   admin?: AdminDeps
+  /** Pedidos e pagamentos (Etapas 6 e 7). Os três juntos: sem o gateway não há cobrança. */
+  orders?: OrderRepository
+  payments?: PaymentRepository
+  gateway?: PaymentGateway
+  /** Banco, para o /health/db e o job de limpeza de tokens. */
+  db?: PrismaClient
   /** Pasta servida em /uploads. Só com o driver local (desenvolvimento e teste). */
   uploadsDir?: string
   now?: () => Date
@@ -85,6 +105,19 @@ export function createApp(deps?: AppDeps) {
   app.get('/api/v1/health', (_req, res) => {
     res.json({ status: 'ok' })
   })
+
+  if (deps?.db) {
+    const db = deps.db
+    // Confere o banco (backend.md §9.11). Serve também para manter o projeto Supabase ativo.
+    app.get('/api/v1/health/db', async (_req, res) => {
+      try {
+        await db.$queryRaw`SELECT 1`
+        res.json({ status: 'ok' })
+      } catch {
+        res.status(503).json({ status: 'error' })
+      }
+    })
+  }
 
   if (deps) {
     const jwt = createJwt(env.JWT_SECRET, env.JWT_EXPIRES_IN)
@@ -159,6 +192,52 @@ export function createApp(deps?: AppDeps) {
         }),
       }),
     )
+    if (deps.orders && deps.payments && deps.gateway) {
+      const ordersService = createOrdersService({
+        orders: deps.orders,
+        gateway: deps.gateway,
+        config: {
+          serviceFeePercent: env.SERVICE_FEE_PERCENT,
+          expirationMinutes: env.PIX_EXPIRATION_MINUTES,
+        },
+        ...(deps.now && { now: deps.now }),
+      })
+      const paymentsService = createPaymentsService({
+        payments: deps.payments,
+        orders: deps.orders,
+        ordersService,
+        gateway: deps.gateway,
+        mail: deps.mail,
+        config: { expirationMinutes: env.PIX_EXPIRATION_MINUTES },
+        ...(deps.now && { now: deps.now }),
+      })
+      const noLimit = ((_req, _res, next) => next()) satisfies express.RequestHandler
+      const simulator =
+        deps.gateway.driver === 'mock' && (env.APP_ENV === 'development' || env.APP_ENV === 'test')
+          ? (deps.gateway as MockPaymentGateway)
+          : undefined
+      app.use('/api/v1/orders', createOrdersRoutes(ordersService, authenticate))
+      app.use(
+        '/api/v1/payments',
+        createPaymentsRoutes(paymentsService, authenticate, {
+          webhookLimiter: env.APP_ENV === 'test' ? noLimit : createRateLimiter(300),
+          ...(simulator && { devSimulator: simulator }),
+        }),
+      )
+      if (deps.db) {
+        // Jobs por endpoint em produção (Vercel Cron / cron-job.org); o dev-server usa o node-cron.
+        const registry = createJobRegistry({
+          db: deps.db,
+          orders: deps.orders,
+          ordersService,
+          paymentsService,
+          expirationMinutes: env.PIX_EXPIRATION_MINUTES,
+          ...(deps.now && { now: deps.now }),
+        })
+        app.locals.jobs = registry
+        app.use('/api/v1/internal/jobs', createJobsRoutes(registry, env.CRON_SECRET))
+      }
+    }
   }
 
   // Imagens do driver local. O Helmet manda `same-origin`, o que impediria o front (outra porta)
@@ -219,5 +298,9 @@ export const app = createApp({
     listings: createPrismaAdminListingsRepository(prisma),
   },
   uploadsDir: UPLOADS_DIR,
+  orders: createPrismaOrderRepository(prisma),
+  payments: createPrismaPaymentRepository(prisma),
+  gateway: buildPaymentGateway(),
+  db: prisma,
 })
 export default app // a Vercel usa este export; nada aqui chama listen

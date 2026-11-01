@@ -3,12 +3,12 @@ name: unishop-api
 description: APIs externas e segurança do Unishop (Google Identity, Mercado Pago, Resend/Mailtrap, Cloudinary, WhatsApp wa.me, Turnstile, Supabase (só o banco), Sentry, UptimeRobot, GitHub Actions), modelo "backend-cofre", providers, webhook assinado, segredos e variáveis de ambiente. Use SEMPRE que o usuário integrar, trocar, testar ou revisar qualquer serviço externo, mexer em `shared/providers`, `config/env.ts`, `.env`, chaves, tokens, webhook, assinatura HMAC, idempotência, estorno, timeout/retry, drivers mock, travas de produção, custos e limites gratuitos ou ADRs, mesmo que não diga "API externa" ou "Unishop".
 metadata:
   author: unishop-team
-  version: "0.3.1"
+  version: "0.3.3"
 ---
 
 # APIs externas e segurança do Unishop
 
-Resumo operacional. Fonte completa e autoritativa: [`docs/api/api.md`](../../../docs/api/api.md) (v0.3, de 16/10/2026, alinhada às Regras v0.4, Banco v0.2, Backend v0.3 e Deploy v0.3). Em dúvida, releia a seção citada; este arquivo não a substitui. O **contrato da API própria** (`/api/v1`) é outro assunto: rotas e regras estão no `unishop-backend`, e o `openapi.yaml` ainda não existe.
+Resumo operacional. Fonte completa e autoritativa: [`docs/api/api.md`](../../../docs/api/api.md) (v0.3.2, de 01/11/2026, alinhada às Regras v0.4.2, Banco v0.2.1, Backend v0.3.1 e Deploy v0.3.1). Em dúvida, releia a seção citada; este arquivo não a substitui. O **contrato da API própria** (`/api/v1`) é outro assunto: rotas e regras estão no `unishop-backend`, e o `openapi.yaml` ainda não existe.
 
 Prioridade entre fontes (CLAUDE.md): PDF do trabalho > decisões do grupo > `docs/` > Figma. Se algo não está documentado, diga que não está definido; não invente campo, rota nem regra. Os limites gratuitos do `api.md` foram conferidos em 16/10/2026 e mudam: confirme na página do provedor antes de depender deles.
 
@@ -46,7 +46,7 @@ As travas usam `APP_ENV` (`development`, `test`, `preview`, `production`), **nã
 
 ## Mercado Pago (gateway decidido, seção 4.3)
 
-- Decidido: Mercado Pago (ADR-002). Em aberto: Payments API ou Orders API; confirme os nomes de campo na documentação vigente antes de implementar.
+- Decidido: Mercado Pago (ADR-002) pela **Payments API** (Pedro, 01/11/2026). O `mercadopago.provider` existe, mas nunca rodou contra a API real; falta a prova de conceito do Pix e o CPF do pagador. Chaves e passo a passo: `docs/api/mercado-pago-passo-a-passo.md`. Confirme os nomes de campo na documentação vigente.
 - Cartão vira token no navegador (SDK); o backend só recebe o token. Dado de cartão nunca passa pelo servidor (RN-PAG-02, RNF006).
 - Cobrança e estorno levam `X-Idempotency-Key` determinística (`pedido:42:pix:1`). Repetir a chamada não duplica.
 - Status: `approved` → liquidação (desconta estoque, pedido `Pago`); `pending`/`in_process` → nada; `rejected` → `PAYMENT_DECLINED` (402), pedido segue `Pendente`; `cancelled`/Pix vencido → `Expirado`; `refunded` → `Estornado`. Pagamento `approved` que não pode ser honrado (sem estoque, anúncio inativo ou pedido já cancelado) vai para `estorno_pendente`, e o job de estorno chama o gateway (RN-PAG-08, 13, 14). Cada nova tentativa é outra linha em `pagamento`, e a chave de idempotência inclui o número da tentativa. Nunca repasse `status_detail` cru.
@@ -74,7 +74,7 @@ Google 5 s · Mercado Pago cobrar 15 s (retry só com a mesma chave de idempotê
 
 ## Pendências abertas que afetam o código
 
-(numeração da seção 12 do `api.md` v0.3) Payments API × Orders API (1) · domínio próprio para o Resend (2) · `email_verified` do Google com e-mail institucional (3) · termos do UptimeRobot gratuito (4) · `openapi.yaml` (5) · criar e testar os três papéis do banco no Supabase (6) · versão do PostgreSQL do Supabase (7). Turnstile e Sentry estão decididos como depois do MVP. Se a tarefa depende de uma delas, avise em vez de decidir sozinho.
+(numeração da seção 12 do `api.md` v0.3) prova de conceito do Mercado Pago na Payments API, já escolhida (1) · domínio próprio para o Resend (2) · `email_verified` do Google com e-mail institucional (3) · termos do UptimeRobot gratuito (4) · `openapi.yaml` (5) · criar e testar os três papéis do banco no Supabase (6) · versão do PostgreSQL do Supabase (7). Turnstile e Sentry estão decididos como depois do MVP. Se a tarefa depende de uma delas, avise em vez de decidir sozinho.
 
 ## Skills que complementam esta
 

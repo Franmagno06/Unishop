@@ -8,6 +8,8 @@ import { resetOrdersForTests } from '../../orders/services/orders.service'
 import { createListing, getListingById } from '../services/listings.service'
 import { ProductPage } from './ProductPage'
 
+vi.mock('../../../../shared/lib/mock-mode', () => ({ MOCK_MODE: true })) // estes testes usam os dados de exemplo (modo de demonstração)
+
 vi.mock('../services/listings.service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../services/listings.service')>()
   return { ...actual, getListingById: vi.fn(actual.getListingById) }

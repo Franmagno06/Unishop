@@ -9,6 +9,8 @@ import { getCategories } from '../../categories/services/categories.service'
 import { createListing, getListings } from '../services/listings.service'
 import { CreateListingPage } from './CreateListingPage'
 
+vi.mock('../../../../shared/lib/mock-mode', () => ({ MOCK_MODE: true })) // estes testes usam os dados de exemplo (modo de demonstração)
+
 vi.mock('../services/listings.service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../services/listings.service')>()
   return { ...actual, createListing: vi.fn(actual.createListing) }

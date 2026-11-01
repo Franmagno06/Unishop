@@ -3,12 +3,12 @@ name: unishop-frontend
 description: Regras e fluxo de trabalho do frontend do Unishop (React + TypeScript + Vite + Tailwind). Use SEMPRE que o usuário criar, editar ou revisar telas, rotas, guards, componentes, hooks, services, formulários Zod, áreas (public/user/admin), estados de tela (carregando, vazio, erro, 403, sessão expirada, Pix expirado), fluxos de login, cadastro, pagamento, pedidos e anúncios, upload de imagem ou PR do frontend do Unishop, mesmo que não diga "Unishop" ou "frontend" explicitamente.
 metadata:
   author: unishop-team
-  version: "0.8.0"
+  version: "0.8.1"
 ---
 
 # Frontend do Unishop
 
-Guia operacional para trabalhar no frontend do Unishop. Fonte completa e autoritativa: [`docs/frontend/frontend.md`](../../../docs/frontend/frontend.md) (v0.4, de 16/10/2026, alinhada às Regras v0.4, Backend v0.3 e API v0.3). A tabela de rotas e telas está na seção de rotas do doc. Regras de negócio e limites de campos: skill `unishop-rules`. Em caso de dúvida ou conflito, releia esse arquivo — este SKILL.MD é um resumo prático, não substitui a doc.
+Guia operacional para trabalhar no frontend do Unishop. Fonte completa e autoritativa: [`docs/frontend/frontend.md`](../../../docs/frontend/frontend.md) (v0.4.1, de 01/11/2026, alinhada às Regras v0.4, Backend v0.3 e API v0.3). A tabela de rotas e telas está na seção de rotas do doc. Regras de negócio e limites de campos: skill `unishop-rules`. Em caso de dúvida ou conflito, releia esse arquivo — este SKILL.MD é um resumo prático, não substitui a doc.
 
 Ordem de prioridade entre fontes (do `CLAUDE.md` do projeto): PDF do trabalho (RF/RNF) > decisões do grupo > docs em `docs/` > protótipos no Figma. Itens marcados "sugestão" não são definitivos.
 

@@ -1,12 +1,20 @@
 import { AppError } from '../../shared/errors/app-error'
 import type { Db } from '../../shared/database/prisma'
 import type { User } from '../../generated/prisma/client'
-import { ACCOUNT_STATUS_FROM_DB, ROLE_FROM_DB } from '../../shared/database/status-maps'
-import type { TokenRepository, UserRecord, UserRepository } from './auth.types'
+import type { UserRole } from '../../shared/types/express'
+import type { AccountStatus, TokenRepository, UserRecord, UserRepository } from './auth.types'
+
+// O banco guarda os valores em português (bd.md §7); o código usa inglês.
+const ROLE_FROM_DB: Record<string, UserRole> = { aluno: 'student', admin: 'admin' }
+const STATUS_FROM_DB: Record<string, AccountStatus> = {
+  ativa: 'active',
+  suspensa: 'suspended',
+  excluida: 'deleted',
+}
 
 function toRecord(row: User): UserRecord {
   const role = ROLE_FROM_DB[row.role]
-  const status = ACCOUNT_STATUS_FROM_DB[row.accountStatus]
+  const status = STATUS_FROM_DB[row.accountStatus]
   if (!role || !status) throw new Error(`Valor inesperado no banco para o usuário ${row.id}`)
   return {
     id: row.id,

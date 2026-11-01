@@ -175,7 +175,7 @@ Os documentos técnicos foram alinhados em conjunto pelo grupo em 16/10/2026. As
 
 ## Estrutura do repositório
 
-Estado atual: o repositório contém a documentação e as skills do Claude Code. As pastas `frontend/` e `backend/` serão criadas na fase de implementação, seguindo as estruturas abaixo (definidas na documentação técnica).
+Estado atual (01/11/2026): o repositório contém a documentação, as skills do Claude Code, o `backend/` (autenticação, usuários, categorias e anúncios; sem pedidos, pagamentos, jobs nem admin) e o `frontend/` (todas as telas, a maioria sobre dados de exemplo). As estruturas abaixo seguem a documentação técnica.
 
 ```text
 Unishop/
@@ -195,8 +195,8 @@ Unishop/
 │  ├─ BancoDeDados/bd.md
 │  ├─ regras-de-negócio/regras-de-negócio.md
 │  └─ skills/skills.md
-├─ frontend/                 # (a criar) SPA React, organizada por área
-└─ backend/                  # (a criar) API Express, em camadas
+├─ frontend/                 # SPA React, organizada por área (telas prontas, API em integração)
+└─ backend/                  # API Express, em camadas (etapas 2, 4 e 5 do roteiro prontas)
 ```
 
 ## Backend em resumo
@@ -287,7 +287,7 @@ As regras de negócio derivadas dos requisitos são identificadas como `RN-XXX-n
 ## Modelagem e prototipação
 
 - **Diagrama de Caso de Uso:** mapeia as funcionalidades dos três atores (visitante, usuário e administrador).
-- **DER/MER:** modelo conceitual do banco, mantido em `mer_unishop.drawio` (ainda a atualizar com as divergências da seção 12 do [documento de Banco de Dados](docs/BancoDeDados/bd.md)).
+- **DER/MER:** modelo conceitual do banco, mantido em `mer_unishop.drawio`; as divergências em relação ao banco estão na seção 12 do [documento de Banco de Dados](docs/BancoDeDados/bd.md).
 - **Prototipação:** wireframes no Figma, com base nos requisitos, nos diagramas e no padrão visual da Unifor, cobrindo as telas do usuário e do administrador em versão desktop. As telas de celular e tablet são derivadas delas.
 
 ### Banco de dados em resumo
@@ -315,14 +315,16 @@ Detalhes completos em [Documentação do Banco de Dados](docs/BancoDeDados/bd.md
 | Documento | Conteúdo |
 |---|---|
 | [Protótipo no Figma](https://www.figma.com/design/20vFP1b3Ra6UZbJjVssgxD/Unishop-%E2%80%94-Prot%C3%B3tipo?node-id=0-1&t=aaGA4eqvMXvN19lh-0) | Wireframes de alta fidelidade das telas do usuário e do administrador |
-| [docs/frontend/frontend.md](docs/frontend/frontend.md) | Estrutura, rotas, componentes, estado, sessão e padrões de qualidade do frontend (v0.4) |
-| [docs/backend/backend.md](docs/backend/backend.md) | Arquitetura, camadas, autenticação, módulos e rotas, pagamentos, estados, jobs, erros, segurança e mapa das regras de negócio no backend (v0.3) |
-| [docs/regras-de-negócio/regras-de-negócio.md](docs/regras-de-negócio/regras-de-negócio.md) | Regras de negócio (RN-XXX-nn), estados, permissões, escopo do MVP, limites de campos, desvios do PDF e cenários de teste (v0.4) |
-| [docs/BancoDeDados/bd.md](docs/BancoDeDados/bd.md) | Dicionário das 8 tabelas, valores dos estados, mapeamento banco × backend, consultas críticas, anonimização, migração pelo Prisma, papéis e SQL da migração manual (v0.2) |
+| [docs/frontend/frontend.md](docs/frontend/frontend.md) | Estrutura, rotas, componentes, estado, sessão e padrões de qualidade do frontend (v0.4.1) |
+| [docs/backend/backend.md](docs/backend/backend.md) | Arquitetura, camadas, autenticação, módulos e rotas, pagamentos, estados, jobs, erros, segurança e mapa das regras de negócio no backend (v0.3.1) |
+| [docs/regras-de-negócio/regras-de-negócio.md](docs/regras-de-negócio/regras-de-negócio.md) | Regras de negócio (RN-XXX-nn), estados, permissões, escopo do MVP, limites de campos, desvios do PDF e cenários de teste (v0.4.2) |
+| [docs/BancoDeDados/bd.md](docs/BancoDeDados/bd.md) | Dicionário das 8 tabelas, valores dos estados, mapeamento banco × backend, consultas críticas, anonimização, migração pelo Prisma, papéis e SQL da migração manual (v0.2.1) |
 | [docs/skills/skills.md](docs/skills/skills.md) | O que são as skills do Claude Code, as instaladas no projeto e como usá-las |
 | [CLAUDE.md](CLAUDE.md) | Contexto, regras de idioma e prioridades de fontes para o Claude Code |
-| [docs/api/api.md](docs/api/api.md) | APIs externas (Google, Mercado Pago, Resend, Cloudinary, Turnstile e outras), arquitetura de segurança "backend-cofre", providers, variáveis e ADRs 001 a 009 (v0.3). O contrato `openapi.yaml` ainda não existe |
-| [docs/deploy/deploy.md](docs/deploy/deploy.md) | Deploy na Vercel + Supabase: ambientes, segredos, CORS, jobs, backup, atualização e reversão (v0.3) |
+| [docs/api/api.md](docs/api/api.md) | APIs externas (Google, Mercado Pago, Resend, Cloudinary, Turnstile e outras), arquitetura de segurança "backend-cofre", providers, variáveis e ADRs 001 a 009 (v0.3.1). O contrato `openapi.yaml` ainda não existe |
+| [docs/deploy/deploy.md](docs/deploy/deploy.md) | Deploy na Vercel + Supabase: ambientes, segredos, CORS, jobs, backup, atualização e reversão (v0.3.1) |
+| [docs/backend/roteiro-backend.md](docs/backend/roteiro-backend.md) | As 12 etapas do backend, o estado de execução (01/11/2026) e a integração com o frontend, etapa por etapa (v0.6, aprovado) |
+| [docs/frontend/roteiro-telas.md](docs/frontend/roteiro-telas.md) | Ordem das telas, ciclo de cada tela e fichas (v0.2) |
 
 Precedência entre os documentos técnicos (quando dois discordam, corrige-se o de menor precedência): Regras de Negócio, Banco de Dados, Backend e Frontend, API e Deploy. Em caso de conflito entre fontes em geral, vale esta ordem: (1) PDF do trabalho, (2) decisões do grupo, (3) documentos técnicos em `docs/`, (4) protótipos no Figma.
 
@@ -347,19 +349,22 @@ Precedência entre os documentos técnicos (quando dois discordam, corrige-se o 
 
 ### Fora do MVP (decidido)
 
-Confirmação de e-mail por link (atrás da chave `EMAIL_VERIFICATION_REQUIRED`), Turnstile, Sentry, tela de notificações, prazo para negociação por WhatsApp, refresh token, cancelamento de pedido Pago pelo sistema, deduplicação de visualizações, limite de requisições compartilhado (Redis) e teste de carga de 500 usuários.
+Confirmação de e-mail por link (atrás da chave `EMAIL_VERIFICATION_REQUIRED`), Turnstile, Sentry, tela de notificações, prazo para negociação por WhatsApp, refresh token, cancelamento de pedido Pago pelo sistema, reembolso, avaliações e suporte (adiados em 01/11/2026; as telas existem só como protótipo), deduplicação de visualizações, limite de requisições compartilhado (Redis) e teste de carga de 500 usuários.
 
 ### Pendências relevantes
 
-- `openapi.yaml`: não existe e depende do Pedro (a partir da seção 9 do Backend).
+- `openapi.yaml`: não existe, embora o backend já tenha quatro módulos; Pedro escreve por fatia, junto de cada etapa do roteiro (a partir da seção 9 do Backend).
 - Domínio próprio, necessário para o Resend verificar o envio de e-mail (e, se preciso, para o login do Google).
 - Testar se o e-mail `@edu.unifor.br` entrega `email_verified` no login com Google.
 - Prova de conceito do Pix de teste do Mercado Pago e escolha entre Payments API e Orders API.
-- Criar e testar no Supabase os três papéis do banco (SQL Editor, login pelo pooler) e conferir a versão do PostgreSQL; testar a migração em um banco vazio; atualizar o MER.
 - Conferir no PDF os RNF012 a RNF016 e se commits de outros autores são bloqueados no plano Hobby da Vercel.
+- Banco: aplicar no `unishop-prod` a migração `3_motivo_cancelamento` (já está no dev e nos testes) e a Ana Clara confirmar os valores.
+- Integração: categorias, anúncios e "meus anúncios" já chamam a API; faltam editar anúncio e remover foto, e pedidos, pagamento e admin (etapas 6 a 9).
+- Backend: fechar as lacunas das etapas 1 e 3 (`GET /health/db`, providers falsos de pagamento) e fazer pedidos, pagamentos, jobs, admin, integrações reais e deploy (etapas 6 a 11 do roteiro).
+- Deploy: ainda não existem `vercel.json` nem workflows (testes e backup diário); o seed do admin rodou só no banco de desenvolvimento.
 - Escrever os Termos de uso e a Política de privacidade; o grupo confirmar os limites de campos e a lista de itens proibidos (Regras de Negócio, seção 9).
 
-A lista completa está em [Regras de Negócio](docs/regras-de-negócio/regras-de-negócio.md) (seção 11), [Banco de Dados](docs/BancoDeDados/bd.md) (seção 15), [API](docs/api/api.md) (seção 12), [Backend](docs/backend/backend.md) (seção 21) e [Deploy](docs/deploy/deploy.md) (seção 17.3).
+A lista completa está em [Regras de Negócio](docs/regras-de-negócio/regras-de-negócio.md) (seção 11), [Banco de Dados](docs/BancoDeDados/bd.md) (seção 15), [API](docs/api/api.md) (seção 12), [Backend](docs/backend/backend.md) (seção 21) e [Deploy](docs/deploy/deploy.md) (seção 17.3); o andamento por etapa está em [Roteiro do backend](docs/backend/roteiro-backend.md) (seção 1.1).
 
 ## Organização do projeto
 

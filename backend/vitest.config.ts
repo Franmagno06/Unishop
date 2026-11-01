@@ -14,6 +14,7 @@ export default defineConfig({
       DATABASE_URL: 'postgresql://test:test@localhost:5433/unishop_test',
       FRONTEND_URL: 'http://localhost:5173',
       JWT_SECRET: 'segredo-de-teste-com-pelo-menos-32-caracteres',
+      CRON_SECRET: 'segredo-do-cron-de-teste',
     },
   },
 })

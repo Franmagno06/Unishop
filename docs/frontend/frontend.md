@@ -1,8 +1,9 @@
 ---
 title: Documentação Técnica — Frontend
 project: Unishop
-version: 0.4
-date: 2026-10-16
+version: 0.4.1
+date: 2026-11-01
+changelog: "0.4.1 — estado da integração com a API e telas de protótipo fora do MVP (seção 16)."
 status: vigente; alinhado ao conjunto de documentos de 16/10/2026
 owners: Pedro Cândido (frontend e API), Francisco Magno (integração front-back)
 context: README.md
@@ -534,3 +535,5 @@ O protótipo mostra só o caminho feliz. Toda tela que busca dados trata os esta
 | Gateway | Externo: Mercado Pago (decisão do grupo) |
 | Quantidade | Anúncio com várias unidades; escolhida no pop-up "Fazer pedido" |
 | Termos e Privacidade | Páginas `/termos` e `/privacidade`; textos definidos durante o desenvolvimento |
+| Integração com a API | Etapa por etapa, pelo `roteiro-backend.md` (seção 4.3). Em 01/11/2026 chamam a API `auth.service`, `profile.service`, `categories.service`, `listings.service` e `my-listings.service` (o `api()` envia `FormData`); pedidos, pagamento, avaliações e admin seguem em dados de exemplo. O exemplo de cada service fica em `*.mock.ts`, carregado só em desenvolvimento com `VITE_USE_MOCKS=true` (`import.meta.env.DEV && MOCK_MODE`); os testes que usam o exemplo ligam o modo com `vi.mock` de `shared/lib/mock-mode`. Anúncio real: filtro por forma de contato não existe na API (o card mostra "WhatsApp") |
+| Reembolso, cancelamento de pedido Pago, avaliações e suporte | **Fora do MVP (01/11/2026):** as telas existem como protótipo, sem regra, sem tabela e sem API; não trocar os services `reviews.service.ts` e `support.service.ts` por chamadas reais |

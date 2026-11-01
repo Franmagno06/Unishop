@@ -7,6 +7,8 @@ import { installFakeIntersectionObserver } from '../../../../test/intersection-o
 import { getListings } from '../services/listings.service'
 import { CategoryListingsPage } from './CategoryListingsPage'
 
+vi.mock('../../../../shared/lib/mock-mode', () => ({ MOCK_MODE: true })) // estes testes usam os dados de exemplo (modo de demonstração)
+
 // Usa o serviço de verdade (dados de exemplo), mas deixa trocar a resposta em estados específicos.
 vi.mock('../services/listings.service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../services/listings.service')>()

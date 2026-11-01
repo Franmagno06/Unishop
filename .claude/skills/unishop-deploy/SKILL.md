@@ -3,12 +3,12 @@ name: unishop-deploy
 description: Deploy do Unishop em produção na Vercel (frontend e API serverless) com PostgreSQL no Supabase: ambientes, variáveis e segredos por ambiente, `APP_ENV`, `app.ts`/`dev-server.ts`, `vercel.json`, build com Prisma, CORS, jobs agendados por endpoint (Vercel Cron e agendador externo), upload de imagem, `waitUntil`, backup no GitHub Actions, rollback e checklist. Use SEMPRE que o usuário falar de deploy, publicar, "colocar no ar", Vercel, Supabase, variáveis de ambiente de produção, preview, domínio, HTTPS, CRON_SECRET, cron, migração em produção, seed, backup, restauração, rollback ou limites do plano Hobby, mesmo que não diga "deploy" ou "Unishop".
 metadata:
   author: unishop-team
-  version: "0.3.1"
+  version: "0.3.3"
 ---
 
 # Deploy do Unishop (Vercel + Supabase)
 
-Resumo operacional. Fonte completa e autoritativa: [`docs/deploy/deploy.md`](../../../docs/deploy/deploy.md) (v0.3, de 16/10/2026, alinhada ao conjunto v0.4/v0.3). Banco, papéis e migração: skill `unishop-database` ([`docs/BancoDeDados/bd.md`](../../../docs/BancoDeDados/bd.md)). Segredos, providers e travas: [`docs/api/api.md`](../../../docs/api/api.md). Em dúvida, releia a seção citada.
+Resumo operacional. Fonte completa e autoritativa: [`docs/deploy/deploy.md`](../../../docs/deploy/deploy.md) (v0.3.1, de 01/11/2026, alinhada ao conjunto v0.4/v0.3). Banco, papéis e migração: skill `unishop-database` ([`docs/BancoDeDados/bd.md`](../../../docs/BancoDeDados/bd.md)). Segredos, providers e travas: [`docs/api/api.md`](../../../docs/api/api.md). Em dúvida, releia a seção citada.
 
 **Seja conservador com o que sai da máquina.** Deploy, push, troca de variável e restauração de banco afetam outras pessoas ou dados de alunos. Só execute quando o usuário pedir, confirme o alvo (produção ou preview) antes, e nunca grave token, senha ou `DATABASE_URL` em arquivo versionado. O grupo é novato em deploy: explique o porquê de cada passo.
 
@@ -62,7 +62,7 @@ Uso pessoal e **não comercial**; **sem colaboração em equipe** (uma conta é 
 
 ## Backup e restauração (RNF011)
 
-Backup **diário** por workflow do GitHub Actions (`pg_dump` da mesma versão principal do banco, pelo Session pooler, segredo `DATABASE_URL_BACKUP` com o papel somente leitura `unishop_backup`, retenção de 7 dias) **somente em repositório privado**. O Supabase gratuito **não tem backup automático nem ponto no tempo**, então esse workflow é o único backup; rode-o à mão antes de migração arriscada. Restauração testada em banco descartável antes da entrega (resultado esperado: 6 categorias na tabela `categoria`). Os dumps contêm dados de alunos: o `pg_dump` precisa ter a mesma versão principal do Supabase; nunca restaure sobre produção sem confirmação explícita. **LGPD:** depois de restaurar um backup, reaplique a anonimização das contas excluídas (`status_conta = 'excluida'`); dumps antigos guardam os dados até a rotação de 7 dias, limitação que consta nos Termos.
+Backup **diário** por workflow do GitHub Actions (`pg_dump` da mesma versão principal do banco, pelo Session pooler, segredo `DATABASE_URL_BACKUP` com o papel somente leitura `unishop_backup`, retenção de 7 dias) **somente em repositório privado**. O Supabase gratuito **não tem backup automático nem ponto no tempo**, então esse workflow é o único backup; rode-o à mão antes de migração arriscada. Restauração testada em banco descartável antes da entrega (resultado esperado: 6 categorias na tabela `categoria`). Os dumps contêm dados de alunos: o `pg_dump` precisa ter a mesma versão principal do Supabase; nunca restaure sobre produção sem confirmação explícita. **LGPD:** depois de restaurar um backup, reaplique a anonimização das contas excluídas (`status_conta = 'excluida'`); dumps antigos guardam os dados até a rotação de 7 dias, limitação que consta nos Termos. O `pg_dump` usa `--enable-row-security` e a URL do `unishop_backup` sem os parâmetros do Prisma (`pgbouncer`, `uselibpqcompat`); o papel precisa de `SELECT` nas tabelas **e nas sequências**, senão o dump falha ou sai vazio. O workflow ainda não existe (revisão de 01/11/2026).
 
 ## Rollback
 
@@ -80,4 +80,4 @@ Do computador do usuário (Git Bash ou WSL; no Windows os comandos do guia são 
 
 ## Pendências que bloqueiam ou mudam o deploy
 
-Numeração da seção 17.3 do deploy v0.3.1. Abertas: plano/equipe do Hobby (1) · **domínio próprio para o Resend** (3) · RNF012 a RNF016 não mapeados (6) · login com Google em `vercel.app` (7) · prova de conceito do Pix de teste do Mercado Pago e Payments × Orders API (10) · nome da tabela de categorias no teste de restauração, que é `categoria` (11) · criar e testar os três papéis no Supabase (12) · versão do PostgreSQL do Supabase (13). Decididas: exceção da regra 4 (2), cron-job.org a cada 30 min (4), 4 MB (5), rate limit em memória (8). Cite a pendência em vez de decidir sozinho.
+Numeração da seção 17.3 do deploy v0.3.1. Abertas: plano/equipe do Hobby (1) · **domínio próprio para o Resend** (3) · RNF012 a RNF016 não mapeados (6) · login com Google em `vercel.app` (7) · prova de conceito do Pix de teste do Mercado Pago (Payments API já escolhida) (10) · nome da tabela de categorias no teste de restauração, que é `categoria` (11) · criar e testar os três papéis no Supabase (12) · versão do PostgreSQL do Supabase (13). Decididas: exceção da regra 4 (2), cron-job.org a cada 30 min (4), 4 MB (5), rate limit em memória (8). Cite a pendência em vez de decidir sozinho.

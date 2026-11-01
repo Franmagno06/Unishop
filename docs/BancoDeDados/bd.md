@@ -1,8 +1,9 @@
 ---
 title: Documentação Técnica — Banco de Dados
 project: Unishop
-version: 0.2
-date: 2026-10-16
+version: 0.2.1
+date: 2026-11-01
+changelog: "0.2.1 — RLS e papéis testados no unishop-prod e no unishop-dev; SELECT nas sequências para o unishop_backup; migrações testadas em banco vazio; seção 15 revisada contra o código."
 status: vigente com pendências
 owners: Ana Clara (banco de dados)
 reviewers: Felipe Bessa (backend), Pedro Cândido (API), Francisco Magno (integração front-back)
@@ -299,9 +300,10 @@ Restrições: `imagem_anuncio_pkey`, `fk_imagem_anuncio`, `uq_imagem_ordem` (UNI
 | `valor_total` | numeric(10,2) | NN | Total cobrado | RN-PED-02 |
 | `data_pedido` | timestamptz | NN, padrão `now()` | Quando foi criado | RN-PED-06 |
 | `concluido_em` | timestamptz | NULL | Quando foi concluído | RN-PED-08 |
+| `motivo_cancelamento` | varchar(30) | NULL | Por que o **sistema** cancelou o pedido (seção 6); NULL nos demais | RN-PAG-08, 12, 14 |
 | `atualizado_em` | timestamptz | NN, padrão `now()` | Última mudança | RN-PAG-12 |
 
-Restrições: `pedido_pkey`, `fk_pedido_anuncio`, `fk_pedido_comprador`, `fk_pedido_vendedor`; `ck_pedido_qtd`, `ck_pedido_valor`, `ck_pedido_taxa`, `ck_pedido_forma`, `ck_pedido_status`; `uq_pedido_aberto` (índice único parcial).
+Restrições: `pedido_pkey`, `fk_pedido_anuncio`, `fk_pedido_comprador`, `fk_pedido_vendedor`; `ck_pedido_qtd`, `ck_pedido_valor`, `ck_pedido_taxa`, `ck_pedido_forma`, `ck_pedido_status`, `ck_pedido_motivo`; `uq_pedido_aberto` (índice único parcial).
 
 > **Preenchimento em dois passos.** O backend cria o pedido já com todos os campos congelados, lendo o anúncio na mesma transação. Em manutenção, se algum dia houver linhas antigas sem `preco_unitario`, preencher com `anuncio.preco` antes de exigir `NOT NULL` (ver seção 11).
 
@@ -434,7 +436,7 @@ Para apagar tudo (só em desenvolvimento), use a ordem inversa, ou `prisma migra
 
 ## 6. Valores fixos (estados) de cada coluna
 
-Os campos abaixo são `varchar` com `CHECK` (seção 14): qualquer texto fora da lista é recusado pelo banco. Os valores ficam **em português**, e o backend usa os mesmos nomes (enum do Prisma com `@map`). Há um valor por estado no banco; os textos exibidos ao usuário (por exemplo, "Pago · aguardando retirada" para o comprador e "Pago · combinar retirada" para o vendedor) ficam na interface.
+Os campos abaixo são `varchar` com `CHECK` (seção 14): qualquer texto fora da lista é recusado pelo banco. Os valores ficam **em português**. O backend usa a API em inglês e converte **nos repositories**, porque o `schema.prisma` guarda esses campos como `String` (conferido em 01/11/2026; o `@map` de enum previsto aqui não foi adotado, ver a pendência 6 da seção 15). Há um valor por estado no banco; os textos exibidos ao usuário (por exemplo, "Pago · aguardando retirada" para o comprador e "Pago · combinar retirada" para o vendedor) ficam na interface.
 
 ### usuario.tipo_usuario
 
@@ -491,6 +493,18 @@ WHATSAPP:  em_negociacao ─▶ concluido   (vendedor confirma a venda e descont
 ```
 
 Um pedido `cancelado` nunca volta a `pendente`.
+
+### pedido.motivo_cancelamento
+
+Preenchido **só quando o sistema cancela** o pedido (jobs e liquidação); fica NULL nos demais casos, inclusive quando o comprador ou o vendedor cancela. A tela usa o valor para explicar o cancelamento. Os nomes são propostas, a confirmar com a Ana Clara.
+
+| Valor | Significado | Regra |
+|---|---|---|
+| `vencido` | Pix expirado ou 30 minutos sem pagamento aprovado | RN-PAG-12 |
+| `sem_estoque` | Pagamento aprovado, mas o estoque acabou antes (estorno) | RN-PAG-08, 14 |
+| `anuncio_indisponivel` | Pagamento aprovado, mas o anúncio saiu do ar (pausado, vendido, excluído ou dono suspenso) ou o pedido já estava cancelado (estorno) | RN-PAG-13, 14 |
+
+Na API os valores saem em inglês (`expired`, `out_of_stock`, `listing_unavailable`), convertidos no repository.
 
 ### pagamento.forma_pagamento
 
@@ -865,7 +879,7 @@ Os limites mudam com o tempo; conferir no painel e na página de preços do Supa
 
 ## 12. MER × banco: divergências
 
-Comparação entre o `mer_unishop.drawio` e o banco. O banco segue o MER, e as diferenças abaixo são correções do **MER**, que ainda precisa ser atualizado (o `.drawio` não faz parte desta entrega).
+Comparação entre o `mer_unishop.drawio` e o banco. O banco segue o MER, e as diferenças abaixo são correções do **MER**.
 
 | # | Item | No MER | No banco | O que fazer |
 |---|---|---|---|---|
@@ -1056,14 +1070,18 @@ Os papéis são criados pelo *SQL Editor* do Supabase, com o usuário `postgres`
 
 -- Quem migra é dono do schema (as tabelas ficam com ele como dono)
 GRANT ALL ON SCHEMA public TO unishop_migrator;
+-- Banco vazio: a 0_init começa com CREATE SCHEMA IF NOT EXISTS "public", que exige CREATE no banco
+-- (sem isto: "permission denied for database postgres", erro 42501)
+GRANT CREATE ON DATABASE postgres TO unishop_migrator;
 
 -- A aplicação lê e escreve, mas não altera estrutura
 GRANT USAGE ON SCHEMA public TO unishop_app, unishop_backup;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO unishop_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO unishop_app;
 
--- O backup só lê
+-- O backup só lê (SELECT nas sequências também: o pg_dump lê last_value e falha com "permission denied for sequence")
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO unishop_backup;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO unishop_backup;
 
 -- Vale também para as tabelas criadas nas próximas migrações
 ALTER DEFAULT PRIVILEGES FOR ROLE unishop_migrator IN SCHEMA public
@@ -1072,6 +1090,8 @@ ALTER DEFAULT PRIVILEGES FOR ROLE unishop_migrator IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO unishop_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE unishop_migrator IN SCHEMA public
   GRANT SELECT ON TABLES TO unishop_backup;
+ALTER DEFAULT PRIVILEGES FOR ROLE unishop_migrator IN SCHEMA public
+  GRANT SELECT ON SEQUENCES TO unishop_backup;
 
 -- Supabase: as roles anon e authenticated da API automática NÃO podem tocar nas tabelas
 -- (o Unishop só acessa o banco pelo backend; sem isto, quem tiver a chave pública do projeto leria os dados)
@@ -1116,6 +1136,23 @@ INSERT INTO public.pagamento (id_pedido, forma_pagamento, status_pagamento) VALU
 INSERT INTO public.pagamento (id_pedido, forma_pagamento, status_pagamento) VALUES (1, 'cartao', 'pendente');
 ```
 
+### Migração 3: motivo do cancelamento
+
+Arquivo `backend/prisma/migrations/3_motivo_cancelamento/migration.sql`, aplicado depois de `0_init`, `1_regras_manuais` e `2_rls_politicas`. Coluna aditiva e anulável; não é tabela nova, então não leva RLS nem política (valem as da `pedido`).
+
+```sql
+ALTER TABLE public.pedido
+  ADD COLUMN motivo_cancelamento varchar(30);
+
+ALTER TABLE public.pedido
+  ADD CONSTRAINT ck_pedido_motivo CHECK (
+    motivo_cancelamento IS NULL
+    OR motivo_cancelamento IN ('vencido', 'sem_estoque', 'anuncio_indisponivel')
+  );
+```
+
+Aplicada no `unishop-dev` e no PostgreSQL 17 do Docker em 01/11/2026 (teste `RN-PAG-08, 12, 14` em `backend/tests/db/schema.test.ts`). **Falta aplicar no `unishop-prod`**, com `prisma migrate deploy` e o papel `unishop_migrator`.
+
 ## 15. Decisões e pendências
 
 ### Decisões já refletidas no banco
@@ -1142,15 +1179,19 @@ INSERT INTO public.pagamento (id_pedido, forma_pagamento, status_pagamento) VALU
 
 | # | Pendência | Proposta |
 |---|---|---|
-| 1 | **Aplicada em 31/10/2026 no projeto `UNISHOP DB` (papéis criados, `unishop_migrator` dono das tabelas, políticas `app_all` e `backup_select`, `anon` e `authenticated` sem privilégio, `2_rls_politicas` registrada); falta o teste de login de cada papel pelo pooler e repetir no `unishop-dev`.** Original: Criação dos papéis no Supabase pelo SQL Editor, teste de login de cada um pelo pooler (`papel.ref-do-projeto`), revogação do acesso de `anon` e `authenticated` e aplicação da RLS com política por papel (migração `2_rls_politicas`; passo a passo no Deploy §7.5) | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |
+| 1 | ~~Papéis, login pelo pooler e RLS no Supabase~~ **Resolvida:** papéis criados, `unishop_migrator` dono das tabelas, políticas `app_all` e `backup_select`, `anon` e `authenticated` sem privilégio, `2_rls_politicas` registrada; login de cada papel e `pg_dump` do `unishop_backup` testados no `unishop-prod` (31/10/2026) e no `unishop-dev` (01/11/2026) | — |
 | 2 | Regras que o banco não garante: admin não compra, dono não compra o próprio anúncio, mínimo de 1 imagem, admin não remove o último admin | Backend (`authorizeRole`, `OWN_LISTING`, transação). Triggers são opcionais |
-| 3 | Busca por texto no nome do anúncio | `ILIKE` no MVP; `pg_trgm` se a busca ficar lenta |
-| 4 | Atualizar o MER conforme a seção 12 | Ajuste no `.drawio` (fora desta entrega) |
-| 5 | Testar a migração `0_init` + manual em um banco vazio | Rodar a seção 14 e os testes de integridade antes de o Backend implementar os pedidos |
+| 3 | Busca por texto no nome do anúncio | **Feita:** `contains` insensível a maiúsculas (nome e descrição) no `listings.repository.ts`. `pg_trgm` só se ficar lento |
+| 5 | ~~Testar a migração `0_init` + manual em um banco vazio~~ **Resolvida:** as três migrações (`0_init`, `1_regras_manuais`, `2_rls_politicas`) foram aplicadas em banco vazio no `unishop-dev` (01/11/2026) e no PostgreSQL 17 do Docker (`npm run test:db`, 87 testes verdes) | — |
+| 6 | **Valores de estado em português no banco × inglês na API:** o `schema.prisma` usa `String` (com `CHECK` na migração manual) e o backend converte nos repositories; a seção 7 prevê enum do Prisma com `@map` | Decidir com Felipe: manter a conversão nos repositories (e corrigir a seção 7) ou migrar para enums com `@map` |
+| 7 | ~~**`pedido.motivo_cancelamento`** (P9)~~ **Feita em 01/11/2026:** migração `3_motivo_cancelamento` (coluna `varchar(30)` anulável e `ck_pedido_motivo`), aplicada no `unishop-dev` e no Docker; **falta aplicar no `unishop-prod`** e a Ana Clara confirmar os três nomes | Aplicar no prod com `migrate deploy` antes de a Etapa 6 gravar o motivo |
+| 8 | `unishop_backup` precisa de `SELECT` também nas sequências (o `pg_dump` lê o `last_value`; sem isso falha com `permission denied for sequence`) e do `--enable-row-security` | **Feito** no bloco de papéis (seção 14) e aplicado no `unishop-dev`; conferir a mesma permissão ao criar o próximo ambiente |
+| 9 | O comentário da `1_regras_manuais` diz "PostgreSQL 18", mas o banco é o 17 | Não editar a migração já aplicada (o Prisma confere o checksum); corrigir só numa migração nova |
+| 10 | O MER (`mer_unishop.drawio`) segue com as divergências da seção 12 | Decidido por Pedro em 01/11/2026: não atualizar o MER agora; o banco vale mais que o MER e a seção 12 é o registro das divergências |
 
-### Próximos passos sugeridos
+### Próximos passos
 
-1. Gerar o `schema.prisma` pelo mapeamento da seção 7 e a migração `0_init`.
-2. Rodar a migração manual (seção 14) em um banco de desenvolvimento e conferir com os testes de integridade.
-3. Escrever o seed (categorias e conta admin).
-4. Atualizar o MER (seção 12).
+1. ~~Gerar o `schema.prisma` pelo mapeamento da seção 7 e a migração `0_init`~~ **Feito.**
+2. ~~Rodar a migração manual (seção 14) em um banco de desenvolvimento e conferir com os testes de integridade~~ **Feito** (`npm run test:db`).
+3. ~~Escrever o seed (categorias e conta admin)~~ **Feito** (`prisma/seed.ts`; rodado no `unishop-dev`).
+4. ~~Criar a migração `3_motivo_cancelamento` (pendência 7)~~ **Feito** (falta aplicar no `unishop-prod`).

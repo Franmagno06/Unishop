@@ -12,12 +12,16 @@ import {
 import { createPrismaCategoryRepository } from '../../src/modules/categories/categories.repository'
 import { createPrismaListingRepository } from '../../src/modules/listings/listings.repository'
 import type { ListingRepository } from '../../src/modules/listings/listings.types'
+import { createPrismaOrderRepository } from '../../src/modules/orders/orders.repository'
+import { createPrismaPaymentRepository } from '../../src/modules/payments/payments.repository'
 import { createPrismaProfileRepository } from '../../src/modules/users/users.repository'
+import { createMockPaymentGateway } from '../../src/shared/providers/payment/mock.provider'
 import { createFakeMail, createFakeOAuth, createFakeStorage } from './fakes'
 import { testDb } from './db'
 
-// App completo com os repositories reais (Prisma) sobre o banco de teste. Os e-mails, o Google e o
-// storage continuam falsos. O token é assinado direto, sem passar pelo login (bcrypt custo 12 é lento).
+// App completo com os repositories reais (Prisma) sobre o banco de teste. Os e-mails, o Google, o
+// storage e o gateway de pagamento continuam falsos. O token é assinado direto, sem passar pelo
+// login (bcrypt custo 12 é lento).
 export function buildDbApp(
   overrides: {
     listings?: Partial<ListingRepository>
@@ -27,6 +31,7 @@ export function buildDbApp(
 ) {
   const storage = createFakeStorage()
   const mail = createFakeMail()
+  const gateway = createMockPaymentGateway()
   const app = createApp({
     users: createPrismaUserRepository(testDb),
     profiles: createPrismaProfileRepository(testDb),
@@ -45,10 +50,14 @@ export function buildDbApp(
         ...(overrides.writeAuditLog && { writeAuditLog: overrides.writeAuditLog }),
       }),
     },
+    orders: createPrismaOrderRepository(testDb),
+    payments: createPrismaPaymentRepository(testDb),
+    gateway,
+    db: testDb,
   })
   const jwt = createJwt(process.env.JWT_SECRET!, '2h')
   const auth = (user: { id: number; role?: 'student' | 'admin' }) => ({
     Authorization: `Bearer ${jwt.sign({ id: user.id, role: user.role ?? 'student' })}`,
   })
-  return { app, auth, storage, mail }
+  return { app, auth, storage, mail, gateway }
 }

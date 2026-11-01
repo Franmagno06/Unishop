@@ -34,6 +34,8 @@ type RequestOptions = {
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, signal } = options
   const token = getToken()
+  // FormData (envio de imagem) vai como multipart: o navegador define o Content-Type com o boundary.
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData
 
   let response: Response
   try {
@@ -41,10 +43,10 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
       method,
       signal,
       headers: {
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(body !== undefined && !isForm ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
     })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error

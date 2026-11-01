@@ -1,6 +1,10 @@
 import { z } from 'zod'
 import { LIMITS } from '../../config/constants'
-import { courseField, emailField as email, whatsappField } from '../../shared/schemas/profile-fields'
+import {
+  courseField,
+  emailField as email,
+  whatsappField,
+} from '../../shared/schemas/profile-fields'
 
 // Espelha o frontend (auth.schemas.ts): o servidor valida de novo, o cliente nunca basta (RNF004).
 

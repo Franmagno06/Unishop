@@ -4,14 +4,16 @@ Contexto para o Claude Code trabalhar no projeto **Unishop**, e-commerce web par
 
 ## Leia primeiro
 
-Conjunto de documentos alinhado em 16/10/2026. Precedência entre eles: PDF, Regras de Negócio, Banco de Dados, Backend e Frontend, API e Deploy (quando dois discordam, corrige-se o de menor precedência).
+Conjunto de documentos alinhado em 16/10/2026 e **revisado contra o código em 01/11/2026** (versões novas indicadas abaixo). Precedência entre eles: PDF, Regras de Negócio, Banco de Dados, Backend e Frontend, API e Deploy (quando dois discordam, corrige-se o de menor precedência).
 
-- [`docs/regras-de-negócio/regras-de-negócio.md`](docs/regras-de-negócio/regras-de-negócio.md) (v0.4.1) — regras RN-XXX-nn, estados, permissões, escopo do MVP (§8), limites de campos e itens proibidos (§9), desvios do PDF (§10) e cenários de teste.
-- [`docs/BancoDeDados/bd.md`](docs/BancoDeDados/bd.md) (v0.2) — as 8 tabelas no estado final, dicionário de dados, valores fixos dos estados, mapeamento banco × backend, consultas críticas, anonimização (LGPD), migração pelo Prisma, papéis do banco e SQL da migração manual.
-- [`docs/backend/backend.md`](docs/backend/backend.md) (v0.3) — arquitetura em camadas, autenticação, módulos e rotas (§9), pagamentos, estados, jobs, erros, segurança e mapa das regras RN no backend.
-- [`docs/frontend/frontend.md`](docs/frontend/frontend.md) (v0.4) — estrutura, rotas, componentes, estado, sessão e padrões de qualidade do frontend.
-- [`docs/api/api.md`](docs/api/api.md) (v0.3) — APIs externas (Google, Mercado Pago, Resend, Cloudinary, Turnstile e outras), arquitetura de segurança "backend-cofre", providers, travas de produção, variáveis, resiliência, custos e ADRs 001 a 009. O contrato da API própria (`openapi.yaml`) ainda não existe.
-- [`docs/deploy/deploy.md`](docs/deploy/deploy.md) (v0.3) — deploy em produção (Vercel + Supabase): ambientes, segredos, CORS, jobs agendados, backup, atualização e reversão.
+- [`docs/regras-de-negócio/regras-de-negócio.md`](docs/regras-de-negócio/regras-de-negócio.md) (v0.4.2) — regras RN-XXX-nn, estados, permissões, escopo do MVP (§8), limites de campos e itens proibidos (§9), desvios do PDF (§10) e cenários de teste.
+- [`docs/BancoDeDados/bd.md`](docs/BancoDeDados/bd.md) (v0.2.1) — as 8 tabelas no estado final, dicionário de dados, valores fixos dos estados, mapeamento banco × backend, consultas críticas, anonimização (LGPD), migração pelo Prisma, papéis do banco e SQL da migração manual.
+- [`docs/backend/backend.md`](docs/backend/backend.md) (v0.3.1) — arquitetura em camadas, autenticação, módulos e rotas (§9), pagamentos, estados, jobs, erros, segurança e mapa das regras RN no backend.
+- [`docs/frontend/frontend.md`](docs/frontend/frontend.md) (v0.4.1) — estrutura, rotas, componentes, estado, sessão e padrões de qualidade do frontend.
+- [`docs/api/api.md`](docs/api/api.md) (v0.3.1) — APIs externas (Google, Mercado Pago, Resend, Cloudinary, Turnstile e outras), arquitetura de segurança "backend-cofre", providers, travas de produção, variáveis, resiliência, custos e ADRs 001 a 009. O contrato da API própria (`openapi.yaml`) ainda não existe.
+- [`docs/deploy/deploy.md`](docs/deploy/deploy.md) (v0.3.1) — deploy em produção (Vercel + Supabase): ambientes, segredos, CORS, jobs agendados, backup, atualização e reversão.
+- [`docs/backend/roteiro-backend.md`](docs/backend/roteiro-backend.md) (v0.6, aprovado) — as 12 etapas do backend, o que já está pronto e a integração com o frontend, etapa por etapa.
+- [`docs/frontend/roteiro-telas.md`](docs/frontend/roteiro-telas.md) (v0.2) — ordem das telas, ciclo de cada tela e fichas.
 - [`docs/skills/skills.md`](docs/skills/skills.md) — skills do Claude Code instaladas no projeto e como usá-las.
 - `Trabalho Desenvolvimento Web 2026.pdf` — requisitos funcionais (RF001–RF024) e não-funcionais (RNF001–RNF016) originais do trabalho.
 
@@ -58,7 +60,7 @@ Fluxo sugerido por momento do trabalho (quando o código existir):
 | Antes do PR | `/code-review` e, em mudança sensível (auth, pagamento, admin), `/security-review` |
 | Documentação mudou | Revisar a skill `unishop-*` correspondente |
 
-Enquanto o projeto estiver só em documentação, as skills `unishop-*` servem para revisar e manter a coerência dos documentos, não para gerar código.
+O backend (a maior parte das etapas 1 a 5 do roteiro) e o frontend (todas as telas, sobre dados de exemplo) já existem: as skills `unishop-*` valem para revisar documentos **e** para escrever código. A fonte de verdade continua sendo `docs/`.
 
 Regras de uso:
 
@@ -91,7 +93,7 @@ Itens marcados como "sugestão" nesta ou em outras docs **não** foram decididos
 Combinado com Francisco em 20/10/2026:
 
 - **Ao concluir cada tarefa:** (1) revisar o código feito; (2) rodar uma bateria de testes (lint, tipos, build e testes unitários, de componente e de fluxo) e relatar o resultado, inclusive o que não foi testado; (3) indicar o que estudar no [Roadmap de Estudo Unishop](https://claude.ai/artifact/8ZMbqd3vKb2QLVbsADSjeN), citando os módulos (ex.: B3, E2) e por que cada um serve àquela tarefa. O roadmap é do gestor: apenas ler, não editar.
-- **Ordem do desenvolvimento:** primeiro todas as telas do frontend, seguindo o Figma e com dados de exemplo; a API só começa depois de as telas estarem prontas. Até lá, `openapi.yaml` e backend ficam parados.
+- **Ordem do desenvolvimento (atualizada em 01/11/2026):** as telas do frontend foram feitas primeiro, seguindo o Figma e com dados de exemplo. Agora frontend e API andam **juntos, etapa por etapa**, pelo [`docs/backend/roteiro-backend.md`](docs/backend/roteiro-backend.md) (roteiro aprovado, confirmado por Pedro em 01/11/2026): a cada etapa, o service do frontend troca o dado de exemplo pela API e o `openapi.yaml` ganha a fatia correspondente. Substitui o combinado de 20/10/2026 ("API só depois das telas").
 - **Skills de Emil Kowalski** (`emil-design-eng`, `animate` e as outras cinco): instaladas, mas fora do fluxo por enquanto. Usar só se o gestor pedir.
 
 ## Regras de idioma e nomenclatura
@@ -106,6 +108,18 @@ Combinado com Francisco em 20/10/2026:
 ## Visão geral do sistema
 
 Sistema web onde alunos verificados (e-mail `@edu.unifor.br`) anunciam e compram materiais e itens de interesse (livros, eletrônicos, alimentos, materiais de curso, vestuário, outros) dentro do campus. A retirada é sempre presencial, combinada via WhatsApp. Três atores: **visitante**, **usuário (aluno logado)** e **administrador**. O catálogo só é acessível a aluno autenticado; o visitante vê apenas a tela inicial (inclusive o carrossel de anúncios recentes).
+
+## Estado do projeto (01/11/2026)
+
+| Parte | Estado |
+|---|---|
+| Backend | Etapas 2 (banco), 4 (autenticação e perfil), 5 (categorias e anúncios), 6 (pedidos), 7 (pagamentos e liquidação) e 8 (jobs) prontas **no backend**; as Etapas 1 e 3 estão quase prontas (falta o `buildProviders` central, os drivers reais de e-mail e imagem e a trava de `console`/`local` no `env.ts`) e a 10 está parcial (Google real e `mercadopago.provider` escrito, **nunca chamado de verdade**). Rotas: `/auth`, `/users`, `/categories`, `/listings`, `/orders`, `/payments` (cartão, Pix e webhook assinado), `GET /internal/jobs/:name` e `GET /health/db`. Gateway: `mock.provider` (dev e teste) e `mercadopago.provider` na **Payments API**. **Não existem** notificações como módulo (o e-mail de venda e de estorno sai pelo `MailProvider`) nem rotas admin. O trabalho das etapas 6 a 8 **ainda não foi commitado**. |
+| Banco | 8 tabelas, RLS e papéis `unishop_*` aplicados e testados no `unishop-prod` e no `unishop-dev`; migrações `0_init`, `1_regras_manuais`, `2_rls_politicas` e `3_motivo_cancelamento`; seed rodado no dev (6 categorias e 1 admin). `pedido.motivo_cancelamento` criada na migração `3_motivo_cancelamento` (dev e Docker; falta o `unishop-prod`). |
+| Frontend | Todas as telas do Figma prontas, em sua maioria sobre dados de exemplo (`VITE_USE_MOCKS`). Chamam a API de verdade `auth.service`, `profile.service`, categorias, anúncios e "meus anúncios" (verificado no navegador em 01/11/2026); o **checkout** (criar pedido, ler pedido, cartão com `tokenizeCard`, Pix e "Já paguei") também chama a API quando `VITE_USE_MOCKS` está desligado; "meus pedidos", pedidos recebidos, concluir venda, avaliações e admin ainda usam exemplo (o exemplo fica nos `*.mock.ts`, atrás de `VITE_USE_MOCKS`). |
+| Testes | Backend: `npm test` com 134 testes e `npm run test:db` (Docker, PostgreSQL 17 local) com 133, todos passando em 01/11/2026, além de `tsc`, lint e build. Frontend: `tsc`, lint e build passam; Vitest com 681 de 682 (a falha é o teste do botão do Google no `RegisterPage`, por causa do `VITE_GOOGLE_CLIENT_ID` do `.env` local). **Nunca testados:** `mercadopago.provider` contra o Mercado Pago real, o SDK no navegador, o webhook por túnel e o Playwright. |
+| Deploy | Nada publicado a partir do repositório: não há `vercel.json` nem `.github/workflows`. |
+| `openapi.yaml` | Não existe, embora o backend já tenha 6 módulos. |
+| Guia do Mercado Pago | [`docs/api/mercado-pago-passo-a-passo.md`](docs/api/mercado-pago-passo-a-passo.md): onde colocar cada chave (`MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `PAYMENT_DRIVER`, `PAYMENT_MODE`, `API_PUBLIC_URL`, `CRON_SECRET` no `backend/.env`; `VITE_MP_PUBLIC_KEY` no `frontend/.env`), túnel para o webhook e prova de conceito do Pix. |
 
 ## Equipe e responsabilidades
 
@@ -128,7 +142,7 @@ Sistema web onde alunos verificados (e-mail `@edu.unifor.br`) anunciam e compram
 | Versionamento | Git, código organizado em camadas |
 | Gestão | Trello (Kanban) |
 
-Decisões fechadas da stack: Vite, Tailwind CSS, Prisma, React Router, TanStack Query, React Hook Form, Zod e Vitest/Testing Library/Playwright, estrutura do backend em camadas (routes/controller/service/repository), Mercado Pago, Vercel + Supabase, Resend (Mailtrap em desenvolvimento) e Cloudinary. Todos os documentos (`regras-de-negócio`, `BancoDeDados`, `backend`, `frontend`, `api` e `deploy`) foram alinhados em conjunto em **16/10/2026**. O projeto ainda não foi iniciado: não criar código nem estrutura de pastas até o grupo liberar.
+Decisões fechadas da stack: Vite, Tailwind CSS, Prisma, React Router, TanStack Query, React Hook Form, Zod e Vitest/Testing Library/Playwright, estrutura do backend em camadas (routes/controller/service/repository), Mercado Pago, Vercel + Supabase, Resend (Mailtrap em desenvolvimento) e Cloudinary. Todos os documentos (`regras-de-negócio`, `BancoDeDados`, `backend`, `frontend`, `api` e `deploy`) foram alinhados em conjunto em **16/10/2026**. Estado em 01/11/2026: ver a seção "Estado do projeto" abaixo.
 
 Sugestões ainda em avaliação (não confirmadas): nenhuma na stack. Itens "depois do MVP" (Turnstile, Sentry, confirmação de e-mail por link, tela de notificações, Redis para o limite de requisições) estão decididos como adiados em `docs/regras-de-negócio/regras-de-negócio.md` (§8) e `docs/api/api.md`.
 
@@ -145,7 +159,7 @@ shared/   → componentes e utilitários comuns
 
 Sessão: JWT em memória com cópia em `sessionStorage`, restaurada por `GET /auth/me`.
 
-## Estrutura esperada do backend
+## Estrutura do backend (o que existe e o que falta)
 
 Em camadas (route → controller → service → repository), com serviços externos atrás de providers. Detalhes em [`docs/backend/backend.md`](docs/backend/backend.md).
 
@@ -159,6 +173,8 @@ backend/
    ├─ shared/    → middlewares, providers, security, errors, utils, types
    └─ jobs/      → expirar Pix, limpar tokens, conciliar pagamentos (endpoints em produção)
 ```
+
+Já existem (01/11/2026): `prisma/` completo, `app.ts`, `dev-server.ts`, `config/`, `shared/` (middlewares, `errors`, `database` com `stock.ts`, `providers` de e-mail de console, armazenamento local, Google e **pagamento** com `mock.provider` e `mercadopago.provider`, `utils`), `jobs/` e os módulos `auth`, `users`, `categories`, `listings`, `orders` e `payments`. **Ainda não existem:** `notifications` (módulo), `admin/` e os drivers reais de e-mail (Mailtrap e Resend) e Cloudinary; o Mercado Pago está escrito, mas não foi testado contra a API real.
 
 ## Regras centrais a nunca violar
 
@@ -220,22 +236,42 @@ Estados (nome exibido → valor no banco):
 - Termos de uso e Política de privacidade: versão mínima no MVP (Francisco escreve); conteúdo definido durante o desenvolvimento.
 - Repasse ao vendedor: simulado, via conta única de teste.
 - Limite de requisições em memória por instância, aceito no escopo acadêmico.
+- Frontend e API andam juntos, etapa por etapa, pelo `roteiro-backend.md` (roteiro aprovado; confirmado por Pedro em 01/11/2026).
+- **Fora do MVP (adiado, 01/11/2026):** reembolso, cancelamento de pedido Pago ou em Retirada combinada pelo sistema, avaliações de pedido concluído e solicitações de suporte (Etapa 12 do roteiro, antiga P8). As telas existem no frontend como protótipo, sem regra, sem tabela e sem API; não ligar a API a elas.
 
-## Pendências abertas (dependem de resposta ou ação externa)
+## Pendências abertas
 
-- **`openapi.yaml`:** não existe; Pedro escreve a partir do Backend §9. Frontend, backend e skills dependem dele.
+Revisadas em 01/11/2026 contra o código. O que já foi resolvido saiu desta lista (o histórico está em cada documento).
+
+**Dependem de resposta ou ação externa**
+
+- **`openapi.yaml`:** não existe, embora o backend já tenha `/auth`, `/users`, `/categories`, `/listings`, `/orders` e `/payments`. Pedro escreve **por fatia**, junto de cada etapa do roteiro (a partir do Backend §9); frontend, backend e skills dependem dele.
 - **Domínio próprio:** necessário para o Resend (e-mail de senha e de troca de e-mail) e, se `vercel.app` for recusado, para o login do Google.
-- **Login com Google:** testar com um e-mail `@edu.unifor.br` real se ele entrega `email_verified = true`.
+- **Login com Google:** o provider real já está no backend (`google-auth-library`); falta testar com um e-mail `@edu.unifor.br` real se ele entrega `email_verified = true`.
 - **Plano Hobby da Vercel:** sem equipe; conferir se commits de outros autores são bloqueados em repositório privado.
-- **Prova de conceito do Mercado Pago:** Pix de teste gerar o webhook de aprovação; escolher Payments API ou Orders API (ADR-002).
-- **Papéis do banco no Supabase:** criar `unishop_migrator`, `unishop_app` e `unishop_backup` pelo SQL Editor e testar o login de cada um pelo pooler (Francisco ou Ana Clara); se não der, usar um papel só e registrar a exceção no Deploy.
-- **Backup no Supabase gratuito:** não há backup automático; o RNF011 depende do workflow diário do GitHub Actions (`pg_dump` pela conexão Session pooler) e o plano gratuito não tem restauração a ponto no tempo.
-- **Pausa do projeto:** o plano gratuito pausa o projeto após 1 semana sem atividade; o monitor de `/health/db` (ou um job) precisa gerar atividade antes da demonstração.
-- **RLS e papéis do banco no Supabase (aplicada em 31/10/2026; falta testar o login):** Francisco aprovou em 30/10/2026 a RLS ligada com política `app_all` (`FOR ALL`, `USING (true) WITH CHECK (true)`) só para `unishop_app` e `backup_select` (`SELECT`) só para `unishop_backup`. Em 31/10/2026, no projeto `UNISHOP DB`, os três papéis existem, o `unishop_migrator` é dono das tabelas e da view, as 8 tabelas têm as duas políticas (a `_prisma_migrations` só `backup_select`), `anon` e `authenticated` ficaram sem privilégio, o Security Advisor não aponta nada e a `2_rls_politicas` está registrada em `_prisma_migrations`. Falta: (1) o login de cada papel pelo pooler, com leitura e escrita como `unishop_app` e `pg_dump` do `unishop_backup` com contagem de linhas (dump vazio sem erro é o sintoma de política faltando); (2) trocar o `.env` de `postgres` para os papéis; (3) repetir tudo no `unishop-dev` (migrações em banco vazio). Quem testa: Francisco ou Ana Clara. Quando passar, apagar esta pendência.
-- **Banco:** o `unishop-prod` no Supabase já tem a estrutura e as migrações `0_init` e `1_regras_manuais` estão registradas como aplicadas (`migrate resolve`, 30/10/2026); falta testar as duas migrações em um banco **vazio** (ex.: `unishop-dev`) e atualizar o MER (`.drawio`) com as divergências da seção 12 do Banco de Dados. Nas URLs de conexão use `uselibpqcompat=true&sslmode=require`, e a senha sem os colchetes do modelo do Supabase.
+- **Prova de conceito do Mercado Pago:** **Payments API escolhida** (Pedro, 01/11/2026; registrar no ADR-002 do `api.md`). Falta criar a conta de teste, preencher as chaves e confirmar que o Pix de teste gera o webhook de aprovação e se o CPF do pagador é exigido (o formulário de cartão não tem o campo). Passo a passo em `docs/api/mercado-pago-passo-a-passo.md`.
+- **Backup no Supabase gratuito:** não há backup automático; o RNF011 depende do workflow diário do GitHub Actions (`pg_dump` pela conexão Session pooler, com `--enable-row-security`) e esse workflow **ainda não existe** (não há `.github/`). O plano gratuito não tem restauração a ponto no tempo.
+- **Pausa do projeto:** o plano gratuito pausa o projeto após 1 semana sem atividade; o monitor de `/health/db` (que ainda não existe) ou um job precisa gerar atividade antes da demonstração.
 - **PDF:** conferir os RNF012 a RNF016, ainda não mapeados no Deploy, e o limite de imagem (4 MB × 5 MB).
 - **Textos:** Termos de uso e Política de privacidade ainda não existem; limites de campos e lista de itens proibidos (Regras §9) esperam confirmação do grupo.
-- Lista completa em `docs/regras-de-negócio/regras-de-negócio.md` (seção 11), `docs/api/api.md` (seção 12), `docs/backend/backend.md` (seção 21), `docs/BancoDeDados/bd.md` (seção 15) e `docs/deploy/deploy.md` (seção 17.3).
+
+**Trabalho de desenvolvimento em aberto (código × documentação)**
+
+- **Banco:** a migração `3_motivo_cancelamento` (P9) está no dev e no Docker; falta aplicá-la no `unishop-prod` (`migrate deploy`) e a Ana Clara confirmar os três valores (`vencido`, `sem_estoque`, `anuncio_indisponivel`). **Decidido por Pedro em 01/11/2026: não aplicar no prod antes dessa confirmação**; o código de pedidos já grava esses motivos, então o deploy de produção depende dela.
+- **Integração do frontend:** feita para categorias, anúncios e "meus anúncios" (marco da Etapa 5 verificado em 01/11/2026). Faltam: editar anúncio e remover foto ligados à API, e a troca dos services de pedidos, pagamento e admin nas etapas 6 a 9.
+- **Etapas 6, 7 e 8 prontas, mas não commitadas:** `orders`, `payments`, `jobs`, `shared/providers/payment` e o checkout do frontend estão no working tree, com a bateria verde (ver "Testes"). Falta revisar com `/code-review` e `/security-review` (pagamento, webhook e segredo) e commitar. O Prettier trocou CRLF por LF em muitos arquivos, então o `git status` lista como modificados arquivos sem mudança de conteúdo (`git diff --ignore-space-at-eol` mostra o que mudou de verdade).
+- **Etapa 3 incompleta:** `shared/security`, `AntiBotProvider` `noop` e `http-client` foram criados em 01/11/2026 (outra sessão; **não conferi esses arquivos nem a regra `no-restricted-imports`**). Faltam o `buildProviders` central, os drivers reais (Mailtrap, Resend, Cloudinary) e a trava de produção do e-mail (`console`) e do armazenamento (`local`) no `env.ts`. A trava do gateway de pagamento já existe (`env.ts` e `buildPaymentGateway`): mock em produção, `PAYMENT_MODE=production` fora de produção e `mercadopago` sem chaves derrubam o boot.
+- **Etapa 1:** `GET /health/db` e `@vercel/functions` (`runInBackground`) já existem.
+- **Telas de pedidos fora do checkout:** "meus pedidos", pedidos recebidos e "concluir venda" ainda usam exemplo, embora a API de pedidos exista. Parcelas do cartão fixas em 1x e repasse simulado.
+- **`DELETE /users/me`** anonimiza sem conferir pedidos Pago ou em Retirada combinada em aberto (409 `HAS_OPEN_PAID_ORDERS`, RN-PER-06); completar quando os pedidos existirem. O `DELETE /listings/:id` já aplica o bloqueio.
+- **Etapas 9 a 11 do roteiro não começaram (a 10 está parcial):** admin com anonimização, integrações reais (e-mail e Cloudinary; o Mercado Pago falta testar) e deploy.
+- **Deploy:** sem `vercel.json` e sem workflows (testes e backup). O seed do admin rodou só no `unishop-dev`; o `unishop-prod` ainda não tem admin.
+- **Segredos:** o `backend/.env` do prod guarda `ADMIN_EMAIL` e `ADMIN_PASSWORD`; apagar essas duas linhas depois do seed de produção (fora do git).
+- **Dívidas pequenas:** aviso do Vite sobre ESM nas configs `vitest*.config.ts`; o cabeçalho da `1_regras_manuais` diz "PostgreSQL 18" (não editar: o Prisma confere o checksum das migrações aplicadas; corrigir só numa migração nova).
+- **Documentação:** o `docs/README.md` (índice) que os documentos citam não existe; os documentos ainda citam caminhos sem acento (nota em "Leia primeiro").
+- **Skills:** os casos de `evals/` das `unishop-*` ainda não foram executados (falta Python na máquina).
+
+Lista completa em `docs/regras-de-negócio/regras-de-negócio.md` (seção 11), `docs/api/api.md` (seção 12), `docs/backend/backend.md` (seção 21), `docs/BancoDeDados/bd.md` (seção 15), `docs/deploy/deploy.md` (seção 17.3) e `docs/backend/roteiro-backend.md` (seção 2).
 
 ## Modelo de dados (resumo)
 
@@ -255,12 +291,12 @@ Oito tabelas no schema `public`, chaves `GENERATED ALWAYS AS IDENTITY`, datas em
 README.md                                  # apresentação do projeto
 skills-lock.json                           # origem e hash das skills externas
 docs/
-├─ frontend/frontend.md                    # estrutura, rotas, componentes, estado, qualidade (v0.4)
-├─ frontend/roteiro-telas.md               # ordem das telas, ciclo de cada tela e fichas (v0.1)
-├─ regras-de-negócio/regras-de-negócio.md  # regras RN-XXX-nn, estados, permissões, MVP, testes (v0.4.1)
-├─ BancoDeDados/bd.md                      # dicionário de dados, migração, papéis, LGPD (v0.2)
-├─ backend/backend.md                      # arquitetura, rotas, pagamentos, segurança (v0.3)
-├─ deploy/deploy.md                        # deploy na Vercel + Supabase (v0.3)
+├─ frontend/frontend.md                    # estrutura, rotas, componentes, estado, qualidade (v0.4.1)
+├─ frontend/roteiro-telas.md               # ordem das telas, ciclo de cada tela e fichas (v0.2)
+├─ regras-de-negócio/regras-de-negócio.md  # regras RN-XXX-nn, estados, permissões, MVP, testes (v0.4.2)
+├─ BancoDeDados/bd.md                      # dicionário de dados, migração, papéis, LGPD (v0.2.1)
+├─ backend/backend.md                      # arquitetura, rotas, pagamentos, segurança (v0.3.1)
+├─ deploy/deploy.md                        # deploy na Vercel + Supabase (v0.3.1)
 ├─ skills/skills.md                        # skills do Claude Code no projeto
 └─ api/api.md                              # APIs externas e segurança (v0.3); openapi.yaml ainda não existe
 ```

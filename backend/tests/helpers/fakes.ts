@@ -19,7 +19,9 @@ import type {
 import type {
   ListingRemovedMail,
   MailProvider,
+  OrderRefundedMail,
   PasswordResetMail,
+  SaleConfirmedMail,
 } from '../../src/shared/providers/mail/mail.provider'
 import type { GoogleIdentity, OAuthProvider } from '../../src/shared/providers/oauth/oauth.provider'
 
@@ -140,6 +142,8 @@ export function createFakeTokens() {
 export function createFakeMail() {
   const sent: PasswordResetMail[] = []
   const listingRemoved: ListingRemovedMail[] = []
+  const sales: SaleConfirmedMail[] = []
+  const refunds: OrderRefundedMail[] = []
   const provider: MailProvider = {
     async sendPasswordReset(mail) {
       sent.push(mail)
@@ -147,8 +151,14 @@ export function createFakeMail() {
     async sendListingRemoved(mail) {
       listingRemoved.push(mail)
     },
+    async sendSaleConfirmed(mail) {
+      sales.push(mail)
+    },
+    async sendOrderRefunded(mail) {
+      refunds.push(mail)
+    },
   }
-  return { provider, sent, listingRemoved }
+  return { provider, sent, listingRemoved, sales, refunds }
 }
 
 export function createFakeOAuth() {
