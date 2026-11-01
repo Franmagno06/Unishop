@@ -57,6 +57,7 @@ import { createAuthenticate } from './shared/middlewares/authenticate'
 import { errorHandler, notFoundHandler } from './shared/middlewares/error-handler'
 import { createRateLimiter } from './shared/middlewares/rate-limiter'
 import { requestId } from './shared/middlewares/request-id'
+import { withDeliveryGuard } from './shared/providers/mail/guard'
 import type { MailProvider } from './shared/providers/mail/mail.provider'
 import { createGoogleProvider } from './shared/providers/oauth/google.provider'
 import type { OAuthProvider } from './shared/providers/oauth/oauth.provider'
@@ -121,8 +122,11 @@ export function createApp(deps?: AppDeps) {
 
   if (deps) {
     const jwt = createJwt(env.JWT_SECRET, env.JWT_EXPIRES_IN)
+    // Todo driver passa pela guarda: nada é enviado a endereço anonimizado (RN-NOT-03).
+    const mail = withDeliveryGuard(deps.mail)
     const service = createAuthService({
       ...deps,
+      mail,
       jwt,
       config: {
         allowedEmailDomain: env.ALLOWED_EMAIL_DOMAIN,
@@ -176,7 +180,7 @@ export function createApp(deps?: AppDeps) {
             listings: createAdminListingsRoutes(
               createAdminListingsService({
                 listings: deps.admin.listings,
-                mail: deps.mail,
+                mail,
                 ...(deps.now && { now: deps.now }),
               }),
             ),
@@ -207,7 +211,7 @@ export function createApp(deps?: AppDeps) {
         orders: deps.orders,
         ordersService,
         gateway: deps.gateway,
-        mail: deps.mail,
+        mail,
         config: { expirationMinutes: env.PIX_EXPIRATION_MINUTES },
         ...(deps.now && { now: deps.now }),
       })

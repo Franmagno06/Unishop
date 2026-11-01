@@ -15,3 +15,8 @@ export function centsToDecimal(cents: number): string {
   if (!Number.isInteger(cents) || cents < 0) throw new Error('Centavos devem ser um inteiro >= 0.')
   return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`
 }
+
+// Texto para e-mail e tela: 1234 -> "R$ 12,34" (sempre vírgula e duas casas).
+export function formatBRL(cents: number): string {
+  return `R$ ${centsToDecimal(cents).replace('.', ',')}`
+}
