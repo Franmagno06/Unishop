@@ -1065,8 +1065,9 @@ GRANT USAGE ON SCHEMA public TO unishop_app, unishop_backup;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO unishop_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO unishop_app;
 
--- O backup só lê
+-- O backup só lê (SELECT nas sequências também: o pg_dump lê last_value e falha com "permission denied for sequence")
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO unishop_backup;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO unishop_backup;
 
 -- Vale também para as tabelas criadas nas próximas migrações
 ALTER DEFAULT PRIVILEGES FOR ROLE unishop_migrator IN SCHEMA public
@@ -1075,6 +1076,8 @@ ALTER DEFAULT PRIVILEGES FOR ROLE unishop_migrator IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO unishop_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE unishop_migrator IN SCHEMA public
   GRANT SELECT ON TABLES TO unishop_backup;
+ALTER DEFAULT PRIVILEGES FOR ROLE unishop_migrator IN SCHEMA public
+  GRANT SELECT ON SEQUENCES TO unishop_backup;
 
 -- Supabase: as roles anon e authenticated da API automática NÃO podem tocar nas tabelas
 -- (o Unishop só acessa o banco pelo backend; sem isto, quem tiver a chave pública do projeto leria os dados)
@@ -1145,7 +1148,7 @@ INSERT INTO public.pagamento (id_pedido, forma_pagamento, status_pagamento) VALU
 
 | # | Pendência | Proposta |
 |---|---|---|
-| 1 | **Aplicada em 31/10/2026 no projeto `UNISHOP DB` (papéis criados, `unishop_migrator` dono das tabelas, políticas `app_all` e `backup_select`, `anon` e `authenticated` sem privilégio, `2_rls_politicas` registrada); falta o teste de login de cada papel pelo pooler e repetir no `unishop-dev`.** Original: Criação dos papéis no Supabase pelo SQL Editor, teste de login de cada um pelo pooler (`papel.ref-do-projeto`), revogação do acesso de `anon` e `authenticated` e aplicação da RLS com política por papel (migração `2_rls_politicas`; passo a passo no Deploy §7.5) | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |
+| 1 | **Aplicada em 31/10/2026 no projeto `UNISHOP DB` (papéis criados, `unishop_migrator` dono das tabelas, políticas `app_all` e `backup_select`, `anon` e `authenticated` sem privilégio, `2_rls_politicas` registrada); o teste de login de cada papel pelo pooler passou no prod (31/10/2026) e no `unishop-dev` (01/11/2026).** Original: Criação dos papéis no Supabase pelo SQL Editor, teste de login de cada um pelo pooler (`papel.ref-do-projeto`), revogação do acesso de `anon` e `authenticated` e aplicação da RLS com política por papel (migração `2_rls_politicas`; passo a passo no Deploy §7.5) | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |
 | 2 | Regras que o banco não garante: admin não compra, dono não compra o próprio anúncio, mínimo de 1 imagem, admin não remove o último admin | Backend (`authorizeRole`, `OWN_LISTING`, transação). Triggers são opcionais |
 | 3 | Busca por texto no nome do anúncio | `ILIKE` no MVP; `pg_trgm` se a busca ficar lenta |
 | 4 | Atualizar o MER conforme a seção 12 | Ajuste no `.drawio` (fora desta entrega) |
