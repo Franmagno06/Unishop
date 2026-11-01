@@ -140,6 +140,11 @@ export function createApp(deps?: AppDeps) {
         ? (((_req, _res, next) => next()) satisfies express.RequestHandler)
         : createRateLimiter(10)
     const routes = createAuthRoutes(service, authenticate, limiter)
+    // Troca de e-mail: mesmo teto (10 por minuto por IP), mas contador próprio, para não gastar o orçamento do login.
+    const emailChangeLimiter =
+      env.APP_ENV === 'test'
+        ? (((_req, _res, next) => next()) satisfies express.RequestHandler)
+        : createRateLimiter(10)
     const usersService = createUsersService({
       users: deps.users,
       profiles: deps.profiles,
@@ -158,7 +163,7 @@ export function createApp(deps?: AppDeps) {
       '/api/v1/users',
       createUsersRoutes(usersService, authenticate, {
         avatar: Boolean(deps.storage),
-        limiter, // RN-PER-02: mesmo limite por IP das rotas de /auth
+        limiter: emailChangeLimiter, // RN-PER-02: mesmo teto das rotas de /auth, contador próprio
       }),
     )
     if (deps.categories) {
