@@ -1,8 +1,9 @@
 ---
 title: Documentação Técnica — Frontend
 project: Unishop
-version: 0.4
-date: 2026-10-16
+version: 0.4.1
+date: 2026-11-01
+changelog: "0.4.1 — estado da integração com a API e telas de protótipo fora do MVP (seção 16)."
 status: vigente; alinhado ao conjunto de documentos de 16/10/2026
 owners: Pedro Cândido (frontend e API), Francisco Magno (integração front-back)
 context: README.md
@@ -534,3 +535,5 @@ O protótipo mostra só o caminho feliz. Toda tela que busca dados trata os esta
 | Gateway | Externo: Mercado Pago (decisão do grupo) |
 | Quantidade | Anúncio com várias unidades; escolhida no pop-up "Fazer pedido" |
 | Termos e Privacidade | Páginas `/termos` e `/privacidade`; textos definidos durante o desenvolvimento |
+| Integração com a API | Etapa por etapa, pelo `roteiro-backend.md` (seção 4.3). Em 01/11/2026 só `auth.service` e `profile.service` chamam a API; categorias, anúncios, pedidos e admin seguem em dados de exemplo (`VITE_USE_MOCKS`), e o `api()` ainda não envia `FormData` |
+| Reembolso, cancelamento de pedido Pago, avaliações e suporte | **Fora do MVP (01/11/2026):** as telas existem como protótipo, sem regra, sem tabela e sem API; não trocar os services `reviews.service.ts` e `support.service.ts` por chamadas reais |

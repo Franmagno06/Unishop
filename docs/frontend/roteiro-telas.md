@@ -1,8 +1,9 @@
 ---
 title: Roteiro de desenvolvimento das telas do frontend
 project: Unishop
-version: 0.1
-date: 2026-10-21
+version: 0.2
+date: 2026-11-01
+changelog: "0.2 — todas as telas feitas; frontend e API andam juntos (01/11/2026); itens de pedido Pago, reembolso e avaliação marcados como fora do MVP."
 status: rascunho para revisão da equipe
 context: CLAUDE.md
 related: docs/frontend/frontend.md, docs/regras-de-negócio/regras-de-negócio.md, docs/skills/skills.md, docs/backend/backend.md
@@ -33,7 +34,7 @@ Se este roteiro e outro documento discordarem, vale o outro (ordem de precedênc
 
 1. **Figma é a base visual.** As telas seguem o protótipo; o grupo avisa quando houver mudança (combinado em 20/10/2026).
 2. **Divergência com regra fechada vira pergunta.** Se o Figma pedir algo que contradiz uma decisão do grupo ou um documento, não se escolhe sozinho: registra-se na seção 4 e pergunta-se.
-3. **Telas antes da API.** Todas as telas são feitas primeiro, com dados de exemplo no formato do contrato (`backend.md` §9). O `openapi.yaml` e o backend só começam depois (combinado em 20/10/2026).
+3. **Telas antes da API.** Todas as telas são feitas primeiro, com dados de exemplo no formato do contrato (`backend.md` §9). O `openapi.yaml` e o backend só começam depois (combinado em 20/10/2026). **Atualizado em 01/11/2026:** as telas estão feitas e o backend já tem as etapas 2, 4 e 5; a partir daqui frontend e API andam juntos, etapa por etapa, pelo `roteiro-backend.md` (seção 4.3 diz quais services trocam).
 4. **Sem inventar.** Rota, campo ou comportamento que não esteja nos documentos, no PDF ou no Figma é registrado como "não definido".
 5. **Toda tela termina com revisão, testes e estudo** (seção 3.4).
 
@@ -110,7 +111,7 @@ Pontos ainda **sem decisão** (adotado um padrão provisório, a confirmar):
 | Gerenciar anúncio pausado (05e) | O quadro 05e está em branco no Figma | Reaproveita a 05d: selo PAUSADO e botão "Reativar anúncio"; vendido esconde pausar e vender | Sem desenho; pedir ao grupo |
 | Excluir perfil (05b e pop-up) | Texto diz que anúncios e pedidos "serão apagados" | Texto fala em anonimizar e avisa que pedidos pagos continuam no histórico da outra pessoa | Exclusão lógica (RN-PER-06, Regras §10) |
 | Meus pedidos e Pedidos recebidos | Só o botão do WhatsApp | Acrescenta "Cancelar pedido", "Confirmar recebimento", "Combinar retirada", "Concluir venda" e "Encerrar negociação" | RN-PED-08 e RN-PED-12 (frontend.md §7) |
-| Detalhes do pedido (`/meus-pedidos/:id`) | Sem desenho no Figma; pedidos de 27/10/2026 | **Provisório, fora das Regras §4:** (1) pedido Pago ou com retirada combinada pode ser cancelado, com motivo (Mudei de ideia, Fiz o pedido por engano, Atraso na entrega, Ausência de resposta, Outros) e aviso do reembolso (Pix: até 1 dia útil; cartão: até 30 dias; prazos de exemplo); (2) pedido Concluído tem "Pedir reembolso" (descrição obrigatória, fotos opcionais), que leva ao estado **Em análise** (amarelo); (3) **Reembolso aprovado** mostra "Não recebi reembolso", que avisa o suporte; (4) **Avaliação:** a tela do produto só mostra as avaliações; quem avalia é o comprador, pelo botão "Fazer avaliação" nos detalhes de um pedido Concluído (uma vez por pedido); (5) "Meus pedidos" tem filtros de status no topo (Todos, Pago · aguardando retirada, Concluído, Em negociação, Em análise, Reembolsos), guardados na URL em `?status=`; (6) "Prazo de entrega" não existe nas Regras (a retirada é combinada pelo WhatsApp). **Fotos do reembolso: temporário** — o campo só escolhe os arquivos e mostra os nomes; nada é enviado nem guardado até haver API/Cloudinary para isso | RN-PED-12 vale só para Pendente e Em negociação; levar ao grupo antes de virar regra |
+| Detalhes do pedido (`/meus-pedidos/:id`) | Sem desenho no Figma; pedidos de 27/10/2026 | **Provisório, fora das Regras §4:** (1) pedido Pago ou com retirada combinada pode ser cancelado, com motivo (Mudei de ideia, Fiz o pedido por engano, Atraso na entrega, Ausência de resposta, Outros) e aviso do reembolso (Pix: até 1 dia útil; cartão: até 30 dias; prazos de exemplo); (2) pedido Concluído tem "Pedir reembolso" (descrição obrigatória, fotos opcionais), que leva ao estado **Em análise** (amarelo); (3) **Reembolso aprovado** mostra "Não recebi reembolso", que avisa o suporte; (4) **Avaliação:** a tela do produto só mostra as avaliações; quem avalia é o comprador, pelo botão "Fazer avaliação" nos detalhes de um pedido Concluído (uma vez por pedido); (5) "Meus pedidos" tem filtros de status no topo (Todos, Pago · aguardando retirada, Concluído, Em negociação, Em análise, Reembolsos), guardados na URL em `?status=`; (6) "Prazo de entrega" não existe nas Regras (a retirada é combinada pelo WhatsApp). **Fotos do reembolso: temporário** — o campo só escolhe os arquivos e mostra os nomes; nada é enviado nem guardado até haver API/Cloudinary para isso | RN-PED-12 vale só para Pendente e Em negociação. **Decidido em 01/11/2026:** cancelamento de pedido Pago, reembolso, "Não recebi reembolso", avaliação e suporte ficam **fora do MVP** (protótipo sem API, Regras §8) |
 | Cabeçalho logado | Menu do avatar (Perfil, Trocar senha, Sair) previsto no `frontend.md` §9, mas não desenhado | Avatar com "PF" fixo, link para `/perfil`; o menu entra com o perfil |
 | Cabeçalho logado | Navegação no celular não desenhada | Linha de links com rolagem horizontal abaixo de `md` |
 | Categorias | Busca de **itens** (RN-CAT-03) não desenhada | Filtra só as categorias; "Itens encontrados" entra na tela 07, com o `ListingCard` |

@@ -1,8 +1,9 @@
 ---
 title: Documentação Técnica — Deploy
 project: Unishop
-version: 0.3
-date: 2026-10-16
+version: 0.3.1
+date: 2026-11-01
+changelog: "0.3.1 — Prisma 7 (sem directUrl no schema); papéis e RLS resolvidos no prod e no dev; pendências novas (vercel.json, workflows, seed do admin em produção)."
 status: vigente; alinhado ao conjunto de documentos v0.4/v0.3 de 16/10/2026; pendências abertas na seção 17.3
 owners: Francisco Magno (gestão e integração front-back)
 related: docs/backend/, docs/frontend/, docs/api/, docs/banco-de-dados/, docs/regras-de-negocio/
@@ -381,23 +382,26 @@ set -euo pipefail
 
 npx prisma generate
 
-# migrate deploy usa a conexão DIRETA (directUrl no schema.prisma).
+# migrate deploy usa a conexão DIRETA (DATABASE_URL_UNPOOLED, lida pelo prisma.config.ts).
 # Aplica só migrações já versionadas. Nunca use "migrate dev" nem "migrate reset" aqui.
 echo "Ambiente: ${VERCEL_ENV:-local}"
 npx prisma migrate deploy
 ```
 
-Configure o `schema.prisma` para usar as duas conexões:
+No Prisma 7 as duas conexões não ficam no `schema.prisma` (o `datasource` não leva `url` nem `directUrl`). O `prisma.config.ts` do backend lê a conexão **direta** para as migrações e o seed:
 
-```prisma
-datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")            // com pooler, usada pela API
-  directUrl = env("DATABASE_URL_UNPOOLED")   // direta, usada pelo migrate
-}
+```ts
+// backend/prisma.config.ts
+export default defineConfig({
+  schema: 'prisma/schema.prisma',
+  migrations: { path: 'prisma/migrations', seed: 'tsx prisma/seed.ts' },
+  datasource: { url: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL ?? '' },
+})
 ```
 
-Em Preview, a `DATABASE_URL` aponta para o projeto `unishop-dev`, então a migração roda ali, e não em produção. Como todos os previews dividem esse banco, dois PRs com migrações diferentes podem se atrapalhar: aplique um de cada vez ou recrie o banco de desenvolvimento (`prisma migrate reset`, só nele). O build usa o papel `unishop_migrator` (via `DATABASE_URL_UNPOOLED`); a API em execução usa o papel `unishop_app`, sem permissão de alterar a estrutura (seção 7.1). Para o Transaction pooler do Supabase, acrescente à `DATABASE_URL` os parâmetros `?pgbouncer=true&connection_limit=1`. Para o Prisma 7, consulte a documentação do Prisma, pois a forma de declarar as duas URLs mudou.
+A API em execução usa a `DATABASE_URL` (com pooler) pelo adapter `@prisma/adapter-pg`, em `src/shared/database/prisma.ts`.
+
+Em Preview, a `DATABASE_URL` aponta para o projeto `unishop-dev`, então a migração roda ali, e não em produção. Como todos os previews dividem esse banco, dois PRs com migrações diferentes podem se atrapalhar: aplique um de cada vez ou recrie o banco de desenvolvimento (`prisma migrate reset`, só nele). O build usa o papel `unishop_migrator` (via `DATABASE_URL_UNPOOLED`); a API em execução usa o papel `unishop_app`, sem permissão de alterar a estrutura (seção 7.1). Para o Transaction pooler do Supabase, acrescente à `DATABASE_URL` os parâmetros `?pgbouncer=true&connection_limit=1`.
 
 ## 6. Projetos na Vercel
 
@@ -983,12 +987,15 @@ A decisão "uma única instância da API" do Backend §14 **deixa de valer** na 
 | 6 | **RNF012 a RNF016:** não mapeados neste guia | Conferir o enunciado e acrescentar à seção 14.3 o que depender de deploy |
 | 7 | **Login com Google** (MVP) em `vercel.app` | Testar cedo; se recusar, usar o domínio próprio |
 | 8 | **Rate limit** (`express-rate-limit`) em memória por instância | **Aceito** no escopo acadêmico; Redis gerenciado (Upstash) só se virar produto |
-| 9 | **Versão do Prisma** (ADR-001): client, *driver adapter* e `directUrl` | Felipe confirma ao instalar e ajusta as seções 5.1 e 5.4 |
+| 9 | ~~**Versão do Prisma** (ADR-001): client, *driver adapter* e `directUrl`~~ **Resolvida em 01/11/2026:** Prisma 7.10.1 com `@prisma/adapter-pg` e `prisma.config.ts`; seção 5.4 corrigida | — |
 | 10 | **Pix com credenciais de teste do Mercado Pago:** não foi verificado se o Pix de teste gera o webhook de aprovação; também decide a Payments API ou a Orders API (ADR-002) | Prova de conceito no início do projeto (seção 12, passo 2); registrar o resultado na seção 14.2 |
-| 11 | **Nome da tabela de categorias** no teste de restauração | Ana Clara confirma no documento de Banco de Dados |
-| 12 | **Papéis do banco no Supabase:** criar `unishop_migrator`, `unishop_app` e `unishop_backup` pelo SQL Editor e testar o login de cada um pelo pooler (`papel.ref-do-projeto`) | Francisco ou Ana Clara confirma antes do primeiro deploy; se não der, um papel só e a exceção registrada aqui |
+| 11 | ~~**Nome da tabela de categorias** no teste de restauração~~ **Resolvida:** a tabela se chama `categoria` (`bd.md`, seção 4) | — |
+| 12 | ~~**Papéis do banco no Supabase**~~ **Resolvida em 31/10/2026 (prod) e 01/11/2026 (dev):** os três papéis existem e o login de cada um pelo pooler foi testado | — |
 | 13 | ~~Versão do PostgreSQL no Supabase~~ **Resolvida em 31/10/2026:** o projeto roda a 17.11; imagem do Docker, `pg_dump` e workflow ajustados para a 17 | — |
 | 14 | **RLS ligada × papéis `unishop_*`:** a RLS está ligada nas 8 tabelas e `unishop_app` e `unishop_backup` (não donos) ficam sem acesso se não houver política; o `pg_dump` sairia vazio sem erro | Decidido por Francisco em 30/10/2026: política `app_all` para `unishop_app` e `backup_select` para `unishop_backup` em cada tabela, nenhuma para `anon` e `authenticated` (migração `2_rls_politicas`). **Aplicada em 31/10/2026** no projeto `UNISHOP DB`: papéis criados, `unishop_migrator` dono das tabelas e da view, políticas `app_all` e `backup_select` nas 8 tabelas (na `_prisma_migrations` só `backup_select`), `anon` e `authenticated` sem privilégio, Security Advisor sem alertas, migração registrada. O passo 6 da 7.5 (login de cada papel pelo pooler e `pg_dump` do `unishop_backup` com contagem de linhas) passou no prod (31/10/2026) e no `unishop-dev` (01/11/2026, migrações em banco vazio, seed e `unishop_backup` com `SELECT` nas sequências). O `backend/.env` do prod já usa `unishop_app` (6543) e `unishop_migrator` (5432), e o `unishop_backup` fica no `.env.backup` (conferido em 01/11/2026): pendência concluída |
+| 15 | **Nada publicado ainda:** não há `vercel.json` (`rewrite` do React Router, `buildCommand`), nem projetos Vercel apontados para o repositório, nem workflows em `.github/workflows/` (testes e backup diário) | Criar na Etapa 11 do `roteiro-backend.md`; o workflow de backup deve usar `pg_dump` com `--enable-row-security` e a URL do `unishop_backup` (Session pooler, sem os parâmetros do Prisma) |
+| 16 | **Seed do admin em produção:** o `unishop-prod` tem as 6 categorias e **nenhum admin** (o seed do admin rodou só no `unishop-dev`); o `backend/.env` do prod guarda `ADMIN_EMAIL` e `ADMIN_PASSWORD` | Rodar o seed no prod só quando o painel admin estiver pronto, digitando a senha no terminal e apagando as duas variáveis do `.env` depois |
+| 17 | **`GET /health/db` não existe** e o UptimeRobot e o aviso de pausa do Supabase dependem dele | Criar na Etapa 1 do `roteiro-backend.md` |
 
 ### 17.4 O que cada pessoa confirma
 

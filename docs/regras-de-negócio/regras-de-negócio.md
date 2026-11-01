@@ -1,8 +1,9 @@
 ---
 title: Documentação Técnica — Regras de Negócio
 project: Unishop
-version: 0.4.1
-date: 2026-10-27
+version: 0.4.2
+date: 2026-11-01
+changelog: "0.4.2 — escopo do MVP: reembolso, cancelamento de pedido Pago, avaliações e suporte ficam fora (decidido em 01/11/2026); pendência 6 nova."
 status: vigente com pendências
 owners: Francisco Magno (consolidação)
 based_on: requisitos RF001–RF024 e RNF001–RNF016 (PDF do trabalho), protótipos do Figma, decisões do grupo
@@ -320,7 +321,10 @@ Tudo que está nas seções 5 e 6 entra no MVP, exceto o que a tabela abaixo man
 | Pagamento com Mercado Pago em modo de teste | MVP | RN-PAG-10 |
 | Cobrança real e repasse real ao vendedor | Fora | Conta única de teste |
 | Estorno automático | MVP | RN-PAG-08, 13 e 14 |
-| Cancelamento de pedido Pago ou Retirada combinada pelo sistema | Depois | Combinar por WhatsApp; ver pendência 2 |
+| Cancelamento de pedido Pago ou Retirada combinada pelo sistema | Fora do MVP (adiado) | Combinar por WhatsApp; ver pendências 2 e 6 |
+| Reembolso a pedido concluído ("Pedir reembolso") | Fora do MVP (adiado, 01/11/2026) | Existe só como tela de protótipo no frontend; sem regra, sem tabela e sem API |
+| Avaliações de pedido concluído | Fora do MVP (adiado, 01/11/2026) | Tela de protótipo; sem regra, sem tabela e sem API |
+| Solicitações de suporte no painel do admin | Fora do MVP (adiado, 01/11/2026) | Tela de protótipo; sem regra, sem tabela e sem API |
 | Notificação por e-mail | MVP | RN-NOT-01 a 04 |
 | Tela de notificações | Depois | RN-NOT-04 |
 | Prazo para negociação por WhatsApp | Depois | RN-PED-11 |
@@ -373,8 +377,9 @@ O texto do RNF005 cita "NoSQL Injection", mas o banco é PostgreSQL: o risco rea
 | # | Pendência | Proposta |
 |---|---|---|
 | 1 | O admin que precisa remover um anúncio ou usuário com pedido Pago em aberto fica bloqueado (RN-ADM-06, RN-ADM-09) | Aceitar no MVP; se for problema, o admin cancela o pedido com estorno antes de excluir |
-| 2 | Pedido Pago ou em Retirada combinada não tem cancelamento pelo sistema (RN-PED-12) | Combinar por WhatsApp no MVP; cancelamento com estorno entra depois |
+| 2 | Pedido Pago ou em Retirada combinada não tem cancelamento pelo sistema (RN-PED-12) | Combinar por WhatsApp no MVP; cancelamento com estorno entra depois. **Decidido em 01/11/2026: fora do MVP**, junto de reembolso, avaliações e suporte |
 | 3 | Os textos dos Termos de uso e da Política de privacidade ainda não existem | Francisco escreve a versão mínima, com a versão do aceite e a limitação dos backups (Deploy, seção 11) |
 | 4 | Os valores da seção 9 e a lista de itens proibidos são propostas da equipe | O grupo confirma ou ajusta antes de o Frontend e o Backend implementarem |
 | 5 | Se o projeto seguir como produto depois da avaliação, a meta de 500 usuários e o plano de hospedagem voltam à mesa | Revisar o Deploy (limites do plano gratuito) |
+| 6 | **Telas de protótipo sem regra:** o frontend tem cancelar pedido Pago com motivo, "Pedir reembolso", "Não recebi reembolso", avaliação do pedido e suporte no admin (`roteiro-telas.md` §5 e `roteiro-backend.md` §2.2), todos fora do MVP | Se o grupo as quiser no MVP, escrever as regras `RN-XXX-nn` aqui primeiro (Regras → Banco → Backend, nessa ordem); até lá, não ligar essas telas à API |
 | 6 | A edição só de status (26/10) foge de RF021.1–RF021.3 e RF024.2–RF024.5; o texto exato desses itens não foi conferido no PDF | Conferir no PDF quais subitens deixam de ser atendidos e confirmar o desvio com o grupo antes da entrega |

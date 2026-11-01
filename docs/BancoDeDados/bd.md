@@ -1,8 +1,9 @@
 ---
 title: Documentação Técnica — Banco de Dados
 project: Unishop
-version: 0.2
-date: 2026-10-16
+version: 0.2.1
+date: 2026-11-01
+changelog: "0.2.1 — RLS e papéis testados no unishop-prod e no unishop-dev; SELECT nas sequências para o unishop_backup; migrações testadas em banco vazio; seção 15 revisada contra o código."
 status: vigente com pendências
 owners: Ana Clara (banco de dados)
 reviewers: Felipe Bessa (backend), Pedro Cândido (API), Francisco Magno (integração front-back)
@@ -434,7 +435,7 @@ Para apagar tudo (só em desenvolvimento), use a ordem inversa, ou `prisma migra
 
 ## 6. Valores fixos (estados) de cada coluna
 
-Os campos abaixo são `varchar` com `CHECK` (seção 14): qualquer texto fora da lista é recusado pelo banco. Os valores ficam **em português**, e o backend usa os mesmos nomes (enum do Prisma com `@map`). Há um valor por estado no banco; os textos exibidos ao usuário (por exemplo, "Pago · aguardando retirada" para o comprador e "Pago · combinar retirada" para o vendedor) ficam na interface.
+Os campos abaixo são `varchar` com `CHECK` (seção 14): qualquer texto fora da lista é recusado pelo banco. Os valores ficam **em português**. O backend usa a API em inglês e converte **nos repositories**, porque o `schema.prisma` guarda esses campos como `String` (conferido em 01/11/2026; o `@map` de enum previsto aqui não foi adotado, ver a pendência 6 da seção 15). Há um valor por estado no banco; os textos exibidos ao usuário (por exemplo, "Pago · aguardando retirada" para o comprador e "Pago · combinar retirada" para o vendedor) ficam na interface.
 
 ### usuario.tipo_usuario
 
@@ -865,7 +866,7 @@ Os limites mudam com o tempo; conferir no painel e na página de preços do Supa
 
 ## 12. MER × banco: divergências
 
-Comparação entre o `mer_unishop.drawio` e o banco. O banco segue o MER, e as diferenças abaixo são correções do **MER**, que ainda precisa ser atualizado (o `.drawio` não faz parte desta entrega).
+Comparação entre o `mer_unishop.drawio` e o banco. O banco segue o MER, e as diferenças abaixo são correções do **MER**.
 
 | # | Item | No MER | No banco | O que fazer |
 |---|---|---|---|---|
@@ -1148,15 +1149,19 @@ INSERT INTO public.pagamento (id_pedido, forma_pagamento, status_pagamento) VALU
 
 | # | Pendência | Proposta |
 |---|---|---|
-| 1 | **Aplicada em 31/10/2026 no projeto `UNISHOP DB` (papéis criados, `unishop_migrator` dono das tabelas, políticas `app_all` e `backup_select`, `anon` e `authenticated` sem privilégio, `2_rls_politicas` registrada); o teste de login de cada papel pelo pooler passou no prod (31/10/2026) e no `unishop-dev` (01/11/2026).** Original: Criação dos papéis no Supabase pelo SQL Editor, teste de login de cada um pelo pooler (`papel.ref-do-projeto`), revogação do acesso de `anon` e `authenticated` e aplicação da RLS com política por papel (migração `2_rls_politicas`; passo a passo no Deploy §7.5) | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |
+| 1 | ~~Papéis, login pelo pooler e RLS no Supabase~~ **Resolvida:** papéis criados, `unishop_migrator` dono das tabelas, políticas `app_all` e `backup_select`, `anon` e `authenticated` sem privilégio, `2_rls_politicas` registrada; login de cada papel e `pg_dump` do `unishop_backup` testados no `unishop-prod` (31/10/2026) e no `unishop-dev` (01/11/2026) | — |
 | 2 | Regras que o banco não garante: admin não compra, dono não compra o próprio anúncio, mínimo de 1 imagem, admin não remove o último admin | Backend (`authorizeRole`, `OWN_LISTING`, transação). Triggers são opcionais |
-| 3 | Busca por texto no nome do anúncio | `ILIKE` no MVP; `pg_trgm` se a busca ficar lenta |
-| 4 | Atualizar o MER conforme a seção 12 | Ajuste no `.drawio` (fora desta entrega) |
-| 5 | Testar a migração `0_init` + manual em um banco vazio | Rodar a seção 14 e os testes de integridade antes de o Backend implementar os pedidos |
+| 3 | Busca por texto no nome do anúncio | **Feita:** `contains` insensível a maiúsculas (nome e descrição) no `listings.repository.ts`. `pg_trgm` só se ficar lento |
+| 5 | ~~Testar a migração `0_init` + manual em um banco vazio~~ **Resolvida:** as três migrações (`0_init`, `1_regras_manuais`, `2_rls_politicas`) foram aplicadas em banco vazio no `unishop-dev` (01/11/2026) e no PostgreSQL 17 do Docker (`npm run test:db`, 87 testes verdes) | — |
+| 6 | **Valores de estado em português no banco × inglês na API:** o `schema.prisma` usa `String` (com `CHECK` na migração manual) e o backend converte nos repositories; a seção 7 prevê enum do Prisma com `@map` | Decidir com Felipe: manter a conversão nos repositories (e corrigir a seção 7) ou migrar para enums com `@map` |
+| 7 | **`pedido.motivo_cancelamento`** (P9 do `roteiro-backend.md`; valores `vencido`, `sem_estoque`, `anuncio_indisponivel`, propostos) não existe no schema nem em migração | Criar a migração `3_motivo_cancelamento` antes da Etapa 6 e acrescentar a coluna e o `CHECK` às seções 4.5 e 6, com o aval da Ana Clara |
+| 8 | `unishop_backup` precisa de `SELECT` também nas sequências (o `pg_dump` lê o `last_value`; sem isso falha com `permission denied for sequence`) e do `--enable-row-security` | **Feito** no bloco de papéis (seção 14) e aplicado no `unishop-dev`; conferir a mesma permissão ao criar o próximo ambiente |
+| 9 | O comentário da `1_regras_manuais` diz "PostgreSQL 18", mas o banco é o 17 | Não editar a migração já aplicada (o Prisma confere o checksum); corrigir só numa migração nova |
+| 10 | O MER (`mer_unishop.drawio`) segue com as divergências da seção 12 | Decidido por Pedro em 01/11/2026: não atualizar o MER agora; o banco vale mais que o MER e a seção 12 é o registro das divergências |
 
-### Próximos passos sugeridos
+### Próximos passos
 
-1. Gerar o `schema.prisma` pelo mapeamento da seção 7 e a migração `0_init`.
-2. Rodar a migração manual (seção 14) em um banco de desenvolvimento e conferir com os testes de integridade.
-3. Escrever o seed (categorias e conta admin).
-4. Atualizar o MER (seção 12).
+1. ~~Gerar o `schema.prisma` pelo mapeamento da seção 7 e a migração `0_init`~~ **Feito.**
+2. ~~Rodar a migração manual (seção 14) em um banco de desenvolvimento e conferir com os testes de integridade~~ **Feito** (`npm run test:db`).
+3. ~~Escrever o seed (categorias e conta admin)~~ **Feito** (`prisma/seed.ts`; rodado no `unishop-dev`).
+4. Criar a migração `3_motivo_cancelamento` (pendência 7) antes de os pedidos serem implementados.

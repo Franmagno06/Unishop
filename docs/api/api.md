@@ -1,8 +1,9 @@
 ---
 title: Documentação Técnica — API (APIs externas e segurança)
 project: Unishop
-version: 0.3
-date: 2026-10-16
+version: 0.3.1
+date: 2026-11-01
+changelog: "0.3.1 — papéis do banco resolvidos; Prisma 7 sem directUrl; pendências de providers e do openapi.yaml revisadas contra o código."
 status: vigente com pendências
 owners: Pedro Cândido (engenheiro de API)
 reviewers: Felipe Bessa (backend), Francisco Magno (integração front-back)
@@ -531,7 +532,7 @@ export async function verifyTurnstile(token: string, ip?: string) {
 - **Limite de 500 MB:** basta para o MVP porque as imagens ficam na Cloudinary, não no banco. O restante da documentação (Banco de Dados e Deploy) assume o **PostgreSQL 17** (versão do projeto Supabase conferida em 31/10/2026: 17.11).
 - **Risco para a disponibilidade (RNF011):** no plano gratuito do Supabase o projeto é pausado após 1 semana sem atividade e não há backup automático. Os jobs de 30 em 30 minutos mantêm atividade; confira o painel antes da demonstração e mantenha o workflow de backup diário (Deploy, seção 11).
 - **TLS obrigatório:** `uselibpqcompat=true&sslmode=require` na URL de conexão. Só `sslmode=require` faz o driver `pg` (usado pelo `@prisma/adapter-pg`) verificar o certificado e falhar no pooler do Supabase com `self-signed certificate in certificate chain`.
-- **Duas conexões e três papéis:** a migração (`prisma migrate deploy`, `directUrl`) usa `DATABASE_URL_UNPOOLED` (porta 5432) com o papel `unishop_migrator`; a API usa `DATABASE_URL` com o *Transaction pooler* (porta 6543, `?pgbouncer=true&connection_limit=1`) e o papel `unishop_app`, **sem permissão de alterar a estrutura**; o backup usa `DATABASE_URL_BACKUP`, com o papel `unishop_backup`, **somente leitura** (Banco de Dados, seção 10). O Supabase entrega o usuário `postgres`; os três papéis são criados à parte pelo *SQL Editor* (Deploy, seção 7). **Pelo pooler o usuário é `papel.ref-do-projeto`**, e é preciso testar o login de cada papel (pendência 6). A conexão direta é só IPv6; sem IPv6 (inclusive no runner do GitHub Actions), use o Session pooler.
+- **Duas conexões e três papéis:** a migração (`prisma migrate deploy`, pelo `prisma.config.ts`; no Prisma 7 não há `directUrl` no `schema.prisma`) usa `DATABASE_URL_UNPOOLED` (porta 5432) com o papel `unishop_migrator`; a API usa `DATABASE_URL` com o *Transaction pooler* (porta 6543, `?pgbouncer=true&connection_limit=1`) e o papel `unishop_app`, **sem permissão de alterar a estrutura**; o backup usa `DATABASE_URL_BACKUP`, com o papel `unishop_backup`, **somente leitura** (Banco de Dados, seção 10). O Supabase entrega o usuário `postgres`; os três papéis são criados à parte pelo *SQL Editor* (Deploy, seção 7). **Pelo pooler o usuário é `papel.ref-do-projeto`**, e é preciso testar o login de cada papel (pendência 6). A conexão direta é só IPv6; sem IPv6 (inclusive no runner do GitHub Actions), use o Session pooler.
 - **Lista de IPs não serve** com a Vercel (sem IP fixo): a proteção do banco é a senha forte, o TLS e os papéis com pouca permissão.
 - **Um projeto por ambiente:** `unishop-prod` (produção) e `unishop-dev` (desenvolvimento e preview), sem branches (o plano gratuito não os tem). **Dados reais de produção nunca vão para desenvolvimento** (LGPD): `unishop-dev` só recebe dados fictícios (Deploy, seção 7.2).
 - Backup diário (workflow do GitHub Actions) e restauração testada seguem o RNF011 (Deploy, seção 11).
@@ -1353,6 +1354,8 @@ As propostas que o grupo fechou em 15/10/2026 (Sentry adiado, Turnstile depois d
 | 2 | Domínio próprio para o Resend verificar (SPF e DKIM). Quem controla o DNS? | Registrar um domínio do projeto; sem ele, só testes com Mailtrap |
 | 3 | O e-mail `@edu.unifor.br` está vinculado a uma conta Google e entrega `email_verified`? | Testar com um e-mail real antes de fechar o RF002.6 |
 | 4 | Termos do plano gratuito do UptimeRobot (uso não comercial) | Conferir; se for barrado, usar StatusCake |
-| 5 | **O `openapi.yaml` (contrato da API do Unishop) não existe**, e o frontend, o backend e as skills dependem dele | Pedro escreve a partir do Backend §9 e deste documento, antes de o frontend consumir as rotas; definir prazo |
-| 6 | Criar os três papéis do banco no Supabase (SQL Editor) e testar o login de cada um pelo pooler (`papel.ref-do-projeto`) | Francisco ou Ana Clara confirma antes do primeiro deploy; se não for possível, usar um papel só e registrar a exceção no Deploy |
+| 5 | **O `openapi.yaml` (contrato da API do Unishop) não existe**, e o backend já implementa `/auth`, `/users`, `/categories` e `/listings` sem ele | Pedro escreve **por fatia**, junto de cada etapa do `roteiro-backend.md` (a primeira, a das etapas 4 e 5, está atrasada); definir prazo |
+| 6 | ~~Criar os três papéis do banco no Supabase e testar o login de cada um pelo pooler~~ **Resolvida em 31/10/2026 (`unishop-prod`) e 01/11/2026 (`unishop-dev`)** | — |
 | 7 | ~~Versão do PostgreSQL do projeto Supabase~~ **Resolvida em 31/10/2026:** o projeto roda a 17.11; documentos, Docker, `pg_dump` e CI foram ajustados para a 17 | — |
+| 8 | **Providers reais ainda não existem:** o backend só tem e-mail de console, armazenamento local e o Google real; faltam Resend e Mailtrap, Cloudinary, Mercado Pago (com o `mock.provider` antes) e o Turnstile `noop` | Seguir a Etapa 3 (falsos) e a Etapa 10 (reais) do `roteiro-backend.md`; a trava de produção por `APP_ENV` hoje só cobre o e-mail de console |
+| 9 | **Webhook do Mercado Pago em desenvolvimento:** falta um túnel (ngrok ou Cloudflare Tunnel) e o `@vercel/functions` (`waitUntil`) | Decidir a ferramenta na Etapa 7 |

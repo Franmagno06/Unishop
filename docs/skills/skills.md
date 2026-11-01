@@ -1,8 +1,9 @@
 ---
 title: Documentação — Skills do Claude Code
 project: Unishop
-version: 0.5
-date: 2026-10-20
+version: 0.5.1
+date: 2026-11-01
+changelog: "0.5.1 — o código já existe (backend e frontend); as skills unishop-* foram revisadas contra os documentos de 01/11/2026."
 status: rascunho para revisão da equipe
 context: CLAUDE.md
 related: docs/regras-de-negócio/regras-de-negócio.md, docs/BancoDeDados/bd.md, docs/frontend/frontend.md, docs/backend/backend.md, docs/api/api.md, docs/deploy/deploy.md
@@ -168,7 +169,7 @@ O `CLAUDE.md` traz um quadro "Skills do projeto: quando usar" que liga cada tipo
 
 ## 7. Quando usar em cada etapa do projeto
 
-O projeto hoje está só em documentação; as etapas abaixo valem para quando o grupo liberar o código. Em cada uma, a skill da coluna "Começar por" dá o contexto do Unishop, e as "Combinar com" trazem a técnica geral.
+O backend (etapas 2, 4 e 5 do roteiro) e as telas do frontend já existem (01/11/2026); as etapas abaixo servem como roteiro de cada tela ou etapa nova. Em cada uma, a skill da coluna "Começar por" dá o contexto do Unishop, e as "Combinar com" trazem a técnica geral.
 
 | Etapa | Começar por | Combinar com | Observação |
 |---|---|---|---|
