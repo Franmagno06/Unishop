@@ -1,5 +1,5 @@
 import { IMAGE_LIMITS } from '../../config/constants'
-import { AppError, forbidden, notFound } from '../../shared/errors/app-error'
+import { AppError, forbidden, hasOpenPaidOrders, notFound } from '../../shared/errors/app-error'
 import type { StorageProvider } from '../../shared/providers/storage/storage.provider'
 import { buildMeta, type Pagination } from '../../shared/utils/pagination'
 import type { UserRepository } from '../auth/auth.types'
@@ -169,14 +169,14 @@ export function createListingsService({ listings, users, storage }: ListingsDeps
     return toOwnerView((await listings.findById(id))!)
   }
 
-  // RN-ANU-09: exclusão lógica. Os pedidos Pendente e Em negociação serão cancelados quando o módulo
-  // de pedidos existir; as imagens ficam, porque o pedido congela a URL da imagem (RN-PED-01).
+  // RN-ANU-09: exclusão lógica. Os pedidos Pendente e Em negociação são cancelados na mesma transação;
+  // as imagens ficam, porque o pedido congela a URL da imagem (RN-PED-01).
   async function remove(userId: number, id: number) {
     await loadOwned(userId, id)
-    if ((await listings.softDelete(id)) === 'blocked') {
-      throw new AppError(
-        409,
-        'HAS_OPEN_PAID_ORDERS',
+    const result = await listings.softDelete(id)
+    if (result === 'not_found') throw notFound('Anúncio não encontrado.')
+    if (result === 'blocked') {
+      throw hasOpenPaidOrders(
         'Há pedido pago ou com retirada combinada em aberto. Conclua a entrega antes de excluir.',
       )
     }

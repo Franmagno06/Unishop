@@ -12,7 +12,7 @@ export interface ProfileRepository {
   /** Grava a URL da foto de perfil (RN-PER-05). */
   setPhoto(id: number, url: string): Promise<void>
   /** Exclusão lógica (RN-PER-06): apaga os dados pessoais e marca a conta como excluída. */
-  anonymize(id: number): Promise<void>
+  anonymize(id: number): Promise<'ok' | 'blocked' | 'not_found'>
 }
 
 export type MyProfile = {

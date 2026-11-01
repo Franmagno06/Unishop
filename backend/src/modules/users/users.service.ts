@@ -1,5 +1,5 @@
 import type { UserRecord, UserRepository } from '../auth/auth.types'
-import { AppError } from '../../shared/errors/app-error'
+import { AppError, hasOpenPaidOrders } from '../../shared/errors/app-error'
 import type { StorageProvider } from '../../shared/providers/storage/storage.provider'
 import type { MyProfile, ProfilePatch, ProfileRepository } from './users.types'
 
@@ -87,7 +87,7 @@ export function createUsersService({ users, profiles, config, storage }: UsersDe
     return me(userId)
   }
 
-  // RN-PER-06. Ainda não confere pedidos pagos em aberto (409 HAS_OPEN_PAID_ORDERS): entra com os pedidos.
+  // RN-PER-06: bloqueada com pedido pago ou com retirada combinada em aberto; cancela Pendente e Em negociação.
   async function deleteAccount(userId: number) {
     const user = await load(userId)
     if (user.role === 'admin') {
@@ -97,7 +97,14 @@ export function createUsersService({ users, profiles, config, storage }: UsersDe
         'A conta de administrador não pode ser excluída aqui.',
       )
     }
-    await profiles.anonymize(userId)
+    const result = await profiles.anonymize(userId)
+    if (result === 'blocked') {
+      throw hasOpenPaidOrders(
+        'Há pedido pago ou com retirada combinada em aberto. Conclua a entrega antes de excluir a conta.',
+      )
+    }
+    if (result === 'not_found')
+      throw new AppError(401, 'UNAUTHENTICATED', 'Faça login para continuar.')
   }
 
   return { me, updateProfile, setAvatar, deleteAccount }

@@ -17,6 +17,7 @@ import type {
   UserRepository,
 } from '../../src/modules/auth/auth.types'
 import type {
+  ListingRemovedMail,
   MailProvider,
   OrderRefundedMail,
   PasswordResetMail,
@@ -140,11 +141,15 @@ export function createFakeTokens() {
 
 export function createFakeMail() {
   const sent: PasswordResetMail[] = []
+  const listingRemoved: ListingRemovedMail[] = []
   const sales: SaleConfirmedMail[] = []
   const refunds: OrderRefundedMail[] = []
   const provider: MailProvider = {
     async sendPasswordReset(mail) {
       sent.push(mail)
+    },
+    async sendListingRemoved(mail) {
+      listingRemoved.push(mail)
     },
     async sendSaleConfirmed(mail) {
       sales.push(mail)
@@ -153,7 +158,7 @@ export function createFakeMail() {
       refunds.push(mail)
     },
   }
-  return { provider, sent, sales, refunds }
+  return { provider, sent, listingRemoved, sales, refunds }
 }
 
 export function createFakeOAuth() {
@@ -208,6 +213,7 @@ export function createFakeProfiles(userRows: UserRecord[]) {
         photoUrl: null,
         status: 'deleted',
       })
+      return 'ok'
     },
   }
   return { repo, listings }
@@ -274,3 +280,14 @@ export function createFakeStorage() {
   }
   return { provider, uploaded, removed }
 }
+
+// Repository que nunca deveria ser chamado (a proteção da área admin barra antes).
+export const unreachable = <T extends object>(name: string) =>
+  new Proxy(
+    {},
+    {
+      get: (_t, key) => () => {
+        throw new Error(`${name}.${String(key)} não deveria ser chamado`)
+      },
+    },
+  ) as T

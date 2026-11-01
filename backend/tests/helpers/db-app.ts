@@ -1,4 +1,9 @@
+import { createPrismaAdminUsersRepository } from '../../src/admin/users/admin-users.repository'
+import type { AuditWriter } from '../../src/admin/audit-logs/audit-logs.types'
+import { createPrismaAdminListingsRepository } from '../../src/admin/listings/admin-listings.repository'
+import type { MailProvider } from '../../src/shared/providers/mail/mail.provider'
 import { createApp } from '../../src/app'
+import { createPrismaAuditLogRepository } from '../../src/admin/audit-logs/audit-logs.repository'
 import { createJwt } from '../../src/config/jwt'
 import {
   createPrismaTokenRepository,
@@ -17,7 +22,13 @@ import { testDb } from './db'
 // App completo com os repositories reais (Prisma) sobre o banco de teste. Os e-mails, o Google, o
 // storage e o gateway de pagamento continuam falsos. O token é assinado direto, sem passar pelo
 // login (bcrypt custo 12 é lento).
-export function buildDbApp(overrides: { listings?: Partial<ListingRepository> } = {}) {
+export function buildDbApp(
+  overrides: {
+    listings?: Partial<ListingRepository>
+    writeAuditLog?: AuditWriter
+    mail?: MailProvider
+  } = {},
+) {
   const storage = createFakeStorage()
   const mail = createFakeMail()
   const gateway = createMockPaymentGateway()
@@ -25,11 +36,20 @@ export function buildDbApp(overrides: { listings?: Partial<ListingRepository> } 
     users: createPrismaUserRepository(testDb),
     profiles: createPrismaProfileRepository(testDb),
     tokens: createPrismaTokenRepository(testDb),
-    mail: mail.provider,
+    mail: overrides.mail ?? mail.provider,
     oauth: createFakeOAuth().provider,
     categories: createPrismaCategoryRepository(testDb),
     listings: { ...createPrismaListingRepository(testDb), ...overrides.listings },
     storage: storage.provider,
+    admin: {
+      auditLogs: createPrismaAuditLogRepository(testDb),
+      listings: createPrismaAdminListingsRepository(testDb, {
+        ...(overrides.writeAuditLog && { writeAuditLog: overrides.writeAuditLog }),
+      }),
+      users: createPrismaAdminUsersRepository(testDb, {
+        ...(overrides.writeAuditLog && { writeAuditLog: overrides.writeAuditLog }),
+      }),
+    },
     orders: createPrismaOrderRepository(testDb),
     payments: createPrismaPaymentRepository(testDb),
     gateway,
