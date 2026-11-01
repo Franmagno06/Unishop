@@ -1,9 +1,9 @@
 ---
 title: Documentação Técnica — Banco de Dados
 project: Unishop
-version: 0.2.1
+version: 0.2.2
 date: 2026-11-01
-changelog: "0.2.1 — RLS e papéis testados no unishop-prod e no unishop-dev; SELECT nas sequências para o unishop_backup; migrações testadas em banco vazio; seção 15 revisada contra o código."
+changelog: "0.2.2 — filtro de presença do admin (9.4) e guarda do endereço anonimizado (10). 0.2.1 — RLS e papéis testados no unishop-prod e no unishop-dev; SELECT nas sequências para o unishop_backup; migrações testadas em banco vazio; seção 15 revisada contra o código."
 status: vigente com pendências
 owners: Ana Clara (banco de dados)
 reviewers: Felipe Bessa (backend), Pedro Cândido (API), Francisco Magno (integração front-back)
@@ -702,6 +702,11 @@ SELECT COUNT(*) FROM public.usuario
  WHERE tipo_usuario = 'aluno' AND status_conta = 'ativa'
    AND ultimo_acesso >= now() - INTERVAL '5 minutes';
 
+-- Filtro de presença da lista (GET /admin/users?presence=): online = status_conta = 'ativa' AND ultimo_acesso >= now() - 5 min
+-- (inclusivo, igual ao indicador acima); offline = o complemento: status_conta = 'suspensa' OR ultimo_acesso IS NULL
+-- OR ultimo_acesso < now() - 5 min. O NULL precisa ser tratado à parte (NOT (... >= x) o perderia).
+-- Usa o índice ix_usuario_ultimo_acesso; a contagem da paginação usa o mesmo filtro.
+
 -- Alunos cadastrados (ativos e suspensos)
 SELECT COUNT(*) FROM public.usuario
  WHERE tipo_usuario = 'aluno' AND status_conta <> 'excluida';
@@ -793,7 +798,7 @@ Excluir o perfil não apaga a linha de `usuario`: ela é anonimizada, e os pedid
 | Coluna | Valor após anonimizar |
 |---|---|
 | `nome` | `'Usuário removido'` |
-| `email` | Valor sem uso e único, por exemplo `removido_<id>@removido.invalid` (libera o e-mail original para novo cadastro) |
+| `email` | Valor sem uso e único, por exemplo `removido_<id>@removido.invalid` (libera o e-mail original para novo cadastro). O backend nunca envia e-mail para o sufixo `@removido.invalid` (guarda `withDeliveryGuard`, ex.: estorno de Pix pago depois da exclusão) |
 | `senha_hash`, `google_sub` | `NULL` (a conta nunca mais entra, pois `status_conta = 'excluida'`) |
 | `whatsapp`, `curso`, `foto_perfil` | `NULL` |
 | `status_conta` | `'excluida'` |

@@ -1,9 +1,9 @@
 ---
 title: Documentação Técnica — Regras de Negócio
 project: Unishop
-version: 0.4.2
+version: 0.4.3
 date: 2026-11-01
-changelog: "0.4.2 — escopo do MVP: reembolso, cancelamento de pedido Pago, avaliações e suporte ficam fora (decidido em 01/11/2026); pendência 6 nova."
+changelog: "0.4.3 — troca de e-mail (D3, D5, D6) e filtro de contato sem regra (D9). 0.4.2 — escopo do MVP: reembolso, cancelamento de pedido Pago, avaliações e suporte ficam fora (decidido em 01/11/2026); pendência 6 nova."
 status: vigente com pendências
 owners: Francisco Magno (consolidação)
 based_on: requisitos RF001–RF024 e RNF001–RNF016 (PDF do trabalho), protótipos do Figma, decisões do grupo
@@ -25,6 +25,7 @@ language: pt-BR
 |---|---|---|
 | 0.3 | 13/10/2026 | Regras por domínio, ciclo de vida, decisões de 10/10 e 13/10 e mapa de testes. |
 | 0.4 | 16/10/2026 | Promove às regras as decisões que estavam só no Backend (JWT de 2 h, máximo de 5 imagens, cartão abandonado, e-mail ao comprador, 409 sem estoque, anonimização pelo admin, proteção do admin, canal por e-mail, "completar cadastro" do Google). Acrescenta os casos de borda de dinheiro e estoque (pagamento tardio, liquidação com anúncio inativo, exclusão com pedido em aberto, pedido reaproveitado, cancelamento pelo comprador), o vendedor e o produto congelados no pedido, o WhatsApp no anúncio, a troca de senha, o formato do WhatsApp e a definição de "aluno verificado". Limite de imagem de 4 MB. Login com Google entra no MVP. Une as duas tabelas de decisões em uma. Novas seções: escopo do MVP (8), limites de campos e itens proibidos (9), desvios do PDF (10) e pendências (11). Os nomes de tabela e coluna das regras passam a ser os do Banco de Dados. |
+| 0.4.3 | 01/11/2026 | Decisões da troca de e-mail na seção 6 (validade do link, efeito nas sessões, quem pode trocar) e pendência 7 (filtro de forma de contato sem regra). |
 | 0.4.1 | 27/10/2026 | O admin edita só o status: da conta (Ativa ou Suspensa) e do anúncio (Ativo ou Pausado, revertendo Vendido). RN-ADM-04 e RN-ADM-08 reescritas, sem edição de dados nem troca de vendedor; decisão de 26/10 na seção 6, desvio do PDF na seção 10 e pendência 6. |
 
 ## 1. Como ler este documento
@@ -289,6 +290,10 @@ Uma tabela só, com a data de cada decisão. Quando duas decisões tratam do mes
 | Imagem de 4 MB | Limite de **4 MB** por imagem, uma por requisição (limite da hospedagem). | 16/10 |
 | Infraestrutura | Gratuita. A meta de 500 usuários simultâneos é meta de produto, **não é medida no MVP**; se o projeto seguir como produto depois da avaliação, a meta e a infraestrutura são revistas. | 16/10 |
 | Casos de borda de dinheiro | Pagamento tardio estornado, liquidação só com anúncio ativo, exclusão bloqueada com pedido em aberto, pedido aberto reaproveitado, cancelamento pelo comprador (RN-PAG-13, RN-PAG-14, RN-PER-06, RN-PED-10, RN-PED-12). | 16/10 |
+| Troca de e-mail: validade do link (D3) | O link enviado ao novo endereço vale **30 minutos** e é de uso único (por analogia à RN-ACE-10; a RN-PER-02 não define prazo). | 01/11 |
+| Troca de e-mail: efeitos (D5) | Ao confirmar, as sessões abertas **continuam** (o JWT não leva e-mail), o `google_sub` é mantido, a conta fica `verificacao = true`, todos os outros links pendentes do usuário (inclusive de redefinição de senha) são invalidados e **não** se avisa o endereço antigo no MVP. Pedir a senha atual e revogar sessões não foram decididos. | 01/11 |
+| Troca de e-mail: quem pode (D6) | Aluno e administrador, sempre com `@edu.unifor.br` no novo endereço; a confirmação exige estar logado como o dono do link (D4). | 01/11 |
+| Filtro por forma de contato (D9) | O filtro `contact` de `GET /listings` **não tem regra**: a forma de negociação nasce no pedido (RN-PED-04, 05) e "local no campus" não tem coluna nem campo. Nenhuma mudança no backend; os chips saem do frontend na integração. | 01/11 |
 | Edição pelo admin | O admin edita **só o status**: da conta (Ativa ou Suspensa) e do anúncio (Ativo ou Pausado, revertendo Vendido). Os dados ficam só para consulta, sem troca de vendedor e sem punições ou prazos de suspensão. Substitui a edição completa da v0.4 (RN-ADM-04, RN-ADM-08). Pedido do gestor; registrado em 27/10. | 26/10 |
 
 ## 7. Mapa de testes
@@ -382,4 +387,5 @@ O texto do RNF005 cita "NoSQL Injection", mas o banco é PostgreSQL: o risco rea
 | 4 | Os valores da seção 9 e a lista de itens proibidos são propostas da equipe | O grupo confirma ou ajusta antes de o Frontend e o Backend implementarem |
 | 5 | Se o projeto seguir como produto depois da avaliação, a meta de 500 usuários e o plano de hospedagem voltam à mesa | Revisar o Deploy (limites do plano gratuito) |
 | 6 | **Telas de protótipo sem regra:** o frontend tem cancelar pedido Pago com motivo, "Pedir reembolso", "Não recebi reembolso", avaliação do pedido e suporte no admin (`roteiro-telas.md` §5 e `roteiro-backend.md` §2.2), todos fora do MVP | Se o grupo as quiser no MVP, escrever as regras `RN-XXX-nn` aqui primeiro (Regras → Banco → Backend, nessa ordem); até lá, não ligar essas telas à API |
+| 7 | O filtro por forma de contato e o "local no campus" da listagem (frontend) não têm regra, coluna nem campo na API (D9, seção 6) | Retirar os chips na integração; se o grupo os quiser, escrever a regra aqui primeiro (Regras → Banco → Backend) |
 | 6 | A edição só de status (26/10) foge de RF021.1–RF021.3 e RF024.2–RF024.5; o texto exato desses itens não foi conferido no PDF | Conferir no PDF quais subitens deixam de ser atendidos e confirmar o desvio com o grupo antes da entrega |

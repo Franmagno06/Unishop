@@ -27,6 +27,7 @@ language: pt-BR (código e pastas em inglês; interface em português)
 |---|---|---|
 | 0.1 | 14/10/2026 | Primeira versão: catálogo das APIs externas e arquitetura de segurança "backend-cofre". |
 | 0.2 | 15/10/2026 | Alinhada às decisões fechadas: Mercado Pago como gateway (ADR-002, resta escolher a Payments API ou a Orders API), hospedagem Vercel + Supabase (ADR-005), jobs como endpoints, upload de uma imagem por requisição (até 4 MB) e `waitUntil`. Travas de produção passam a usar `APP_ENV` e não exigem mais credencial real de pagamento (RN-PAG-10). `FRONTEND_URL` aceita lista. Variáveis unificadas com o Deploy. ADR-008 (backend-cofre) e ADR-009 (e-mail) renumerados. |
+| 0.3.2 | 01/11/2026 | Decisão do gestor de 01/11/2026: sem Mailtrap, Resend, domínio próprio nem Cloudinary nesta fase. O e-mail fica no driver `console` e as imagens no disco local; ADR-004 e ADR-009 são reabertos na etapa de deploy (a Vercel tem disco temporário; Vercel Blob e SMTP de conta Gmail são as opções em estudo). `buildProviders` implementado (6.4) e travas de `FRONTEND_URL` e `CRON_SECRET` no `env.ts`. |
 | 0.3.1 | 30/10/2026 | **Banco trocado de Neon para Supabase (ADR-005 revisado).** Seção 4.8 reescrita (limites do Supabase conferidos em 30/10/2026: 500 MB, 2 projetos, pausa em 1 semana, sem branching nem backup automático), tabelas de risco e de limites, ambientes por projeto e pendências 6 e 7. |
 | 0.3 | 16/10/2026 | Alinhada às Regras de Negócio v0.4, ao Banco v0.2 e ao Backend v0.3. Login com Google passa a **MVP**. Limite do Neon (depois substituído) corrigido para **1 GB** (e demais limites conferidos em 16/10/2026). `/health` leve e `/health/db`. Três papéis de banco (migração, aplicação e backup somente leitura). PostgreSQL 18 na CI e no Docker. Estorno e liquidação cobrem pagamento tardio e anúncio inativo (RN-PAG-13, 14). Imagem de 4 MB confirmada pelo grupo. Variável `EMAIL_VERIFICATION_REQUIRED`. Metas de 500 usuários e 99% tratadas como metas de produto. Pendências renumeradas (seção 12). |
 
@@ -353,6 +354,8 @@ Cada tentativa de cobrança é uma linha em `pagamento` (só uma pode estar em a
 
 ### 4.4 Resend e Mailtrap (e-mail transacional)
 
+> **Estado em 01/11/2026 (decisão do gestor):** nenhum driver real de e-mail existe. O `MAIL_DRIVER=console` imprime o link no terminal do backend e vale só em `development` e `test`; o `env.ts` recusa `console` em `preview` e `production`. Como o e-mail sai na Vercel (Resend com domínio próprio, SMTP de uma conta Gmail com `nodemailer` ou modo demonstração) **não está definido**: o ADR-009 é reaberto na etapa de deploy. Os modelos (`templates.ts`, HTML escapado) e a guarda de destinatário (`guard.ts`) já independem do driver.
+
 | Item | Detalhe |
 |---|---|
 | Papel | Enviar e-mails de redefinição de senha, troca de e-mail, venda realizada, anúncio excluído e pedido cancelado com estorno (e de confirmação de conta, quando a chave RN-ACE-07 estiver ligada) |
@@ -393,6 +396,8 @@ Cada tentativa de cobrança é uma linha em `pagamento` (só uma pode estar em a
 
 
 ### 4.5 Cloudinary (imagens) e Cloudflare R2 (alternativa)
+
+> **Estado em 01/11/2026 (decisão do gestor):** sem Cloudinary nesta fase. As imagens ficam no disco local (`STORAGE_DRIVER=local`, só em `development` e `test`). O disco da Vercel é temporário, então o armazenamento de `preview` e `production` **não está definido** (recomendação em estudo: Vercel Blob, `@vercel/blob`); o ADR-004 é reaberto na etapa de deploy.
 
 | Item | Detalhe |
 |---|---|
@@ -1036,6 +1041,8 @@ export const env = Object.freeze({
 
 ### 6.4 Composição dos providers e trava de produção
 
+> **Implementado em 01/11/2026:** `backend/src/shared/providers/index.ts` exporta `buildProviders(env, { uploadsDir })`, que devolve `{ mail, storage, oauth, gateway }` e substitui as funções `pick*` do `app.ts`. As travas ficam em dois pontos: `config/env.ts` (`parseEnv`, recusa a configuração antes de subir: e-mail console e disco local, `FRONTEND_URL` sem `https://` ou com `*` e `CRON_SECRET` curta em `preview` e `production`) e `buildProviders`/`buildPaymentGateway` (driver sem provider ou `mock` em produção). Drivers de e-mail e de imagem diferentes de `console` e `local` ainda não têm implementação. O trecho abaixo é o desenho original.
+
 Em desenvolvimento e teste, é possível usar versões falsas (`mock`, `console`, `local`, `noop`). **Em produção, as que mexem com dinheiro, e-mail e arquivos são proibidas** (`mock`, `console`, `local`): o servidor se recusa a iniciar. O anti-bot `noop` fica **liberado enquanto o Turnstile não entra** (ele é "depois do MVP", seção 4.7); quando o Turnstile for implantado, o `noop` também passa a ser proibido em produção. O **Preview** não é produção: pode usar `mailtrap` e a conta de teste do Mercado Pago.
 
 ```ts
@@ -1178,12 +1185,12 @@ PAYMENT_DRIVER=mock         # mock | mercadopago
 MP_ACCESS_TOKEN=
 MP_WEBHOOK_SECRET=
 
-# E-mail
+# E-mail (nesta fase só console; Resend/Mailtrap ficam para o deploy)
 MAIL_DRIVER=console         # console | mailtrap | resend
 MAIL_FROM=no-reply@seudominio.com
 RESEND_API_KEY=
 
-# Imagens
+# Imagens (nesta fase só local; o armazenamento da Vercel fica para o deploy)
 STORAGE_DRIVER=local        # local | cloudinary
 CLOUDINARY_URL=
 CLOUDINARY_UPLOAD_FOLDER=unishop-dev   # unishop-prod em produção
@@ -1336,12 +1343,12 @@ Numeração única para todos os documentos (a mesma do Backend e do Deploy):
 | ADR-001 | ORM (Prisma) | **Decidido** |
 | ADR-002 | Gateway de pagamento (Mercado Pago) e forma de integração (Payments API ou Orders API) | **Decidido: Mercado Pago pela Payments API** (Pedro, 01/11/2026). Falta validar no sandbox (prova de conceito do Pix) |
 | ADR-003 | Login social só com Google (MVP), sem Apple; e-mail e senha continuam | Decidido |
-| ADR-004 | Armazenamento de imagens: Cloudinary no MVP (R2 fica como alternativa) | **Decidido** |
+| ADR-004 | Armazenamento de imagens: Cloudinary no MVP (R2 fica como alternativa) | **Reaberto em 01/11/2026:** sem Cloudinary nesta fase (disco local); o armazenamento na Vercel será decidido no deploy |
 | ADR-005 | Hospedagem e banco: Vercel + Supabase (`docs/deploy/deploy.md`); revisado em 30/10/2026, antes era Neon | **Decidido** |
 | ADR-006 | Anti-bot (Turnstile) depois do MVP, com a política de falha da seção 4.7 | **Decidido** |
 | ADR-007 | Observabilidade: UptimeRobot e Sentry depois do MVP (Sentry sem dado pessoal) | **Decidido** |
 | ADR-008 | Modelo de segurança "backend-cofre" (era ADR-005 na v0.1 deste documento) | **Decidido** |
-| ADR-009 | Provedor de e-mail transacional (Resend; Mailtrap em desenvolvimento) | **Decidido** |
+| ADR-009 | Provedor de e-mail transacional (Resend; Mailtrap em desenvolvimento) | **Reaberto em 01/11/2026:** sem Resend, Mailtrap nem domínio próprio nesta fase (driver `console`); o provedor será decidido no deploy |
 
 
 ### Pendências em aberto

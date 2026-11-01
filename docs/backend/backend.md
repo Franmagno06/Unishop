@@ -1,9 +1,9 @@
 ---
 title: Documentação Técnica — Backend
 project: Unishop
-version: 0.3.1
+version: 0.3.2
 date: 2026-11-01
-changelog: "0.3.1 — seção 21 revisada contra o código (módulos auth, users, categories e listings implementados) e pendências novas."
+changelog: "0.3.2 — troca de e-mail confirmada (RN-PER-02), presença no admin, e-mail em segundo plano, modelos escapados, guarda de destinatário, buildProviders. 0.3.1 — seção 21 revisada contra o código (módulos auth, users, categories e listings implementados) e pendências novas."
 status: vigente com pendências
 owners: Felipe Bessa (backend)
 reviewers: Pedro Cândido (engenheiro de API), Ana Clara (banco de dados), Francisco Magno (integração front-back)
@@ -45,6 +45,7 @@ language: pt-BR (código e pastas em inglês; interface em português)
 | 0.1 | 13/10/2026 | Primeira versão, escrita a partir dos requisitos e do documento de Frontend. |
 | 0.2 | 14/10/2026 | Revisão completa com base nas Regras de Negócio v0.4. Substituiu a v0.1. |
 | 0.2.1 | 15/10/2026 | Ajustes para a hospedagem na Vercel + Supabase (ADR-005): `app.ts` e `dev-server.ts`; jobs como endpoints; imagens uma por requisição; `waitUntil`; novas variáveis. |
+| 0.3.2 | 01/11/2026 | Troca de e-mail por link (`/users/me/email-change` e `/confirm`); `PATCH /users/me` sem troca de e-mail; filtro `presence` em `GET /admin/users`; e-mail de exclusão do anúncio em segundo plano; modelos de e-mail com HTML escapado e guarda de destinatário anonimizado; `shared/providers/index.ts` (`buildProviders`) e travas por `APP_ENV` no `env.ts`. |
 | 0.3.1 | 30/10/2026 | Banco trocado de Neon para Supabase (ADR-005 revisado): variáveis `DATABASE_URL` (Transaction pooler, 6543) e `DATABASE_URL_UNPOOLED` (Session pooler ou direta, 5432), backup só pelo workflow, `/health/db` gera atividade contra a pausa do projeto. |
 | 0.3 | 16/10/2026 | Alinhado às Regras de Negócio v0.4 e ao Banco de Dados v0.2. Login com Google entra no MVP (com a tela "completar cadastro"); troca de senha logado; cancelamento de pedido pelo comprador; pedido aberto reaproveitado; liquidação só com anúncio ativo; pagamento tardio estornado; várias tentativas de pagamento por pedido; imagem de 4 MB confirmada pelo grupo; exclusão lógica e bloqueios com pedido pago em aberto; proteção do admin; jobs de 30 em 30 minutos e `/health` leve; SQL com os nomes do Banco. As pendências 1 a 16 da v0.2 passam às Regras de Negócio (seção 21). |
 
@@ -285,7 +286,7 @@ ALLOWED_EMAIL_DOMAIN=edu.unifor.br
 GOOGLE_CLIENT_ID=
 MP_ACCESS_TOKEN=
 MP_WEBHOOK_SECRET=
-RESEND_API_KEY=
+RESEND_API_KEY=            # não usadas nesta fase: o e-mail fica no driver console e as imagens no disco local (decisão de 01/11/2026); o deploy reabre o tema
 MAIL_FROM=no-reply@seudominio.com
 CLOUDINARY_URL=
 
@@ -421,7 +422,7 @@ shared/
 │  ├─ trackLastSeen.ts          # alimenta lastSeen e "logado agora" (RN-ADM-03)
 │  ├─ notFound.ts
 │  └─ errorHandler.ts           # formato único de erro
-├─ providers/                   # serviços externos atrás de interfaces
+├─ providers/                   # serviços externos atrás de interfaces (hoje: mail/ com console, templates e guard; storage/ local)
 │  ├─ http-client.ts            # chamada externa com timeout, retry e circuit breaker
 │  ├─ oauth/                    # google.provider.ts
 │  ├─ payment-gateway/          # interface + mercadopago.provider.ts + mock.provider.ts
@@ -787,7 +788,7 @@ Content-Type: application/json
 
 ### Troca de e-mail institucional
 
-O pedido de troca grava o novo e-mail como **pendente** e envia um link ao novo endereço. A troca só vale quando o aluno clica no link. O novo e-mail também precisa ser `@edu.unifor.br` e não pode estar em uso (RN-PER-02).
+O pedido de troca cria um token de tipo `troca_email` (só o hash vai ao banco, com o `novo_email` e validade de **30 minutos**, decisão D3) e envia o link `FRONTEND_URL/confirmar-troca-email/<token>` ao novo endereço; o e-mail só muda quando o dono, logado, confirma. O novo e-mail precisa ser `@edu.unifor.br` e não pode estar em uso (RN-PER-02); o índice `uq_usuario_email_lower` decide a corrida entre dois pedidos. Vale para aluno e admin (D6). As sessões continuam depois da troca, o `google_sub` é mantido e o endereço antigo não é avisado (D5); a confirmação invalida todos os outros links pendentes do usuário. Pedir a senha atual e revogar sessões não estão definidos. O envio usa `await` (e-mail de segurança), como a recuperação de senha.
 
 
 ## 9. Módulos e rotas
@@ -818,12 +819,12 @@ Perfil do usuário logado. Vale para aluno e para admin (RN §3: os dois editam 
 | Método e rota | Acesso | O que faz | Origem |
 |---|---|---|---|
 | `GET /users/me` | Aluno ou Admin | Dados do próprio perfil | RF012.1 |
-| `PATCH /users/me` | Dono | Altera nome, curso e WhatsApp (10 ou 11 dígitos), com as validações do cadastro | RN-PER-01, 07 |
+| `PATCH /users/me` | Dono | Altera nome, curso e WhatsApp (10 ou 11 dígitos), com as validações do cadastro. Aceita `email` só se for igual ao atual; diferente dá 400 `VALIDATION_ERROR` (a troca é pelas duas rotas abaixo) | RN-PER-01, 07 |
 | `POST /users/me/password` | Dono | Troca a senha com a sessão aberta; devolve um token novo | RN-ACE-15 |
 | `POST /users/me/complete-profile` | Dono | Primeiro acesso por Google: grava o aceite dos Termos e, se vierem, curso e WhatsApp | RN-ACE-06, 14 |
 | `PUT /users/me/avatar` | Dono | Troca a foto de perfil (JPG ou PNG, até 4 MB) | RN-PER-05 |
-| `POST /users/me/email-change` | Dono | Pede a troca de e-mail (link ao novo endereço) | RN-PER-02 |
-| `POST /users/me/email-change/confirm` | Dono | Confirma a troca pelo token | RN-PER-02 |
+| `POST /users/me/email-change` | Aluno ou Admin | Corpo `{ email }`. Valida o domínio (403 `EMAIL_DOMAIN_NOT_ALLOWED`), recusa o e-mail atual (400) e o já usado (409 `EMAIL_ALREADY_REGISTERED`); envia o link ao **novo** endereço e responde `202 { pendingEmail, expiresInMinutes: 30 }`. Falha no envio: 502 `EXTERNAL_SERVICE_ERROR`. Limite de 10 por minuto por IP | RN-PER-02, RF013.4 |
+| `POST /users/me/email-change/confirm` | Aluno ou Admin | Corpo `{ token }`. Só o dono do link (sessão): outro usuário, token usado ou de outro tipo dá 400 `TOKEN_INVALID`; vencido, 400 `TOKEN_EXPIRED`; endereço tomado nesse meio tempo, 409. Uma transação consome o token, grava o e-mail (`verificacao = true`) e invalida os demais links pendentes. Responde `200 { user }` | RN-PER-02, RF013.4 |
 | `DELETE /users/me` | Dono | Exclui o perfil: exige a confirmação "EXCLUIR" e anonimiza a conta | RN-PER-06 |
 
 - Ao mudar o WhatsApp, os anúncios ativos do aluno são atualizados **na mesma transação** (RN-PER-03).
@@ -953,13 +954,13 @@ export default router
 
 | Método e rota | Acesso | O que faz | Origem |
 |---|---|---|---|
-| `GET /admin/users` | Admin | Lista usuários com status de acesso; aceita `search` (nome ou e-mail) e `page` | RN-ADM-02 |
+| `GET /admin/users` | Admin | Lista usuários com status de acesso; aceita `search` (nome ou e-mail), `presence=all\|online\|offline` (padrão `all`; outro valor dá 400) e `page` | RN-ADM-02 |
 | `GET /admin/users/stats` | Admin | Cadastrados, logados agora e novos na semana (só alunos; "logados agora" só contas ativas) | RN-ADM-02 |
 | `GET /admin/users/:id` | Admin | Detalhes, indicadores e anúncios do usuário | RF020 |
 | `PATCH /admin/users/:id` | Admin | Altera só o status da conta (`{ status: "ativa" \| "suspensa" }`); qualquer outro campo é recusado (400) | RN-ADM-04, 05 |
 | `DELETE /admin/users/:id` | Admin | Anonimiza a conta (mesmo tratamento do RN-PER-06), com confirmação; 409 `HAS_OPEN_PAID_ORDERS` se houver pedido Pago ou em Retirada combinada em aberto | RN-ADM-06 |
 
-- **"Logado agora"** = atividade nos últimos 5 minutos, pelo campo `lastSeen`; depois disso mostra o tempo desde o último acesso (RN-ADM-03).
+- **"Logado agora"** = atividade nos últimos 5 minutos (limite inclusivo), pelo campo `lastSeen`; depois disso mostra o tempo desde o último acesso (RN-ADM-03). O filtro `presence=online` usa conta ativa com `lastSeen` dentro da janela; `offline` é o complemento (suspensa, sem acesso ou acesso antigo); a contagem e a paginação seguem o filtro.
 - Suspender impede o login e oculta os anúncios, **sem apagar dados** (RN-ADM-05).
 - O admin não edita foto, nome, e-mail, curso nem WhatsApp: os dados aparecem só para consulta (RN-ADM-04, decisão de 26/10; desvio do PDF nas Regras §10).
 - Toda edição, suspensão e exclusão grava log de auditoria, com data e responsável (RN-ADM-10).
@@ -976,6 +977,7 @@ export default router
 | `PATCH /admin/listings/:id` | Admin | Altera só o status do anúncio (`{ status: "ativo" \| "pausado" }`), inclusive para reverter Vendido; qualquer outro campo é recusado (400) | RN-ADM-08 |
 | `DELETE /admin/listings/:id` | Admin | Exclusão lógica, notifica o vendedor e pede confirmação; 409 `HAS_OPEN_PAID_ORDERS` com pedido Pago ou em Retirada combinada em aberto | RN-ADM-09 |
 
+- A exclusão avisa o vendedor por e-mail **em segundo plano** (`runInBackground`/`waitUntil`): a resposta 204 não espera o provider, e o log de falha leva só o id do anúncio.
 - Dados, imagens e vendedor aparecem só para consulta; não há troca de vendedor (RN-ADM-08, decisão de 26/10; desvio do PDF nas Regras §10).
 - **Só o admin reverte "Vendido"** (RN §4), e a ação vai para o log. Para o dono, "Vendido" é final.
 
@@ -1403,12 +1405,15 @@ Cada tentativa é uma linha; só uma linha por pedido pode estar `pendente` ou `
 |---|---|---|---|
 | `OAuthProvider` | `google.provider.ts` | GOOGLE_CLIENT_ID | auth |
 | `PaymentGateway` | `mercadopago.provider.ts` | MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET | payments, jobs |
-| `MailProvider` | `resend.provider.ts (Mailtrap em dev)` | RESEND_API_KEY, MAIL_FROM | auth, users, notifications |
-| `StorageProvider` | `cloudinary.provider.ts` | CLOUDINARY_URL, CLOUDINARY_UPLOAD_FOLDER | listings, users, admin |
+| `MailProvider` | `console.provider.ts` (implementado); Resend/Mailtrap ficam para o deploy | MAIL_DRIVER | auth, users, notifications |
+| `StorageProvider` | `local.provider.ts` (implementado); Cloudinary ou Vercel Blob ficam para o deploy | STORAGE_DRIVER | listings, users, admin |
 | `AntiBotProvider` | `turnstile.provider.ts` (depois do MVP) | TURNSTILE_SECRET_KEY | auth |
 
 
 ### Regras para todo provider
+
+- `shared/providers/index.ts` (`buildProviders(env)`) escolhe mail, storage, oauth e gateway em um ponto só. Em `preview` e `production` o `env.ts` recusa `MAIL_DRIVER=console`, `STORAGE_DRIVER=local`, `FRONTEND_URL` sem `https://` ou com `*`, e `CRON_SECRET` com menos de 32 caracteres; as mensagens citam só o nome da variável.
+- O e-mail passa por `withDeliveryGuard` (`mail/guard.ts`): nada é enviado a `@removido.invalid` (conta anonimizada). Os modelos (`mail/templates.ts`) são funções puras que escapam todo valor no HTML (`utils/html.ts`) e mantêm o assunto em uma linha.
 
 - Cada um tem uma **interface** própria; o resto do código só conhece a interface.
 - A implementação é escolhida em um único ponto (`config/`), o que permite trocar de serviço ou usar **mock nos testes**.
@@ -1539,6 +1544,8 @@ Erro:
 | RNF006 | Só o token do cartão chega ao servidor; cobrança no gateway (RN-PAG-02) | payments |
 | RNF007 | Aceite dos Termos com data; WhatsApp só autenticado; anonimização dos dados pessoais | auth, users |
 
+- **E-mail e HTML** (RNF005): todo valor vindo do usuário (nome, produto, título, número do pedido, link) passa por `escapeHtml` nos modelos de `shared/providers/mail/templates.ts`; o assunto não leva `\r` nem `\n`. E-mail para endereço `@removido.invalid` (conta anonimizada) é descartado por `withDeliveryGuard`, por exemplo no estorno de um Pix pago depois da exclusão da conta.
+
 > O texto do RNF005 cita **NoSQL Injection**, mas o banco é PostgreSQL: o risco real é **SQL Injection**. A correção cabe ao PDF do trabalho (Regras de Negócio, seção 10); esta documentação usa "SQL Injection". Regra prática: nunca montar SQL concatenando texto do usuário.
 
 
@@ -1634,6 +1641,7 @@ O teste de carga de 500 usuários simultâneos fica **fora do MVP**. Se o projet
 
 - Toda requisição recebe um `requestId`, presente nos logs e nas respostas de erro, para achar o problema rápido.
 - **Nunca** registrar: senha, JWT, token de cartão, corpo de `/auth` e `/payments`, WhatsApp completo.
+- Falha de e-mail em segundo plano registra só o evento e o id do recurso (ex.: `listing_removed_mail_failed` com `listingId`), nunca o endereço nem o nome.
 - Níveis: `error` (falhas), `warn` (assinatura inválida, tentativas), `info` (requisições).
 
 
