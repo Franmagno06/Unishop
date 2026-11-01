@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { getCategories } from '../services/categories.service'
 import { CategoriesPage } from './CategoriesPage'
 
+vi.mock('../../../../shared/lib/mock-mode', () => ({ MOCK_MODE: true })) // estes testes usam os dados de exemplo (modo de demonstração)
+
 // Usa o serviço de verdade (dados de exemplo), mas deixa trocar a resposta em estados específicos.
 vi.mock('../services/categories.service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../services/categories.service')>()

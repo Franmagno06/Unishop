@@ -25,6 +25,14 @@ export function PublishedListingDialog({ listing, onClose }: PublishedListingDia
           <p className="text-[15px] text-text-muted">
             “{listing.title}” já está visível para os alunos na categoria {listing.categoryName}.
           </p>
+          {listing.failedImages ? (
+            <p role="alert" className="text-[15px] text-danger">
+              {listing.failedImages === 1
+                ? "Uma das fotos não foi enviada."
+                : `${listing.failedImages} fotos não foram enviadas.`}{" "}
+              O anúncio foi publicado com as demais.
+            </p>
+          ) : null}
           <div className="flex w-full flex-col gap-2.5">
             <ButtonLink to={`${ROUTES.categories}/${listing.categoryId}`} fullWidth>
               Meu anúncio

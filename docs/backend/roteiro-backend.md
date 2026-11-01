@@ -1,10 +1,10 @@
 ---
 title: Roteiro de Implementação — Backend
 project: Unishop
-version: 0.6
+version: 0.7
 date: 2026-11-01
 status: aprovado (confirmado por Pedro em 01/11/2026); acompanhamento da execução na seção 1.1
-changelog: "0.6 — roteiro aprovado; seção 1.1 com o estado de execução em 01/11/2026 (etapas 2, 4 e 5 prontas no backend; 1 e 3 parciais; 6 a 11 não iniciadas); P1, P5, P7, P8, P10 e P11 atualizadas; Etapa 12 adiada (fora do MVP); migrações com os nomes reais (`0_init`, `1_regras_manuais`, `2_rls_politicas`). 0.5 — banco já existente (repositório clarammacedo/unishop) vira ponto de partida da Etapa 2, que deixa de criar do zero; seção 2.3 diz o que já existe, o que falta e em que etapa cada mudança entra; P10 e P11. 0.4 — passo zero com o grafo (graphify) em toda etapa. 0.3 — P2 decidido (banco em português, código e API em inglês por @map; seção 2.1); P9 (motivo do cancelamento sem coluna); seção 2.2 com o que o frontend ganhou nos commits 6be5b283, fb89e4d2 e ecb08f1d. 0.2 — integração com o frontend dentro de cada etapa (seção 4), chave de exemplos por área, etapas 6 e 7 integradas juntas, cartão por token falso até a Etapa 10"
+changelog: "0.7 — etapas 1, 3, 6, 7 e 8 prontas no backend (gateway com `mock.provider` e `mercadopago.provider` na Payments API, pedidos, pagamentos, webhook assinado, liquidação, estorno, jobs, `GET /health/db`); frontend do checkout integrado à API; P3 decidida (Payments API), prova de conceito do Pix ainda por fazer; guia `docs/api/mercado-pago-passo-a-passo.md`. 0.6 — roteiro aprovado; seção 1.1 com o estado de execução em 01/11/2026 (etapas 2, 4 e 5 prontas no backend; 1 e 3 parciais; 6 a 11 não iniciadas); P1, P5, P7, P8, P10 e P11 atualizadas; Etapa 12 adiada (fora do MVP); migrações com os nomes reais (`0_init`, `1_regras_manuais`, `2_rls_politicas`). 0.5 — banco já existente (repositório clarammacedo/unishop) vira ponto de partida da Etapa 2, que deixa de criar do zero; seção 2.3 diz o que já existe, o que falta e em que etapa cada mudança entra; P10 e P11. 0.4 — passo zero com o grafo (graphify) em toda etapa. 0.3 — P2 decidido (banco em português, código e API em inglês por @map; seção 2.1); P9 (motivo do cancelamento sem coluna); seção 2.2 com o que o frontend ganhou nos commits 6be5b283, fb89e4d2 e ecb08f1d. 0.2 — integração com o frontend dentro de cada etapa (seção 4), chave de exemplos por área, etapas 6 e 7 integradas juntas, cartão por token falso até a Etapa 10"
 owners: Felipe Bessa (backend), Pedro Cândido (API), Ana Clara Macêdo (banco), Francisco Magno (integração)
 based_on: backend.md v0.3.1, bd.md v0.2.1, regras-de-negócio.md v0.4.2, api.md v0.3.1, deploy.md v0.3.1
 language: pt-BR
@@ -27,24 +27,24 @@ Este roteiro ordena **o que construir, em que sequência e como saber que acabou
 
 ### 1.1 Estado de execução (conferido em 01/11/2026)
 
-Conferido contra o código (`backend/`, `frontend/`), os commits até `9b3fadcd` e a bateria de 01/11/2026 (`npm run lint`, `npm run build`, `npm test` com 122 testes e `npm run test:db` com 87, todos verdes). Os 122 testes da suíte rápida e os 87 de banco são do backend; os testes do frontend não foram rodados nesta conferência.
+Conferido contra o código (`backend/`, `frontend/`) e a bateria de 01/11/2026, **depois** da entrega das etapas 6, 7 e 8 (ainda **não commitadas**): backend com `tsc`, `eslint`, `build`, `npm test` (134 testes) e `npm run test:db` (133, PostgreSQL 17 no Docker) verdes; frontend com `tsc -b`, `eslint` e `vite build` verdes e `vitest` com 681 de 682 (a falha é o teste do botão do Google no `RegisterPage`, causada pelo `VITE_GOOGLE_CLIENT_ID` preenchido no `frontend/.env` local). **Nunca rodou:** o `mercadopago.provider` contra o Mercado Pago real (sem chaves), o SDK no navegador, o webhook por túnel, o Pix de teste (P3) e o E2E do Playwright.
 
 | Etapa | Estado | O que existe | O que falta |
 |---|---|---|---|
-| 1 Fundação | **Parcial** | `AppError`, `errorHandler`, `validate`, `rate-limiter`, `request-id`, `config/constants`, `env.ts` com Zod, `money`, `pagination`, `GET /api/v1/health`, `test:db` | `GET /health/db`, `shared/security` (`Secret`, `redact`), `@vercel/functions`, regra `no-restricted-imports` do ESLint, trava de produção por `APP_ENV` no `env.ts` (hoje só o e-mail de console, em `app.ts`) |
-| 2 Banco | **Feita**, exceto o item B | `schema.prisma` (8 tabelas), migrações `0_init`, `1_regras_manuais` e `2_rls_politicas`, `seed.ts`, papéis e RLS no `unishop-prod` e no `unishop-dev`, `pg_dump` do `unishop_backup` testado nos dois | `pedido.motivo_cancelamento` (P9, migração `3_motivo_cancelamento`) |
-| 3 Providers | **Parcial** | `MailProvider` (`console`), `StorageProvider` (`local`), `OAuthProvider` (Google **real**, não o falso previsto) | `http-client`, `buildProviders`, `PaymentGateway` com `mock.provider`, `AntiBotProvider` `noop`, templates de e-mail de venda, exclusão e estorno |
+| 1 Fundação | **Quase feita** | `AppError`, `errorHandler`, `validate`, `rate-limiter`, `request-id`, `config/constants`, `env.ts` com Zod e **travas de produção por `APP_ENV` (`superRefine`)**, `money`, `pagination`, `GET /api/v1/health` e **`GET /health/db`**, `@vercel/functions` (`runInBackground`), `test:db` | `shared/security` (`Secret`, `redact`) e a regra `no-restricted-imports` do ESLint |
+| 2 Banco | **Feita** | `schema.prisma` (8 tabelas), migrações `0_init`, `1_regras_manuais`, `2_rls_politicas` e `3_motivo_cancelamento`, `seed.ts`, papéis e RLS no `unishop-prod` e no `unishop-dev`, `pg_dump` do `unishop_backup` testado nos dois | Aplicar a `3_motivo_cancelamento` no `unishop-prod` (já está no dev e no Docker) |
+| 3 Providers | **Parcial** | `MailProvider` (`console`, com `sendSaleConfirmed` e `sendOrderRefunded`), `StorageProvider` (`local`), `OAuthProvider` (Google **real**), **`PaymentGateway`** (`mock.provider` controlável nos testes e `mercadopago.provider`) e `buildPaymentGateway` (mock proibido em `APP_ENV=production`) | `http-client` (timeouts hoje no SDK), `buildProviders` único, `AntiBotProvider` `noop`, template de e-mail de exclusão |
 | 4 Autenticação e perfil | **Feita no backend** | `/auth` (`register`, `login`, `google`, `forgot-password`, `reset-password`, `me`, `complete-profile`), `/users` (`me`, `PATCH`, `password`, `DELETE me`, `avatar`), `authenticate` e `authorizeRole` | Fatia do `openapi.yaml` (P1); `DELETE /users/me` ainda não confere pedido Pago em aberto (depende da Etapa 6); `verify-email` e `resend-verification` desligados, ainda sem rota |
-| 5 Categorias e anúncios | **Feita no backend** | `GET /categories`; `/listings` (`recent`, listagem, `mine`, `:id`, `:id/management`, `POST`, imagens, `PATCH`, `pause`, `reactivate`, `mark-sold`, `DELETE`); upload com `file-type`; filtro único de visibilidade | Integração do frontend (marco "vitrine e anúncios reais" não verificado); fatia do `openapi.yaml` |
-| 6 Pedidos | Não iniciada | — | Tudo; depende da migração `3_motivo_cancelamento` |
-| 7 Pagamentos | Não iniciada | — | Tudo; depende do `PaymentGateway` com `mock.provider` (Etapa 3) |
-| 8 Jobs | Não iniciada | `node-cron` está nas dependências | Tudo |
+| 5 Categorias e anúncios | **Feita, backend e frontend** | `GET /categories`; `/listings` (`recent`, listagem, `mine`, `:id`, `:id/management`, `POST`, imagens, `PATCH`, `pause`, `reactivate`, `mark-sold`, `DELETE`); upload com `file-type`; filtro único de visibilidade. **Frontend integrado em 01/11/2026:** `categories.service`, `listings.service` (lista, detalhe, publicar com a 1ª foto no `POST /listings` e as extras em `/images`) e `my-listings.service` (lista, gerenciar, pausar, reativar, vender, excluir), com o exemplo isolado em `*.mock.ts` | Fatia do `openapi.yaml`; editar anúncio (`PATCH`) e remover foto ainda não têm tela ligada; o filtro por forma de contato não existe na API |
+| 6 Pedidos | **Feita no backend** (não commitada) | `/orders` (`POST`, `contact`, `mine`, `received`, `:id`, `arrange-pickup`, `confirm-receipt`, `complete`, `cancel`), reaproveitamento do pedido aberto, congelamento de preço, cancelamento sob demanda após 30 min, estoque atômico (`shared/database/stock.ts`); 22 testes de banco | Fatia do `openapi.yaml`; telas "meus pedidos", "recebidos" e "concluir venda" ainda sobre exemplo; a migração `3_motivo_cancelamento` falta no `unishop-prod` |
+| 7 Pagamentos | **Feita no backend e no checkout** (não commitada) | `/payments/card`, `/payments/pix`, `/payments/webhook` (HMAC, janela de 5 min, consulta o gateway), `settle` único, `estorno_pendente`, estorno com `await` e e-mail em background, `MAX_REFUND_ATTEMPTS=10`, rota de simulação só em dev; frontend: `tokenizeCard` e cinco funções de `orders.service` chamam a API; 23 testes de banco | Fatia do `openapi.yaml`; CPF do pagador (o Mercado Pago pode exigir); parcelas fixas em 1x; só a P3 confirma o Pix real |
+| 8 Jobs | **Feita** (não commitada) | `jobs/registry.ts`, `jobs.routes.ts` (`Bearer CRON_SECRET`, `timingSafeEqual`), `scheduler.ts` (só no `dev-server`), `expire-pix-payments`, `reconcile-pending-payments`, `cleanup-expired-tokens` | Configurar cron-job.org e Vercel Cron (Etapa 11) |
 | 9 Admin e anonimização | Não iniciada | A anonimização do `DELETE /users/me` já existe (`profiles.anonymize`) | Rotas `/admin/*`, auditoria, proteção do último admin, estatísticas |
-| 10 Integrações reais | Não iniciada | Pacotes `resend`, `cloudinary` e `mercadopago` instalados; Google real já pronto | Drivers de e-mail, Cloudinary e Mercado Pago; P3, P4 e P6 |
+| 10 Integrações reais | **Parcial** | Google real; **`mercadopago.provider` escrito** (Payments API, ainda sem chamada real) com guia `docs/api/mercado-pago-passo-a-passo.md` | Testar o Mercado Pago com chaves de teste e túnel (P3); drivers de e-mail (Mailtrap e Resend) e Cloudinary; P4 e P6 |
 | 11 Endurecimento e deploy | Não iniciada | — | `vercel.json`, workflows (testes e backup), `openapi.yaml` completo, cobertura de 80%, `/security-review` |
 | 12 Avaliações e suporte | **Adiada: fora do MVP** (01/11/2026) | Telas de protótipo no frontend | Nada, até o grupo retomar |
 
-**Atrasos em relação ao plano:** a Etapa 3 deveria ter fechado antes da 4, e o `openapi.yaml` (P1) deveria ter saído "por fatia" junto das etapas 4 e 5. O próximo passo é fechar a lacuna das etapas 1 e 3 e a migração do motivo de cancelamento **antes** de começar a Etapa 6.
+**Atrasos em relação ao plano:** o `openapi.yaml` (P1) deveria ter saído "por fatia" junto das etapas 4 a 8 e ainda não existe. Sobras das etapas 1 e 3: `shared/security`, `no-restricted-imports`, `http-client`, `AntiBotProvider`. **Próximos passos:** (1) revisar e commitar o trabalho das etapas 6 a 8 (`/code-review` e `/security-review`, por ser pagamento e webhook); (2) aplicar a `3_motivo_cancelamento` no `unishop-prod` depois que a Ana Clara confirmar os três motivos; (3) criar a conta de teste no Mercado Pago e fazer a P3; (4) Etapa 9 (admin).
 
 ## 2. Decisões e pendências que bloqueiam etapas
 
@@ -54,13 +54,13 @@ Resolver **antes** da etapa indicada. Nenhuma trava a Etapa 1.
 |---|---|---|---|---|
 | P1 | `openapi.yaml` inexistente (backend §21 nº 2); **em 01/11/2026 continua inexistente, e as etapas 4 e 5 já foram feitas sem ele** | Etapa 4 em diante | Pedro | Escrever **por fatia**, junto de cada etapa (auth → listings → orders → payments → admin), não tudo de uma vez. É o "item 1" do Pronto de cada rota. |
 | P2 | ~~Valores dos estados no JSON~~ **Decidido em 28/10/2026 (Francisco): banco em português, código e API em inglês, com o Prisma fazendo a ponte por `@map` nos enums.** Tabela de correspondência na seção 2.1. | — | — | Falta só corrigir a nota do `bd.md §7` ("os valores são os mesmos nos dois lados"), na Etapa 2, com o aval da Ana Clara. |
-| P3 | Payments API × Orders API do Mercado Pago (ADR-002 aberto) | Etapa 10 (real); a 7 não depende | Pedro | Prova de conceito: Pix de teste gera o webhook de aprovação. Até lá, só o `mock.provider`. |
+| P3 | Payments API × Orders API do Mercado Pago (ADR-002). **Decidido em 01/11/2026 (Pedro): Payments API**, já implementada no `mercadopago.provider`. **Falta a prova de conceito:** Pix de teste gerar o webhook de aprovação e conferir se o CPF do pagador é exigido (roteiro no guia `docs/api/mercado-pago-passo-a-passo.md`). Registrar a decisão no ADR-002 do `api.md`. | Etapa 10 (real) | Pedro | Fazer a prova de conceito com credenciais de teste e túnel. |
 | P4 | Google institucional entrega `email_verified = true`? (§21 nº 1) | Etapa 10 | Francisco | Testar com e-mail `@edu.unifor.br` real. |
 | P5 | Papéis `unishop_*` no Supabase (SQL Editor; login pelo pooler como `papel.ref`), revogação de `anon`/`authenticated` e RLS com política por papel (migração `2_rls_politicas`; Deploy §7.5). **Resolvida em 31/10/2026 (`unishop-prod`) e 01/11/2026 (`unishop-dev`):** papéis, RLS, login pelo pooler e `pg_dump` testados nos dois projetos | — | — | — |
 | P6 | Domínio próprio para o Resend (e talvez Google) | Etapa 10 | Grupo | Em dev usa Mailtrap; produção exige domínio verificado. |
 | P7 | **Prisma 7 × documentos.** O projeto instalou `prisma` e `@prisma/client` 7.10.1 com `@prisma/adapter-pg`; `bd.md`/`backend.md` descrevem `directUrl` no `schema.prisma`. Na versão 7 a URL de conexão sai do schema (arquivo `prisma.config.ts` + adapter). **Confirmado na Etapa 2:** `prisma.config.ts` (URL pela `DATABASE_URL_UNPOOLED`) e o adapter `pg` estão em uso, sem `directUrl` no schema. **Falta corrigir os documentos:** `deploy.md` §5.4 e `api.md` §6 ainda descrevem `directUrl` (ver `backend.md` §21). | Etapa 2 | Felipe + Ana Clara | Corrigir os trechos na revisão de 01/11/2026. |
 | P8 | **Funcionalidades do frontend sem regra nem tabela** (commits `6be5b283`, `fb89e4d2` e `ecb08f1d`, já mesclados com a `main` em `c02c16b3`). Lista completa na seção 2.2. As Regras v0.4.1 e o Banco v0.2 não as mencionam, e os próprios tipos do frontend dizem "provisório". | Etapa 12 (adiada) | — | **Decidido em 01/11/2026 (confirmado por Pedro): fora do MVP, adiado.** As telas ficam só como protótipo no frontend; não implementar regra, tabela nem API. Para retomar: Regras → Banco → Backend, nessa ordem. |
-| P9 | **Motivo do cancelamento feito pelo sistema.** A tela mostra por que o pedido foi cancelado (`expired`, `out_of_stock`, `listing_unavailable`; RN-PAG-08, 12, 14), mas a tabela `pedido` não tem coluna para isso. Pelo pagamento não dá para distinguir "estoque acabou" de "anúncio saiu do ar" (os dois viram `estorno_pendente`). **Isso é do MVP**, diferente da P8. | Etapa 2 | Ana Clara + Felipe | Acrescentar `pedido.motivo_cancelamento` (varchar, anulável, `CHECK` com os valores do sistema) no `bd.md` e criá-la na **migração 3** da Etapa 2 (seção 2.3, item B). Se a P8 aprovar os motivos do comprador, a mesma coluna recebe esses valores na Etapa 12. |
+| P9 | ~~**Motivo do cancelamento feito pelo sistema.**~~ **Resolvida em 01/11/2026:** `pedido.motivo_cancelamento` (`varchar(30)` anulável, `ck_pedido_motivo` com `vencido`, `sem_estoque` e `anuncio_indisponivel`) na migração `3_motivo_cancelamento`, aplicada no dev e no Docker; falta o `unishop-prod` e a Ana Clara confirmar os nomes | Etapa 2 | Ana Clara + Felipe | Aplicar no prod com `migrate deploy`. Se a P8 voltar, a mesma coluna recebe os motivos do comprador. |
 | P10 | **Conflito com uma decisão registrada.** `CLAUDE.md` e `bd.md §11` dizem "o dump de 07/10/2026 não é restaurado; o banco nasce só do Prisma". Francisco pediu em 28/10/2026 para **aproveitar o banco já criado**. **Decidido assim:** o dump entra como baseline `0_init` e o Prisma continua sendo a única via de evolução (nada de `psql` solto em ambiente compartilhado). | Etapa 2 | Francisco + Ana Clara | **Resolvida na prática (01/11/2026):** a `0_init` foi **gerada pelo Prisma** a partir do `schema.prisma` já na v0.2 (chaves `SERIAL`, convertidas em identity pela `1_regras_manuais`); o dump de 07/10/2026 não é restaurado em ambiente algum, e `CLAUDE.md` e `bd.md §11` continuam corretos ("o banco nasce só do Prisma"). |
 | P11 | ~~Existe banco vivo?~~ **Respondido em 28/10/2026 (Francisco): não existe; só o script.** O repositório tem `Unishop_db.sql`, `unishop_db` (mesmo conteúdo, `pg_dump` 18.6, só estrutura, sem linhas) e `mer_unishop (2).drawio`. | — | — | Todo ambiente (dev, teste, preview, produção) nasce aplicando `0_init` e as migrações seguintes em banco vazio. Não há `migrate resolve` nem preenchimento de linhas antigas. |
 
@@ -114,7 +114,7 @@ Sem impacto no backend: tela de detalhes do pedido (`/meus-pedidos/:id`, usa o `
 | (A) estrutura da v0.2 | **Feita dentro da `0_init`**: o schema já nasceu com as colunas novas, `token_usuario` e sem UNIQUE em `pagamento.id_pedido` | Etapa 2 |
 | `1_regras_manuais` | **Feita.** `CHECK`, índices parciais, `lower(email)`, identity e a view `anuncio_visivel` (`bd.md §14`); os papéis ficam fora, criados à mão por ambiente | Etapa 2 |
 | `2_rls_politicas` | **Feita (30/10/2026).** RLS ligada nas 8 tabelas e as políticas `app_all` e `backup_select` | Etapa 2 (decisão do Francisco) |
-| `3_motivo_cancelamento` (B) | **Pendente** (P9): a coluna não existe no schema nem em migração; fazer antes da Etapa 6 | Etapa 2 (atrasada) |
+| `3_motivo_cancelamento` (B) | **Feita (01/11/2026)** (P9): coluna `varchar(30)` anulável e `ck_pedido_motivo`; aplicada no dev e no Docker, **falta o `unishop-prod`** | Etapa 2 |
 | `4_avaliacao_suporte` (C) | **Adiada: fora do MVP (01/11/2026)** | Etapa 12 |
 
 **A. Do dump para a v0.2** (fonte: `bd.md §13`; tipos e tamanhos exatos vêm do `bd.md §4`). Já é plano do grupo, não é funcionalidade nova.
@@ -210,7 +210,7 @@ Uma etapa só termina quando o fluxo dela funciona no navegador com a API real. 
 
 ### 4.3 Quais services trocam em cada etapa (`frontend/src/...`)
 
-**Estado em 01/11/2026:** da linha da Etapa 4, `auth.service.ts` e `profile.service.ts` já chamam a API; a **linha da Etapa 5 ainda não foi feita** (categorias, anúncios e "meus anúncios" seguem em dados de exemplo, e o `api()` não envia `FormData`). As demais ainda dependem das etapas 6 a 9.
+**Estado em 01/11/2026:** as linhas das etapas 4 e 5 **foram feitas** (`auth.service`, `profile.service`, `categories.service`, `listings.service`, `my-listings.service`; o `api()` já envia `FormData`). Verificado no navegador, com o backend num PostgreSQL local: login, categorias com contagem real, publicar anúncio com foto, lista da categoria, página do produto, "Meus anúncios" e pausar. Os exemplos continuam disponíveis atrás de `VITE_USE_MOCKS=true` (módulos `*.mock.ts`), usados pelos testes e pelo Playwright. **A linha 6 + 7 foi feita só no checkout** (`orders.service`: `createOrder`, `getOrderById`, `payWithCard`, `createPixCharge`, `confirmPixPayment`; `tokenizeCard` em `checkout/services/mercadopago.ts`), com a API quando `VITE_USE_MOCKS` não está ligado. Seguem sobre exemplo: "meus pedidos", pedidos recebidos em Gerenciar anúncio e "concluir venda" (a API já existe). A 8 não pede troca de tela e a 9 segue pendente; avaliações (fora do MVP) vêm vazias.
 
 | Etapa | O que troca no frontend | Observação |
 |---|---|---|
@@ -226,7 +226,7 @@ Uma etapa só termina quando o fluxo dela funciona no navegador com a API real. 
 
 ## Etapa 1 — Fundação da API
 
-**Status (01/11/2026): parcial**, ver a seção 1.1.
+**Status (01/11/2026): quase feita**, ver a seção 1.1 (faltam `shared/security` e `no-restricted-imports`).
 
 **Objetivo:** esqueleto que toda rota seguinte reaproveita. Parte do andaime existente.
 
@@ -248,7 +248,7 @@ Uma etapa só termina quando o fluxo dela funciona no navegador com a API real. 
 
 ## Etapa 2 — Banco de dados
 
-**Status (01/11/2026): feita, falta a migração `3_motivo_cancelamento`.** Os nomes das migrações abaixo eram o plano; os reais estão na seção 2.3.
+**Status (01/11/2026): feita**, incluindo a migração `3_motivo_cancelamento` (falta aplicá-la no `unishop-prod`). Os nomes das migrações abaixo eram o plano; os reais estão na seção 2.3.
 
 **Objetivo:** partir do banco que a Ana Clara já criou (repositório `clarammacedo/unishop`), levá-lo ao estado do `bd.md` v0.2 e acrescentar o que as funcionalidades novas pedem, tudo **só por migrações do Prisma** e testado em banco vazio. Não se desenha o banco de novo. O quadro completo de o que existe, o que falta e quando está na **seção 2.3**.
 
@@ -308,7 +308,7 @@ Uma etapa só termina quando o fluxo dela funciona no navegador com a API real. 
 
 ## Etapa 5 — Categorias e anúncios
 
-**Status (01/11/2026): feita no backend**; falta integrar os services do frontend (seção 4.3).
+**Status (01/11/2026): feita**, no backend e no frontend (seção 4.3). Falta a fatia do `openapi.yaml`.
 
 **Rotas:** `GET /categories`; `GET /listings/recent` (única pública, **sem WhatsApp**), `GET /listings`, `/mine`, `/:id`, `/:id/management`, `POST /listings` (multipart, 1ª imagem), `POST /listings/:id/images`, `DELETE /listings/:id/images/:imageId`, `PATCH`, `pause`, `reactivate`, `mark-sold`, `DELETE`; `PUT /users/me/avatar`.
 
@@ -324,7 +324,7 @@ Uma etapa só termina quando o fluxo dela funciona no navegador com a API real. 
 
 ## Etapa 6 — Pedidos
 
-**Status (01/11/2026): não iniciada.** Antes: migração `3_motivo_cancelamento`, e fechar as etapas 1 e 3.
+**Status (01/11/2026): feita no backend** (não commitada; 22 testes de banco). Falta a fatia do `openapi.yaml`, ligar as telas de pedidos ao `orders.service` e aplicar a `3_motivo_cancelamento` no `unishop-prod`.
 
 **Rotas:** `POST /orders`, `POST /orders/contact`, `GET /orders/mine`, `/received`, `/:id`, `POST /orders/:id/arrange-pickup`, `confirm-receipt`, `complete`, `cancel`.
 
@@ -340,7 +340,7 @@ Uma etapa só termina quando o fluxo dela funciona no navegador com a API real. 
 
 ## Etapa 7 — Pagamentos e liquidação
 
-**Status (01/11/2026): não iniciada.**
+**Status (01/11/2026): feita com o `mock.provider` e com o `mercadopago.provider` escrito, mas este nunca foi chamado de verdade** (23 testes de banco; checkout integrado). Falta a P3, o `openapi.yaml` e o `/security-review`.
 
 **Rotas:** `POST /payments/card`, `POST /payments/pix`, `POST /payments/webhook` (sem JWT, assinado).
 
@@ -356,7 +356,7 @@ Uma etapa só termina quando o fluxo dela funciona no navegador com a API real. 
 
 ## Etapa 8 — Jobs agendados
 
-**Status (01/11/2026): não iniciada.**
+**Status (01/11/2026): feita** (endpoint com `CRON_SECRET`, três jobs e agendador no `dev-server`; falta só configurar os agendadores externos na Etapa 11).
 
 **Entregas:** `jobs/registry.ts` (nome → função, sem `node-cron`), `jobs/scheduler.ts` (só o `dev-server.ts` importa), `GET /api/v1/internal/jobs/:name` com `Bearer CRON_SECRET` via `timingSafeEqual` (sem `authenticate`, sem rate limit), e os três jobs: `expire-pix-payments`, `reconcile-pending-payments` (confere pendentes no gateway e refaz estornos, até 10 tentativas, `ultimo_erro`), `cleanup-expired-tokens`.
 
@@ -384,7 +384,7 @@ Uma etapa só termina quando o fluxo dela funciona no navegador com a API real. 
 
 ## Etapa 10 — Integrações reais
 
-**Status (01/11/2026): não iniciada** (o Google real já está no backend).
+**Status (01/11/2026): parcial** (o Google real e o `mercadopago.provider` já estão no código; faltam o teste real do Mercado Pago, Mailtrap, Resend e Cloudinary).
 
 Troca de driver por variável, **sem mudar service nem controller** (é o teste de que a Etapa 3 foi bem feita). Uma integração por vez, cada uma com a trava de produção testada.
 
@@ -430,6 +430,7 @@ Troca de driver por variável, **sem mudar service nem controller** (é o teste 
 
 ## 6. Primeiro passo sugerido
 
-**Atualização de 01/11/2026:** o roteiro foi aprovado e as etapas 2, 4 e 5 já estão prontas no backend. O próximo passo é (1) integrar os services de categorias e anúncios do frontend (linha da Etapa 5 da seção 4.3), (2) fechar as lacunas das etapas 1 e 3 e criar a migração `3_motivo_cancelamento` e (3) escrever as fatias do `openapi.yaml` das etapas 4 e 5; só então começar a Etapa 6.
+**Atualização de 01/11/2026:** o roteiro foi aprovado, as etapas 2, 4 e 5 estão prontas no backend e no frontend, e a migração `3_motivo_cancelamento` existe. O próximo passo é fechar as lacunas das etapas 1 e 3 e escrever as fatias do `openapi.yaml` das etapas 4 e 5; só então seguir a Etapa 6.
+
 
 *Texto original (28/10/2026):* Aprovar este roteiro, resolver **P7** (spike do Prisma 7) e iniciar a **Etapa 1** em TDD sobre o andaime existente, na `Branch-Do-Magno`, em commits pequenos. Em paralelo, levar à Ana Clara a confirmação do dump como baseline (**P10**), a **P9** (coluna do motivo de cancelamento) e a correção do `bd.md §7` (P2), e preparar no frontend a chave de exemplos por área (seção 4.1), que é pequena e destrava a integração gradual. Cada etapa ganha, quando começar, o seu plano detalhado de tarefas (arquivo, assinatura, teste, comando de verificação) em `docs/superpowers/plans/`, para não congelar agora decisões que dependem do que as etapas anteriores revelarem.

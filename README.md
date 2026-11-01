@@ -358,8 +358,8 @@ Confirmação de e-mail por link (atrás da chave `EMAIL_VERIFICATION_REQUIRED`)
 - Testar se o e-mail `@edu.unifor.br` entrega `email_verified` no login com Google.
 - Prova de conceito do Pix de teste do Mercado Pago e escolha entre Payments API e Orders API.
 - Conferir no PDF os RNF012 a RNF016 e se commits de outros autores são bloqueados no plano Hobby da Vercel.
-- Banco: criar `pedido.motivo_cancelamento` (migração `3_motivo_cancelamento`) antes da Etapa 6 (pedidos).
-- Integração: trocar os dados de exemplo do frontend pela API nas telas de categorias e anúncios (hoje só login e perfil chamam a API).
+- Banco: aplicar no `unishop-prod` a migração `3_motivo_cancelamento` (já está no dev e nos testes) e a Ana Clara confirmar os valores.
+- Integração: categorias, anúncios e "meus anúncios" já chamam a API; faltam editar anúncio e remover foto, e pedidos, pagamento e admin (etapas 6 a 9).
 - Backend: fechar as lacunas das etapas 1 e 3 (`GET /health/db`, providers falsos de pagamento) e fazer pedidos, pagamentos, jobs, admin, integrações reais e deploy (etapas 6 a 11 do roteiro).
 - Deploy: ainda não existem `vercel.json` nem workflows (testes e backup diário); o seed do admin rodou só no banco de desenvolvimento.
 - Escrever os Termos de uso e a Política de privacidade; o grupo confirmar os limites de campos e a lista de itens proibidos (Regras de Negócio, seção 9).

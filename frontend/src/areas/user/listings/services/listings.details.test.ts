@@ -3,6 +3,8 @@ import { exampleImageCount, exampleImages } from './example-images'
 import { exampleListings } from './listings.data'
 import { createListing, getListingById, getListings } from './listings.service'
 
+vi.mock('../../../../shared/lib/mock-mode', () => ({ MOCK_MODE: true })) // estes testes usam os dados de exemplo (modo de demonstração)
+
 describe('fotos de exemplo', () => {
   it('cada anúncio tem de 1 a 5 fotos; o nº 1 tem 3, como o Figma', () => {
     expect(exampleImageCount(1)).toBe(3)

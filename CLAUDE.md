@@ -113,12 +113,13 @@ Sistema web onde alunos verificados (e-mail `@edu.unifor.br`) anunciam e compram
 
 | Parte | Estado |
 |---|---|
-| Backend | Etapas 2 (banco), 4 (autenticação e perfil) e 5 (categorias e anúncios) prontas **no backend**; as Etapas 1 (fundação) e 3 (providers) estão parciais, e na 3 só existem e-mail de console, armazenamento local e o Google real. Rotas: `/auth`, `/users`, `/categories`, `/listings`. **Não existem** pedidos, pagamentos, notificações, jobs, rotas admin nem `GET /health/db`. |
-| Banco | 8 tabelas, RLS e papéis `unishop_*` aplicados e testados no `unishop-prod` e no `unishop-dev`; migrações `0_init`, `1_regras_manuais` e `2_rls_politicas`; seed rodado no dev (6 categorias e 1 admin). Falta `pedido.motivo_cancelamento`. |
-| Frontend | Todas as telas do Figma prontas, em sua maioria sobre dados de exemplo (`VITE_USE_MOCKS`). Chamam a API de verdade só `auth.service` e `profile.service`; categorias, anúncios, pedidos e admin ainda usam exemplo. |
-| Testes | Backend: `npm test` com 122 testes e `npm run test:db` (Docker, PostgreSQL 17 local) com 87, todos passando em 01/11/2026, além de lint e build. Frontend: testes e Playwright existem, não rodados nesta revisão. |
+| Backend | Etapas 2 (banco), 4 (autenticação e perfil), 5 (categorias e anúncios), 6 (pedidos), 7 (pagamentos e liquidação) e 8 (jobs) prontas **no backend**; as Etapas 1 e 3 estão quase prontas (faltam `shared/security`, `no-restricted-imports`, `http-client` e `AntiBotProvider`) e a 10 está parcial (Google real e `mercadopago.provider` escrito, **nunca chamado de verdade**). Rotas: `/auth`, `/users`, `/categories`, `/listings`, `/orders`, `/payments` (cartão, Pix e webhook assinado), `GET /internal/jobs/:name` e `GET /health/db`. Gateway: `mock.provider` (dev e teste) e `mercadopago.provider` na **Payments API**. **Não existem** notificações como módulo (o e-mail de venda e de estorno sai pelo `MailProvider`) nem rotas admin. O trabalho das etapas 6 a 8 **ainda não foi commitado**. |
+| Banco | 8 tabelas, RLS e papéis `unishop_*` aplicados e testados no `unishop-prod` e no `unishop-dev`; migrações `0_init`, `1_regras_manuais`, `2_rls_politicas` e `3_motivo_cancelamento`; seed rodado no dev (6 categorias e 1 admin). `pedido.motivo_cancelamento` criada na migração `3_motivo_cancelamento` (dev e Docker; falta o `unishop-prod`). |
+| Frontend | Todas as telas do Figma prontas, em sua maioria sobre dados de exemplo (`VITE_USE_MOCKS`). Chamam a API de verdade `auth.service`, `profile.service`, categorias, anúncios e "meus anúncios" (verificado no navegador em 01/11/2026); o **checkout** (criar pedido, ler pedido, cartão com `tokenizeCard`, Pix e "Já paguei") também chama a API quando `VITE_USE_MOCKS` está desligado; "meus pedidos", pedidos recebidos, concluir venda, avaliações e admin ainda usam exemplo (o exemplo fica nos `*.mock.ts`, atrás de `VITE_USE_MOCKS`). |
+| Testes | Backend: `npm test` com 134 testes e `npm run test:db` (Docker, PostgreSQL 17 local) com 133, todos passando em 01/11/2026, além de `tsc`, lint e build. Frontend: `tsc`, lint e build passam; Vitest com 681 de 682 (a falha é o teste do botão do Google no `RegisterPage`, por causa do `VITE_GOOGLE_CLIENT_ID` do `.env` local). **Nunca testados:** `mercadopago.provider` contra o Mercado Pago real, o SDK no navegador, o webhook por túnel e o Playwright. |
 | Deploy | Nada publicado a partir do repositório: não há `vercel.json` nem `.github/workflows`. |
-| `openapi.yaml` | Não existe, embora o backend já tenha 4 módulos. |
+| `openapi.yaml` | Não existe, embora o backend já tenha 6 módulos. |
+| Guia do Mercado Pago | [`docs/api/mercado-pago-passo-a-passo.md`](docs/api/mercado-pago-passo-a-passo.md): onde colocar cada chave (`MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `PAYMENT_DRIVER`, `PAYMENT_MODE`, `API_PUBLIC_URL`, `CRON_SECRET` no `backend/.env`; `VITE_MP_PUBLIC_KEY` no `frontend/.env`), túnel para o webhook e prova de conceito do Pix. |
 
 ## Equipe e responsabilidades
 
@@ -173,7 +174,7 @@ backend/
    └─ jobs/      → expirar Pix, limpar tokens, conciliar pagamentos (endpoints em produção)
 ```
 
-Já existem (01/11/2026): `prisma/` completo, `app.ts`, `dev-server.ts`, `config/`, `shared/` (middlewares, `errors`, `database`, `providers` de e-mail de console, armazenamento local e Google, `utils`) e os módulos `auth`, `users`, `categories` e `listings`. **Ainda não existem:** `orders`, `payments`, `notifications`, `admin/`, `jobs/`, `shared/security`, o `PaymentGateway` com `mock.provider`, o `AntiBotProvider` e os drivers reais (Mailtrap e Resend, Cloudinary, Mercado Pago).
+Já existem (01/11/2026): `prisma/` completo, `app.ts`, `dev-server.ts`, `config/`, `shared/` (middlewares, `errors`, `database` com `stock.ts`, `providers` de e-mail de console, armazenamento local, Google e **pagamento** com `mock.provider` e `mercadopago.provider`, `utils`), `jobs/` e os módulos `auth`, `users`, `categories`, `listings`, `orders` e `payments`. **Ainda não existem:** `notifications` (módulo), `admin/`, `shared/security`, o `AntiBotProvider` e os drivers reais de e-mail (Mailtrap e Resend) e Cloudinary; o Mercado Pago está escrito, mas não foi testado contra a API real.
 
 ## Regras centrais a nunca violar
 
@@ -244,11 +245,11 @@ Revisadas em 01/11/2026 contra o código. O que já foi resolvido saiu desta lis
 
 **Dependem de resposta ou ação externa**
 
-- **`openapi.yaml`:** não existe, embora o backend já tenha `/auth`, `/users`, `/categories` e `/listings`. Pedro escreve **por fatia**, junto de cada etapa do roteiro (a partir do Backend §9); frontend, backend e skills dependem dele.
+- **`openapi.yaml`:** não existe, embora o backend já tenha `/auth`, `/users`, `/categories`, `/listings`, `/orders` e `/payments`. Pedro escreve **por fatia**, junto de cada etapa do roteiro (a partir do Backend §9); frontend, backend e skills dependem dele.
 - **Domínio próprio:** necessário para o Resend (e-mail de senha e de troca de e-mail) e, se `vercel.app` for recusado, para o login do Google.
 - **Login com Google:** o provider real já está no backend (`google-auth-library`); falta testar com um e-mail `@edu.unifor.br` real se ele entrega `email_verified = true`.
 - **Plano Hobby da Vercel:** sem equipe; conferir se commits de outros autores são bloqueados em repositório privado.
-- **Prova de conceito do Mercado Pago:** Pix de teste gerar o webhook de aprovação; escolher Payments API ou Orders API (ADR-002). Só bloqueia a Etapa 10 (a 7 usa o provider falso).
+- **Prova de conceito do Mercado Pago:** **Payments API escolhida** (Pedro, 01/11/2026; registrar no ADR-002 do `api.md`). Falta criar a conta de teste, preencher as chaves e confirmar que o Pix de teste gera o webhook de aprovação e se o CPF do pagador é exigido (o formulário de cartão não tem o campo). Passo a passo em `docs/api/mercado-pago-passo-a-passo.md`.
 - **Backup no Supabase gratuito:** não há backup automático; o RNF011 depende do workflow diário do GitHub Actions (`pg_dump` pela conexão Session pooler, com `--enable-row-security`) e esse workflow **ainda não existe** (não há `.github/`). O plano gratuito não tem restauração a ponto no tempo.
 - **Pausa do projeto:** o plano gratuito pausa o projeto após 1 semana sem atividade; o monitor de `/health/db` (que ainda não existe) ou um job precisa gerar atividade antes da demonstração.
 - **PDF:** conferir os RNF012 a RNF016, ainda não mapeados no Deploy, e o limite de imagem (4 MB × 5 MB).
@@ -256,12 +257,13 @@ Revisadas em 01/11/2026 contra o código. O que já foi resolvido saiu desta lis
 
 **Trabalho de desenvolvimento em aberto (código × documentação)**
 
-- **Banco:** `pedido.motivo_cancelamento` (P9 do roteiro) ainda não existe no `schema.prisma` nem em migração; precisa de migração própria, de `bd.md` §4.5 e §6 e do aval da Ana Clara **antes da Etapa 6** (pedidos).
-- **Integração do frontend:** só `auth.service` e `profile.service` chamam a API; os services de categorias, anúncios e "meus anúncios" ainda usam dados de exemplo, então o marco do fim da Etapa 5 ("vitrine e anúncios reais no navegador") não foi verificado. O `api()` ainda não envia `FormData`.
-- **Etapa 3 incompleta:** faltam `buildProviders`, `http-client`, `PaymentGateway` com `mock.provider`, `AntiBotProvider` e os drivers reais. A trava de produção por `APP_ENV` só cobre o e-mail de console (`app.ts`); a do `env.ts` (drivers `mock`, `console` e `local` proibidos em `production`) não existe.
-- **Etapa 1 incompleta:** `GET /health/db`, `@vercel/functions` no `package.json`, `shared/security` (`Secret`, `redact`) e a regra `no-restricted-imports` do ESLint.
+- **Banco:** a migração `3_motivo_cancelamento` (P9) está no dev e no Docker; falta aplicá-la no `unishop-prod` (`migrate deploy`) e a Ana Clara confirmar os três valores (`vencido`, `sem_estoque`, `anuncio_indisponivel`). **Decidido por Pedro em 01/11/2026: não aplicar no prod antes dessa confirmação**; o código de pedidos já grava esses motivos, então o deploy de produção depende dela.
+- **Integração do frontend:** feita para categorias, anúncios e "meus anúncios" (marco da Etapa 5 verificado em 01/11/2026). Faltam: editar anúncio e remover foto ligados à API, e a troca dos services de pedidos, pagamento e admin nas etapas 6 a 9.
+- **Trabalho em andamento fora desta revisão:** o working tree tem arquivos novos e não commitados de `orders`, `payments`, `jobs` e `shared/providers/payment` (começo das etapas 3, 6, 7 e 8), de outra sessão. Conferir a autoria, rodar `npm test` e `npm run test:db` e revisar antes de commitar; esta revisão não os alterou.
+- **Etapa 3 incompleta:** `shared/security` (`Secret`, `redact`), `AntiBotProvider` `noop`, `http-client` (timeout 10 s) e a regra `no-restricted-imports` do ESLint foram criados em 01/11/2026; faltam o `buildProviders` central, os drivers reais (Mailtrap, Resend, Cloudinary) e a trava de produção do e-mail (`console`) e do armazenamento (`local`) no `env.ts`.
+- **Etapa 1:** falta só conferir `GET /health/db` e `@vercel/functions` contra o trabalho não commitado da outra sessão.
 - **`DELETE /users/me`** anonimiza sem conferir pedidos Pago ou em Retirada combinada em aberto (409 `HAS_OPEN_PAID_ORDERS`, RN-PER-06); completar quando os pedidos existirem. O `DELETE /listings/:id` já aplica o bloqueio.
-- **Etapas 6 a 11 do roteiro não começaram:** pedidos, pagamentos e liquidação, jobs, admin com anonimização, integrações reais, deploy.
+- **Etapas 9 a 11 do roteiro não começaram (a 10 está parcial):** admin com anonimização, integrações reais (e-mail e Cloudinary; o Mercado Pago falta testar) e deploy.
 - **Deploy:** sem `vercel.json` e sem workflows (testes e backup). O seed do admin rodou só no `unishop-dev`; o `unishop-prod` ainda não tem admin.
 - **Segredos:** o `backend/.env` do prod guarda `ADMIN_EMAIL` e `ADMIN_PASSWORD`; apagar essas duas linhas depois do seed de produção (fora do git).
 - **Dívidas pequenas:** aviso do Vite sobre ESM nas configs `vitest*.config.ts`; o cabeçalho da `1_regras_manuais` diz "PostgreSQL 18" (não editar: o Prisma confere o checksum das migrações aplicadas; corrigir só numa migração nova).

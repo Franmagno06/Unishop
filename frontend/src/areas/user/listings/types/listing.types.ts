@@ -56,4 +56,6 @@ export type CreatedListing = {
   title: string
   categoryId: number
   categoryName: string
+  // Fotos extras que a API não aceitou (a 1ª já foi com o anúncio). Só na API real.
+  failedImages?: number
 }

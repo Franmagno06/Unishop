@@ -8,6 +8,9 @@ import { clearToken, getToken, setToken } from '../../../../shared/lib/session'
 import { EditProfilePage } from './EditProfilePage'
 import { ProfilePage } from './ProfilePage'
 
+// "Meus anúncios" usa os dados de exemplo; o perfil (GET, PATCH e DELETE de /users/me) usa a API simulada abaixo.
+vi.mock('../../listings/services/my-listings.service', () => import('../../listings/services/my-listings.mock'))
+
 // API simulada: GET, PATCH e DELETE de /users/me (backend.md §9), com o estado do aluno em memória.
 type Call = { method: string; body: Record<string, unknown> | undefined }
 function stubApi() {

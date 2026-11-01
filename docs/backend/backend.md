@@ -1877,6 +1877,6 @@ As propostas da v0.2 viraram regra. A tabela mostra onde cada uma foi resolvida.
 | 5 | **Etapa 1 do roteiro incompleta:** faltam `GET /health/db`, `shared/security` (`Secret`, `redact`), `@vercel/functions`, a regra `no-restricted-imports` do ESLint e a trava de produção por `APP_ENV` em `env.ts` (hoje só o e-mail de console, em `app.ts`) | Fechar antes da Etapa 6 |
 | 6 | **Etapa 3 do roteiro incompleta:** faltam `buildProviders`, `http-client`, `PaymentGateway` com `mock.provider` e `AntiBotProvider` (hoje só `MailProvider` de console, `StorageProvider` local e o Google real) | Fechar antes das etapas 6 e 7 |
 | 7 | **`DELETE /users/me`** anonimiza sem conferir pedido Pago ou em Retirada combinada em aberto (409 `HAS_OPEN_PAID_ORDERS`, RN-PER-06) | Completar quando os pedidos existirem (Etapas 6 e 9) |
-| 8 | **Migração `3_motivo_cancelamento`** (P9): a coluna `pedido.motivo_cancelamento` não existe | Criar antes da Etapa 6 (`bd.md`, seção 15) |
+| 8 | ~~**Migração `3_motivo_cancelamento`** (P9)~~ **Feita em 01/11/2026** (dev e Docker); falta o `unishop-prod` | Aplicar com `migrate deploy` (`bd.md`, seção 15) |
 | 9 | **Fora do MVP (01/11/2026):** reembolso, cancelamento de pedido Pago, avaliações e suporte (Etapa 12 do roteiro) | Não criar rotas nem tabelas para isso |
 | 3 | Payments API ou Orders API do Mercado Pago (ADR-002 ainda em aberto neste ponto) | Decidir antes de implementar `createPixPayment`; o resto do backend só conhece a interface `PaymentGateway` |

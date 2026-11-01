@@ -104,6 +104,7 @@ model ListingImage {
 /// forma_negociacao: 'pagamento_site' | 'whatsapp'.
 /// status_pedido: 'pendente' | 'pago' | 'retirada_combinada' | 'concluido' | 'em_negociacao' | 'cancelado'.
 /// O padrão do banco é 'em_negociacao' (WhatsApp); no site o backend informa 'pendente'.
+/// motivo_cancelamento (só quando o sistema cancela): 'vencido' | 'sem_estoque' | 'anuncio_indisponivel'; NULL nos demais.
 model Order {
   id              Int       @id(map: "pedido_pkey") @default(autoincrement()) @map("id_pedido")
   listingId       Int       @map("id_anuncio")
@@ -118,6 +119,7 @@ model Order {
   serviceFee      Decimal   @default(0) @map("taxa_servico") @db.Decimal(10, 2)
   totalAmount     Decimal   @map("valor_total") @db.Decimal(10, 2)
   createdAt       DateTime  @default(now()) @map("data_pedido") @db.Timestamptz(6)
+  cancelReason    String?   @map("motivo_cancelamento") @db.VarChar(30)
   completedAt     DateTime? @map("concluido_em") @db.Timestamptz(6)
   updatedAt       DateTime  @default(now()) @map("atualizado_em") @db.Timestamptz(6)
 

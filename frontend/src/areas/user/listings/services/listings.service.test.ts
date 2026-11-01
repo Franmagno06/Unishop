@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { vi, describe, expect, it } from 'vitest'
 import { getCategories } from '../../categories/services/categories.service'
 import { exampleListings, listingCountByCategory } from './listings.data'
 import { getListings, PAGE_SIZE } from './listings.service'
+
+vi.mock('../../../../shared/lib/mock-mode', () => ({ MOCK_MODE: true })) // estes testes usam os dados de exemplo (modo de demonstração)
 
 describe('anúncios de exemplo', () => {
   it('cada categoria tem a contagem da tela de Categorias (48, 21, 35, 27, 12 e 9)', async () => {
