@@ -10,6 +10,10 @@ export const updateProfileSchema = z.object({
   whatsapp: whatsappField.optional(),
 })
 
+// RN-PER-02: o e-mail novo só vale depois do link enviado a ele.
+export const emailChangeRequestSchema = z.object({ email: emailField })
+export const emailChangeConfirmSchema = z.object({ token: z.string().min(1).max(200) })
+
 // RN-PER-06: o servidor também exige a confirmação digitada.
 export const deleteAccountSchema = z.object({
   confirmation: z.literal('EXCLUIR', { error: 'Digite EXCLUIR para confirmar.' }),

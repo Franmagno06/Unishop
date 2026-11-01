@@ -3,6 +3,9 @@ import { anonymizeAccountTx } from '../../shared/database/account-anonymization'
 import type { Db } from '../../shared/database/prisma'
 import type { ProfileRepository } from './users.types'
 
+// Interrompe a transação de confirmEmailChange quando o e-mail novo já tem dono.
+class EmailTakenSignal extends Error {}
+
 export function createPrismaProfileRepository(db: Db): ProfileRepository {
   return {
     // RN-PER-03: transação curta, só com as duas tabelas e sem chamada externa dentro.
@@ -27,6 +30,43 @@ export function createPrismaProfileRepository(db: Db): ProfileRepository {
         if ((err as { code?: string }).code === 'P2002') {
           throw new AppError(409, 'EMAIL_ALREADY_REGISTERED', 'Este e-mail já está cadastrado.')
         }
+        throw err
+      }
+    },
+
+    // RN-PER-02: o UPDATE condicional no token decide a corrida entre dois confirm; o índice único em
+    // lower(email) decide a corrida entre dois donos do mesmo endereço (P2002 desfaz a transação).
+    async confirmEmailChange(tokenId, userId, newEmail, at) {
+      try {
+        return await db.$transaction(async (tx) => {
+          const { count } = await tx.userToken.updateMany({
+            where: {
+              id: tokenId,
+              userId,
+              type: 'troca_email',
+              usedAt: null,
+              expiresAt: { gt: at },
+            },
+            data: { usedAt: at },
+          })
+          if (count !== 1) return 'invalid' as const
+          try {
+            await tx.user.update({
+              where: { id: userId },
+              data: { email: newEmail, verified: true },
+            })
+          } catch (err) {
+            if ((err as { code?: string }).code === 'P2002') throw new EmailTakenSignal()
+            throw err
+          }
+          await tx.userToken.updateMany({
+            where: { userId, type: 'troca_email', usedAt: null },
+            data: { usedAt: at },
+          })
+          return 'ok' as const
+        })
+      } catch (err) {
+        if (err instanceof EmailTakenSignal) return 'taken'
         throw err
       }
     },

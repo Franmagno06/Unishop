@@ -21,5 +21,6 @@ export function withDeliveryGuard(inner: MailProvider): MailProvider {
     sendListingRemoved: guarded((m) => inner.sendListingRemoved(m)),
     sendSaleConfirmed: guarded((m) => inner.sendSaleConfirmed(m)),
     sendOrderRefunded: guarded((m) => inner.sendOrderRefunded(m)),
+    sendEmailChange: guarded((m) => inner.sendEmailChange(m)),
   }
 }

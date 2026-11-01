@@ -1,6 +1,7 @@
 import { escapeHtml } from '../../utils/html'
 import { formatBRL } from '../../utils/money'
 import type {
+  EmailChangeMail,
   ListingRemovedMail,
   OrderRefundedMail,
   PasswordResetMail,
@@ -34,6 +35,28 @@ export function passwordReset(mail: PasswordResetMail): RenderedMail {
     text:
       `Olá, ${mail.name}.\n\nPara criar uma nova senha, acesse o link (vale por ` +
       `${mail.expiresInMinutes} minutos, uso único):\n${mail.link}\n\nSe não foi você, ignore este e-mail.`,
+  }
+}
+
+// RN-PER-02: o link vai ao novo endereço; vale por pouco tempo e só pode ser usado uma vez.
+export function emailChange(mail: EmailChangeMail): RenderedMail {
+  const subject = 'Confirme seu novo e-mail no Unishop'
+  return {
+    subject,
+    html: layout(subject, [
+      `Olá, ${e(mail.name)}.`,
+      `Para confirmar este endereço como o e-mail da sua conta, use o link abaixo. Ele vale por ${mail.expiresInMinutes} minutos e só pode ser usado uma vez.`,
+      `<a href="${e(mail.link)}">Confirmar novo e-mail</a>`,
+      'Se não foi você, ignore este e-mail.',
+    ]),
+    text:
+      `Olá, ${mail.name}.
+
+Para confirmar este endereço como o e-mail da sua conta, acesse o link (vale por ` +
+      `${mail.expiresInMinutes} minutos, uso único):
+${mail.link}
+
+Se não foi você, ignore este e-mail.`,
   }
 }
 

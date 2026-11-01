@@ -146,14 +146,23 @@ export function createApp(deps?: AppDeps) {
     const usersService = createUsersService({
       users: deps.users,
       profiles: deps.profiles,
-      config: { allowedEmailDomain: env.ALLOWED_EMAIL_DOMAIN },
+      tokens: deps.tokens,
+      mail,
+      config: {
+        allowedEmailDomain: env.ALLOWED_EMAIL_DOMAIN,
+        frontendUrl: env.FRONTEND_URL[0] ?? '',
+      },
+      ...(deps.now && { now: deps.now }),
       ...(deps.storage && { storage: deps.storage }),
     })
     app.use('/api/v1/auth', routes.auth)
     app.use('/api/v1/users', routes.users)
     app.use(
       '/api/v1/users',
-      createUsersRoutes(usersService, authenticate, { avatar: Boolean(deps.storage) }),
+      createUsersRoutes(usersService, authenticate, {
+        avatar: Boolean(deps.storage),
+        limiter, // RN-PER-02: mesmo limite por IP das rotas de /auth
+      }),
     )
     if (deps.categories) {
       const categoriesService = createCategoriesService({ categories: deps.categories })

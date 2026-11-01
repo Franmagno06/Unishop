@@ -9,6 +9,12 @@ export function createUsersController(service: UsersService) {
     async update(req: Request, res: Response) {
       res.json({ data: await service.updateProfile(req.user!.id, req.body) })
     },
+    async requestEmailChange(req: Request, res: Response) {
+      res.status(202).json({ data: await service.requestEmailChange(req.user!.id, req.body.email) })
+    },
+    async confirmEmailChange(req: Request, res: Response) {
+      res.json({ data: await service.confirmEmailChange(req.user!.id, req.body.token) })
+    },
     async avatar(req: Request, res: Response) {
       res.json({ data: await service.setAvatar(req.user!.id, req.file!.buffer) })
     },

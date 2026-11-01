@@ -3,6 +3,7 @@ import { escapeHtml } from '../../src/shared/utils/html'
 import { formatBRL } from '../../src/shared/utils/money'
 import { isDeliverable, withDeliveryGuard } from '../../src/shared/providers/mail/guard'
 import {
+  emailChange,
   listingRemoved,
   orderRefunded,
   passwordReset,
@@ -91,6 +92,17 @@ describe('modelos de e-mail', () => {
     expect(m.html).toContain('href="http://localhost:5173/redefinir-senha/abc_DEF-123?a=1&amp;b=2"')
     expect(m.text).toContain(link)
     expect(m.html).toContain('30 minutos')
+  })
+})
+
+describe('emailChange', () => {
+  it('leva o link intacto e escapa o nome', () => {
+    const link = 'http://localhost:5173/confirmar-troca-email/abc123'
+    const m = emailChange({ to: 'n@edu.unifor.br', name: XSS, link, expiresInMinutes: 30 })
+    expect(m.html).toContain(`href="${link}"`)
+    expect(m.html).not.toContain('<script>')
+    expect(m.text).toContain(link)
+    expect(m.subject).not.toMatch(/[\r\n]/)
   })
 })
 

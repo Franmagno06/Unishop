@@ -1,7 +1,7 @@
 import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createApp } from '../../src/app'
-import { hashPassword } from '../../src/shared/utils/hash'
+import { hashPassword, hashToken } from '../../src/shared/utils/hash'
 import {
   createFakeMail,
   createFakeOAuth,
@@ -23,16 +23,23 @@ const bruno = { ...ana, name: 'Bruno Lima', email: 'bruno@edu.unifor.br' }
 let users: ReturnType<typeof createFakeUsers>
 let profiles: ReturnType<typeof createFakeProfiles>
 let app: ReturnType<typeof createApp>
+let tokens: ReturnType<typeof createFakeTokens>
+let mail: ReturnType<typeof createFakeMail>
+let clock: Date
 
 beforeEach(() => {
   users = createFakeUsers()
-  profiles = createFakeProfiles(users.rows)
+  tokens = createFakeTokens()
+  mail = createFakeMail()
+  clock = new Date('2026-11-01T12:00:00Z')
+  profiles = createFakeProfiles(users.rows, tokens.rows)
   app = createApp({
     users: users.repo,
     profiles: profiles.repo,
-    tokens: createFakeTokens().repo,
-    mail: createFakeMail().provider,
+    tokens: tokens.repo,
+    mail: mail.provider,
     oauth: createFakeOAuth().provider,
+    now: () => clock,
   })
 })
 
@@ -163,44 +170,196 @@ describe('PATCH /users/me', () => {
   })
 })
 
-describe('PATCH /users/me: troca de e-mail direta', () => {
-  it('troca o e-mail no banco e o login passa a ser pelo novo', async () => {
-    const auth = await signIn()
-    const res = await patch(auth, { email: 'Ana.Nova@edu.unifor.br' })
-    expect(res.status).toBe(200)
-    expect(res.body.data.user.email).toBe('ana.nova@edu.unifor.br')
-    expect(users.rows[0]?.email).toBe('ana.nova@edu.unifor.br')
-
-    const login = await api()
-      .post('/api/v1/auth/login')
-      .send({ email: 'ana.nova@edu.unifor.br', password: PASSWORD })
-    expect(login.status).toBe(200)
-  })
-
-  it('RN-ACE-02: e-mail fora de @edu.unifor.br dá 403 e não troca nada', async () => {
-    const res = await patch(await signIn(), { email: 'ana@gmail.com' })
-    expect(res.status).toBe(403)
-    expect(res.body.error.code).toBe('EMAIL_DOMAIN_NOT_ALLOWED')
-    expect(users.rows[0]?.email).toBe('ana@edu.unifor.br')
-  })
-
-  it('RN-ACE-03: e-mail de outra conta, mesmo com maiúsculas, dá 409', async () => {
-    const auth = await signIn()
-    await signIn(bruno)
-    const res = await patch(auth, { email: 'BRUNO@edu.unifor.br' })
-    expect(res.status).toBe(409)
-    expect(res.body.error.code).toBe('EMAIL_ALREADY_REGISTERED')
-    expect(users.rows[0]?.email).toBe('ana@edu.unifor.br')
-  })
-
-  it('mandar o próprio e-mail (a tela envia todos os campos) não é erro', async () => {
+describe('PATCH /users/me: e-mail não troca aqui (RN-PER-02, D2)', () => {
+  it('e-mail igual ao atual (mesmo com maiúsculas) é aceito e ignorado', async () => {
     const res = await patch(await signIn(), { name: 'Ana S.', email: 'ANA@edu.unifor.br' })
     expect(res.status).toBe(200)
     expect(users.rows[0]).toMatchObject({ name: 'Ana S.', email: 'ana@edu.unifor.br' })
   })
 
+  it('e-mail diferente dá 400 VALIDATION_ERROR e não troca nada', async () => {
+    const res = await patch(await signIn(), { email: 'ana.nova@edu.unifor.br' })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('VALIDATION_ERROR')
+    expect(users.rows[0]?.email).toBe('ana@edu.unifor.br')
+  })
+
   it('e-mail inválido dá 400', async () => {
     expect((await patch(await signIn(), { email: 'nao-e-email' })).status).toBe(400)
+  })
+})
+
+const NEW_EMAIL = 'ana.nova@edu.unifor.br'
+const requestChange = (auth: object, email: string) =>
+  api().post('/api/v1/users/me/email-change').set(auth).send({ email })
+const confirmChange = (auth: object, token: string) =>
+  api().post('/api/v1/users/me/email-change/confirm').set(auth).send({ token })
+// O token em claro só existe no link enviado ao novo endereço.
+const tokenFromMail = (index = mail.emailChanges.length - 1) =>
+  /\/confirmar-troca-email\/([0-9a-f]+)$/.exec(mail.emailChanges[index]!.link)![1]!
+
+describe('POST /users/me/email-change (RN-PER-02, RF013.4)', () => {
+  it('202: o link vai só ao NOVO endereço; o token em claro não é guardado', async () => {
+    const res = await requestChange(await signIn(), NEW_EMAIL)
+    expect(res.status).toBe(202)
+    expect(res.body.data).toEqual({ pendingEmail: NEW_EMAIL, expiresInMinutes: 30 })
+    expect(mail.emailChanges).toHaveLength(1)
+    expect(mail.emailChanges[0]).toMatchObject({ to: NEW_EMAIL, expiresInMinutes: 30 })
+    expect(mail.emailChanges[0]!.link).toMatch(
+      /^http:\/\/localhost:5173\/confirmar-troca-email\/[0-9a-f]{64}$/,
+    )
+    const token = tokenFromMail()
+    expect(tokens.rows).toHaveLength(1)
+    expect(tokens.rows[0]).toMatchObject({
+      type: 'troca_email',
+      newEmail: NEW_EMAIL,
+      tokenHash: hashToken(token),
+    })
+    expect(JSON.stringify(tokens.rows)).not.toContain(token)
+    expect(tokens.rows[0]!.expiresAt).toEqual(new Date(clock.getTime() + 30 * 60_000))
+    expect(users.rows[0]?.email).toBe('ana@edu.unifor.br') // ainda não trocou
+    expect(mail.sent).toHaveLength(0)
+  })
+
+  it('RN-ACE-02: domínio fora de @edu.unifor.br dá 403, sem token nem e-mail', async () => {
+    const res = await requestChange(await signIn(), 'ana@gmail.com')
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe('EMAIL_DOMAIN_NOT_ALLOWED')
+    expect(tokens.rows).toHaveLength(0)
+    expect(mail.emailChanges).toHaveLength(0)
+  })
+
+  it('e-mail igual ao atual (inclusive com maiúsculas) dá 400, sem token nem e-mail', async () => {
+    const res = await requestChange(await signIn(), 'ANA@edu.unifor.br')
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('VALIDATION_ERROR')
+    expect(tokens.rows).toHaveLength(0)
+    expect(mail.emailChanges).toHaveLength(0)
+  })
+
+  it('RN-ACE-03: e-mail de outra conta (maiúsculas) dá 409, sem token nem e-mail', async () => {
+    const auth = await signIn()
+    await signIn(bruno)
+    const res = await requestChange(auth, 'BRUNO@edu.unifor.br')
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('EMAIL_ALREADY_REGISTERED')
+    expect(tokens.rows).toHaveLength(0)
+    expect(mail.emailChanges).toHaveLength(0)
+  })
+
+  it('um segundo pedido invalida o primeiro', async () => {
+    const auth = await signIn()
+    await requestChange(auth, NEW_EMAIL)
+    const first = tokenFromMail(0)
+    await requestChange(auth, 'ana.outra@edu.unifor.br')
+    const res = await confirmChange(auth, first)
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('TOKEN_INVALID')
+    expect((await confirmChange(auth, tokenFromMail(1))).status).toBe(200)
+  })
+
+  it('falha no envio dá 502 EXTERNAL_SERVICE_ERROR, sem expor o motivo', async () => {
+    mail.provider.sendEmailChange = async () => {
+      throw new Error('smtp caiu em smtp.interno:25')
+    }
+    const res = await requestChange(await signIn(), NEW_EMAIL)
+    expect(res.status).toBe(502)
+    expect(res.body.error.code).toBe('EXTERNAL_SERVICE_ERROR')
+    expect(JSON.stringify(res.body)).not.toContain('smtp')
+  })
+
+  it('sem sessão dá 401; conta suspensa dá 403; e-mail inválido dá 400', async () => {
+    expect(
+      (await api().post('/api/v1/users/me/email-change').send({ email: NEW_EMAIL })).status,
+    ).toBe(401)
+    const auth = await signIn()
+    expect((await requestChange(auth, 'nao-e-email')).status).toBe(400)
+    users.rows[0]!.status = 'suspended'
+    const res = await requestChange(auth, NEW_EMAIL)
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe('ACCOUNT_SUSPENDED')
+  })
+})
+
+describe('POST /users/me/email-change/confirm (RN-PER-02, RF013.4)', () => {
+  it('200: o e-mail muda, o login vale só com o novo e a sessão antiga continua (D5)', async () => {
+    const auth = await signIn()
+    await requestChange(auth, NEW_EMAIL)
+    const res = await confirmChange(auth, tokenFromMail())
+    expect(res.status).toBe(200)
+    expect(res.body.data.user.email).toBe(NEW_EMAIL)
+    expect(users.rows[0]).toMatchObject({ email: NEW_EMAIL, verified: true })
+
+    const ok = await api().post('/api/v1/auth/login').send({ email: NEW_EMAIL, password: PASSWORD })
+    expect(ok.status).toBe(200)
+    const old = await api()
+      .post('/api/v1/auth/login')
+      .send({ email: 'ana@edu.unifor.br', password: PASSWORD })
+    expect(old.status).toBe(401)
+    expect(old.body.error.code).toBe('INVALID_CREDENTIALS')
+    expect((await get(auth)).body.data.user.email).toBe(NEW_EMAIL) // o JWT antigo segue válido
+  })
+
+  it('token vencido (30 min + 1 s) dá 400 TOKEN_EXPIRED e não troca nada', async () => {
+    const auth = await signIn()
+    await requestChange(auth, NEW_EMAIL)
+    clock = new Date(clock.getTime() + 30 * 60_000 + 1000)
+    const res = await confirmChange(auth, tokenFromMail())
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('TOKEN_EXPIRED')
+    expect(users.rows[0]?.email).toBe('ana@edu.unifor.br')
+  })
+
+  it('token de outro usuário dá 400 TOKEN_INVALID e não troca nada', async () => {
+    const authAna = await signIn()
+    const authBruno = await signIn(bruno)
+    await requestChange(authAna, NEW_EMAIL)
+    const res = await confirmChange(authBruno, tokenFromMail())
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('TOKEN_INVALID')
+    expect(users.rows.map((u) => u.email)).toEqual(['ana@edu.unifor.br', 'bruno@edu.unifor.br'])
+  })
+
+  it('token de outro tipo (redefinição de senha) dá 400', async () => {
+    const auth = await signIn()
+    tokens.rows.push({
+      id: 99,
+      userId: 1,
+      type: 'redefinicao_senha',
+      tokenHash: hashToken('abc'),
+      expiresAt: new Date(clock.getTime() + 60_000),
+      usedAt: null,
+      newEmail: null,
+    })
+    expect((await confirmChange(auth, 'abc')).status).toBe(400)
+    expect(users.rows[0]?.email).toBe('ana@edu.unifor.br')
+  })
+
+  it('o token não vale duas vezes', async () => {
+    const auth = await signIn()
+    await requestChange(auth, NEW_EMAIL)
+    const token = tokenFromMail()
+    expect((await confirmChange(auth, token)).status).toBe(200)
+    const again = await confirmChange(auth, token)
+    expect(again.status).toBe(400)
+    expect(again.body.error.code).toBe('TOKEN_INVALID')
+  })
+
+  it('token desconhecido dá 400; corpo sem token dá 400 VALIDATION_ERROR', async () => {
+    const auth = await signIn()
+    expect((await confirmChange(auth, 'nao-existe')).status).toBe(400)
+    const res = await api().post('/api/v1/users/me/email-change/confirm').set(auth).send({})
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('VALIDATION_ERROR')
+  })
+
+  it('sem sessão dá 401; conta suspensa dá 403', async () => {
+    const auth = await signIn()
+    expect(
+      (await api().post('/api/v1/users/me/email-change/confirm').send({ token: 'x' })).status,
+    ).toBe(401)
+    users.rows[0]!.status = 'suspended'
+    expect((await confirmChange(auth, 'x')).status).toBe(403)
   })
 })
 

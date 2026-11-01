@@ -143,6 +143,7 @@ export function createPrismaTokenRepository(db: Db): TokenRepository {
           type: data.type,
           tokenHash: data.tokenHash,
           expiresAt: data.expiresAt,
+          ...(data.newEmail !== undefined && { newEmail: data.newEmail }),
         },
       })
     },
@@ -156,6 +157,7 @@ export function createPrismaTokenRepository(db: Db): TokenRepository {
         type,
         expiresAt: row.expiresAt,
         usedAt: row.usedAt,
+        newEmail: row.newEmail,
       }
     },
 

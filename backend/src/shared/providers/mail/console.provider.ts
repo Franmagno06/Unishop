@@ -11,6 +11,10 @@ export const consoleMailProvider: MailProvider = {
     const masked = `***@${to.split('@')[1] ?? '***'}`
     console.log(`[e-mail:console] produto removido ("${listingTitle}") para ${masked}`)
   },
+  // Só em desenvolvimento e teste: o link aparece no terminal (D7, e-mail real fica para o deploy).
+  async sendEmailChange({ to, link }) {
+    console.log(`[e-mail:console] troca de e-mail, confirmação para ${to}: ${link}`)
+  },
   async sendSaleConfirmed({ to, orderNumber, productName }) {
     console.log(`[e-mail:console] venda ${orderNumber} (${productName}) confirmada para ${to}`)
   },
