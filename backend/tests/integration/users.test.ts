@@ -300,6 +300,22 @@ describe('POST /users/me/email-change/confirm (RN-PER-02, RF013.4)', () => {
     expect((await get(auth)).body.data.user.email).toBe(NEW_EMAIL) // o JWT antigo segue válido
   })
 
+  it('confirmar invalida também os links pendentes de outros tipos', async () => {
+    const auth = await signIn()
+    tokens.rows.push({
+      id: 98,
+      userId: 1,
+      type: 'redefinicao_senha',
+      tokenHash: hashToken('antigo'),
+      expiresAt: new Date(clock.getTime() + 60_000),
+      usedAt: null,
+      newEmail: null,
+    })
+    await requestChange(auth, NEW_EMAIL)
+    expect((await confirmChange(auth, tokenFromMail())).status).toBe(200)
+    expect(tokens.rows.find((t) => t.id === 98)?.usedAt).not.toBeNull()
+  })
+
   it('token vencido (30 min + 1 s) dá 400 TOKEN_EXPIRED e não troca nada', async () => {
     const auth = await signIn()
     await requestChange(auth, NEW_EMAIL)

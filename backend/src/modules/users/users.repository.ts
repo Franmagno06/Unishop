@@ -60,7 +60,8 @@ export function createPrismaProfileRepository(db: Db): ProfileRepository {
             throw err
           }
           await tx.userToken.updateMany({
-            where: { userId, type: 'troca_email', usedAt: null },
+            // Qualquer tipo: um link de senha enviado ao e-mail antigo não vale mais (RN-PER-02).
+            where: { userId, usedAt: null },
             data: { usedAt: at },
           })
           return 'ok' as const

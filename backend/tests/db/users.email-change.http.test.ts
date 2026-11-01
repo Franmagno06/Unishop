@@ -125,6 +125,20 @@ describe('troca de e-mail (banco real)', () => {
     expect((await testDb.userToken.findFirstOrThrow()).tokenHash).toBe('valido')
   })
 
+  it('confirmar a troca invalida os demais links pendentes (redefinição de senha no e-mail antigo)', async () => {
+    const ana = await createUser({ email: 'ana@edu.unifor.br' })
+    mail.sent.length = 0
+    await request(app).post('/api/v1/auth/forgot-password').send({ email: 'ana@edu.unifor.br' })
+    const resetToken = /token=([0-9a-f]+)$/.exec(mail.sent[0]!.link)![1]!
+    await requestChange(ana, 'ana.nova@edu.unifor.br')
+    expect((await confirm(ana, tokenOf(0))).status).toBe(200)
+    const res = await request(app)
+      .post('/api/v1/auth/reset-password')
+      .send({ token: resetToken, password: 'NovaSenha123', passwordConfirmation: 'NovaSenha123' })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('TOKEN_INVALID')
+  })
+
   it('o segundo pedido consome os pendentes: só o último token funciona', async () => {
     const ana = await createUser()
     await requestChange(ana, 'um@edu.unifor.br')

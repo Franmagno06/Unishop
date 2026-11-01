@@ -12,7 +12,7 @@ export interface ProfileRepository {
   setPhoto(id: number, url: string): Promise<void>
   /**
    * Confirma a troca de e-mail numa transação só (RN-PER-02): consome o token (uso único, ainda dentro
-   * da validade), grava o e-mail novo como verificado e invalida os outros links pendentes.
+   * da validade), grava o e-mail novo como verificado e invalida todos os outros links pendentes do usuário.
    * 'invalid' = token já usado, vencido ou de outro usuário; 'taken' = o endereço ganhou outro dono
    * (a transação é desfeita e o token não é consumido).
    */

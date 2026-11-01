@@ -222,7 +222,7 @@ export function createFakeProfiles(
       user.email = newEmail
       user.verified = true
       for (const t of tokenRows) {
-        if (t.userId === userId && t.type === 'troca_email' && !t.usedAt) t.usedAt = at
+        if (t.userId === userId && !t.usedAt) t.usedAt = at
       }
       return 'ok'
     },
