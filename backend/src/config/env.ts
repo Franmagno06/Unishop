@@ -3,7 +3,8 @@ import { z } from 'zod'
 
 const bool = z.enum(['true', 'false']).transform((v) => v === 'true')
 
-const schema = z
+// Exportado para os testes das travas (tests/unit/env.test.ts); `env` abaixo continua sendo calculado no import.
+export const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().default(3000),
@@ -60,10 +61,30 @@ const schema = z
       if (!e.MP_WEBHOOK_SECRET)
         fail('MP_WEBHOOK_SECRET', 'Obrigatória com PAYMENT_DRIVER=mercadopago.')
     }
+
+    // Travas de ambiente publicado (api.md §6.3, §9). As mensagens citam só o nome da variável.
+    if (e.APP_ENV === 'preview' || e.APP_ENV === 'production') {
+      if (e.MAIL_DRIVER === 'console') {
+        fail('MAIL_DRIVER', 'O e-mail por console é proibido em preview e production.')
+      }
+      if (e.STORAGE_DRIVER === 'local') {
+        fail('STORAGE_DRIVER', 'O armazenamento em disco local é proibido em preview e production.')
+      }
+      if (e.FRONTEND_URL.some((o) => o.includes('*') || !o.startsWith('https://'))) {
+        fail('FRONTEND_URL', 'Em preview e production use só origens https:// e sem "*".')
+      }
+      if (!e.CRON_SECRET || e.CRON_SECRET.length < 32) {
+        fail('CRON_SECRET', 'Em preview e production precisa ter 32 caracteres ou mais.')
+      }
+    }
   })
 
+export function parseEnv(raw: Record<string, string | undefined>) {
+  return envSchema.safeParse(raw)
+}
+
 // Se faltar ou for inválida alguma variável, o servidor não sobe.
-const parsed = schema.safeParse(process.env)
+const parsed = parseEnv(process.env)
 if (!parsed.success) {
   console.error('Variáveis de ambiente inválidas:', z.flattenError(parsed.error).fieldErrors)
   process.exit(1)
