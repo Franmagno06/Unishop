@@ -1,6 +1,7 @@
 import { AppError, hasOpenPaidOrders, notFound } from '../../shared/errors/app-error'
 import { buildMeta, type Pagination } from '../../shared/utils/pagination'
 import type { MailProvider } from '../../shared/providers/mail/mail.provider'
+import { runInBackground } from '../../shared/utils/background'
 import { assertActorStillActive } from '../users/admin-users.rules'
 import { buildAuditDetails } from '../audit-logs/audit-logs.details'
 import { assertAdminCanTransition, startOfSalesMonth } from './admin-listings.rules'
@@ -60,7 +61,7 @@ export function createAdminListingsService({
   }
 
   // RN-ADM-09, 10, RN-NOT-02: o e-mail sai depois do commit; falha no envio não desfaz a exclusão
-  // (e o log de aplicação leva só o id do anúncio, nunca e-mail nem nome). Etapa 10: waitUntil.
+  // (e o log de aplicação leva só o id do anúncio, nunca e-mail nem nome).
   async function remove(actorId: number, id: number): Promise<void> {
     const result = await listings.softDelete(id, {
       guardActor: (activeAdminIds) => assertActorStillActive(actorId, activeAdminIds),
@@ -76,13 +77,16 @@ export function createAdminListingsService({
     if (result === 'blocked') {
       throw hasOpenPaidOrders('Há pedido pago ou com retirada combinada em aberto.')
     }
-    await mail
-      .sendListingRemoved({
-        to: result.seller.email,
-        name: result.seller.name,
-        listingTitle: result.title,
-      })
-      .catch(() => console.error({ event: 'listing_removed_mail_failed', listingId: id }))
+    // Segundo plano (backend.md §11): a resposta não espera o provider; o log leva só o id.
+    runInBackground(
+      mail
+        .sendListingRemoved({
+          to: result.seller.email,
+          name: result.seller.name,
+          listingTitle: result.title,
+        })
+        .catch(() => console.error({ event: 'listing_removed_mail_failed', listingId: id })),
+    )
   }
 
   return { list, stats, get, updateStatus, remove }
