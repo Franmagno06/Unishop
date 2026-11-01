@@ -21,3 +21,5 @@ export const forbidden = (message = 'Você não tem permissão para isso.') =>
   new AppError(403, 'FORBIDDEN', message)
 export const notFound = (message = 'Recurso não encontrado.') =>
   new AppError(404, 'NOT_FOUND', message)
+export const hasOpenPaidOrders = (message: string) =>
+  new AppError(409, 'HAS_OPEN_PAID_ORDERS', message)

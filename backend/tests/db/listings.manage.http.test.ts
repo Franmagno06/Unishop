@@ -1,5 +1,6 @@
 import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { createPrismaListingRepository } from '../../src/modules/listings/listings.repository'
 import { buildDbApp } from '../helpers/db-app'
 import { createListing, createOrder, createUser, resetDb, testDb } from '../helpers/db'
 
@@ -279,6 +280,58 @@ describe('DELETE /listings/:id', () => {
     await createOrder(listing.id, other.id, seller.id, { status: 'concluido' })
     await createOrder(listing.id, admin.id, seller.id, { status: 'cancelado' })
     expect((await call('delete', `/${listing.id}`)).status).toBe(204)
+  })
+
+  it('RN-ANU-09: exclusão concorrente — já excluído depois da leitura dá 404 e não sobrescreve excluido_em', async () => {
+    const listing = await createListing(seller.id)
+    const stale = (await createPrismaListingRepository(testDb).findById(listing.id))!
+    const first = new Date('2026-10-01T10:00:00.000Z')
+    await testDb.listing.update({ where: { id: listing.id }, data: { deletedAt: first } })
+    // A leitura do service ainda enxerga o anúncio vivo (outra requisição excluiu logo depois dela).
+    const racing = buildDbApp({ listings: { findById: async () => stale } })
+    const res = await request(racing.app)
+      .delete(`/api/v1/listings/${listing.id}`)
+      .set(racing.auth(seller))
+    expect(res.status).toBe(404)
+    const row = await testDb.listing.findUniqueOrThrow({ where: { id: listing.id } })
+    expect(row.deletedAt?.toISOString()).toBe(first.toISOString())
+  })
+
+  it('RN-ANU-09: excluir cancela os pedidos Pendente e Em negociação do anúncio', async () => {
+    const listing = await createListing(seller.id)
+    const buyer2 = await createUser()
+    const pendente = await createOrder(listing.id, other.id, seller.id, {
+      status: 'pendente',
+      negotiationType: 'pagamento_site',
+    })
+    const negociacao = await createOrder(listing.id, buyer2.id, seller.id, {
+      status: 'em_negociacao',
+    })
+    const concluido = await createOrder(listing.id, other.id, seller.id, { status: 'concluido' })
+
+    expect((await call('delete', `/${listing.id}`)).status).toBe(204)
+    const status = async (id: number) =>
+      (await testDb.order.findUniqueOrThrow({ where: { id } })).status
+    expect(await status(pendente.id)).toBe('cancelado')
+    expect(await status(negociacao.id)).toBe('cancelado')
+    expect(await status(concluido.id)).toBe('concluido')
+  })
+
+  it('RN-ANU-09: exclusão bloqueada não cancela nada', async () => {
+    const listing = await createListing(seller.id)
+    const pago = await createOrder(listing.id, other.id, seller.id, {
+      status: 'pago',
+      negotiationType: 'pagamento_site',
+    })
+    const pendente = await createOrder(listing.id, admin.id, seller.id, { status: 'pendente' })
+
+    const res = await call('delete', `/${listing.id}`)
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('HAS_OPEN_PAID_ORDERS')
+    const status = async (id: number) =>
+      (await testDb.order.findUniqueOrThrow({ where: { id } })).status
+    expect(await status(pago.id)).toBe('pago')
+    expect(await status(pendente.id)).toBe('pendente')
   })
 
   it('RN-ANU-04: terceiro e admin recebem 403; oculto de outro 404; excluído de novo 404; visitante 401', async () => {

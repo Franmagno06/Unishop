@@ -1,6 +1,13 @@
 import type { Prisma } from '../../generated/prisma/client'
+import {
+  cancelUnpaidOrders,
+  hasOpenPaidOrders,
+  lockOpenOrders,
+} from '../../shared/database/open-orders'
 import { listingVisibleWhere } from '../../shared/database/listing-visibility'
 import type { Db } from '../../shared/database/prisma'
+import { LISTING_STATUS_FROM_DB, LISTING_STATUS_TO_DB } from '../../shared/database/status-maps'
+import { escapeLike } from '../../shared/utils/like'
 import { centsToDecimal, decimalToCents } from '../../shared/utils/money'
 import { toSkipTake } from '../../shared/utils/pagination'
 import type {
@@ -8,21 +15,11 @@ import type {
   ListingDetailRecord,
   ListingRepository,
   ListingSort,
-  ListingStatus,
   ListingSummaryRecord,
 } from './listings.types'
 
-const STATUS: Record<string, ListingStatus> = {
-  ativo: 'active',
-  pausado: 'paused',
-  vendido: 'sold',
-}
-
-const DB_STATUS: Record<ListingStatus, string> = {
-  active: 'ativo',
-  paused: 'pausado',
-  sold: 'vendido',
-}
+const STATUS = LISTING_STATUS_FROM_DB
+const DB_STATUS = LISTING_STATUS_TO_DB
 
 const ORDER: Record<ListingSort, Prisma.ListingOrderByWithRelationInput[]> = {
   recent: [{ publishedAt: 'desc' }, { id: 'desc' }],
@@ -51,9 +48,6 @@ const toSummary = (row: SummaryRow): ListingSummaryRecord => ({
   imageUrl: row.images[0]?.url ?? null,
   publishedAt: row.publishedAt,
 })
-
-// A barra invertida, % e _ têm sentido especial no LIKE: o texto do aluno entra como texto comum.
-const escapeLike = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`)
 
 function whereOf(filters: ListFilters): Prisma.ListingWhereInput {
   const { categoryId, search, minPriceCents, maxPriceCents } = filters
@@ -192,15 +186,18 @@ export function createPrismaListingRepository(db: Db): ListingRepository {
       return count === 1
     },
 
-    // RN-ANU-09: a trava no anúncio e a conferência dos pedidos ficam na mesma transação.
+    // RN-ANU-09: pedidos travados ANTES do anúncio (ordem usuario -> pedido -> anuncio, como a liquidação
+    // do pagamento); pago/retirada combinada bloqueia; Pendente e Em negociação são cancelados.
     async softDelete(id) {
       return db.$transaction(async (tx) => {
-        await lockListing(tx, id)
-        const open = await tx.order.count({
-          where: { listingId: id, status: { in: ['pago', 'retirada_combinada'] } },
-        })
-        if (open > 0) return 'blocked' as const
-        await tx.listing.update({ where: { id }, data: { deletedAt: new Date() } })
+        const orders = await lockOpenOrders(tx, { listingId: id })
+        const [row] = await tx.$queryRaw<{ deleted: boolean }[]>`
+          SELECT (excluido_em IS NOT NULL) AS deleted FROM anuncio WHERE id_anuncio = ${id} FOR UPDATE`
+        if (!row || row.deleted) return 'not_found' as const // outra requisição excluiu antes
+        if (hasOpenPaidOrders(orders)) return 'blocked' as const
+        const now = new Date()
+        await cancelUnpaidOrders(tx, orders, now)
+        await tx.listing.update({ where: { id }, data: { deletedAt: now } })
         return 'ok' as const
       })
     },

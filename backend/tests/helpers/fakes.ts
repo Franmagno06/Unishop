@@ -16,7 +16,11 @@ import type {
   UserRecord,
   UserRepository,
 } from '../../src/modules/auth/auth.types'
-import type { MailProvider, PasswordResetMail } from '../../src/shared/providers/mail/mail.provider'
+import type {
+  ListingRemovedMail,
+  MailProvider,
+  PasswordResetMail,
+} from '../../src/shared/providers/mail/mail.provider'
 import type { GoogleIdentity, OAuthProvider } from '../../src/shared/providers/oauth/oauth.provider'
 
 // Repositories em memória: testam as regras sem banco. Os testes contra o banco real entram
@@ -135,12 +139,16 @@ export function createFakeTokens() {
 
 export function createFakeMail() {
   const sent: PasswordResetMail[] = []
+  const listingRemoved: ListingRemovedMail[] = []
   const provider: MailProvider = {
     async sendPasswordReset(mail) {
       sent.push(mail)
     },
+    async sendListingRemoved(mail) {
+      listingRemoved.push(mail)
+    },
   }
-  return { provider, sent }
+  return { provider, sent, listingRemoved }
 }
 
 export function createFakeOAuth() {
@@ -195,6 +203,7 @@ export function createFakeProfiles(userRows: UserRecord[]) {
         photoUrl: null,
         status: 'deleted',
       })
+      return 'ok'
     },
   }
   return { repo, listings }
@@ -261,3 +270,14 @@ export function createFakeStorage() {
   }
   return { provider, uploaded, removed }
 }
+
+// Repository que nunca deveria ser chamado (a proteção da área admin barra antes).
+export const unreachable = <T extends object>(name: string) =>
+  new Proxy(
+    {},
+    {
+      get: (_t, key) => () => {
+        throw new Error(`${name}.${String(key)} não deveria ser chamado`)
+      },
+    },
+  ) as T

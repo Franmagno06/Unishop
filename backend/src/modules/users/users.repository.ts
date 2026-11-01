@@ -1,4 +1,5 @@
 import { AppError } from '../../shared/errors/app-error'
+import { anonymizeAccountTx } from '../../shared/database/account-anonymization'
 import type { Db } from '../../shared/database/prisma'
 import type { ProfileRepository } from './users.types'
 
@@ -34,25 +35,10 @@ export function createPrismaProfileRepository(db: Db): ProfileRepository {
       await db.user.update({ where: { id }, data: { photoUrl: url } })
     },
 
-    // RN-PER-06: a linha continua (pedidos pagos mantêm o histórico), mas sem dado pessoal. Os links
-    // pendentes (recuperação de senha) somem para ninguém reabrir a conta.
+    // RN-PER-06: mesma anonimização do admin (src/shared/database), numa transação só.
     async anonymize(id) {
-      await db.$transaction([
-        db.user.update({
-          where: { id },
-          data: {
-            name: 'Usuário removido',
-            email: `removido_${id}@removido.invalid`,
-            passwordHash: null,
-            googleSub: null,
-            whatsapp: null,
-            course: null,
-            photoUrl: null,
-            accountStatus: 'excluida',
-          },
-        }),
-        db.userToken.deleteMany({ where: { userId: id } }),
-      ])
+      const result = await db.$transaction((tx) => anonymizeAccountTx(tx, id, new Date()))
+      return result.status
     },
   }
 }

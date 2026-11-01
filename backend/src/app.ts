@@ -26,6 +26,19 @@ import { createPrismaProfileRepository } from './modules/users/users.repository'
 import { createUsersRoutes } from './modules/users/users.routes'
 import { createUsersService } from './modules/users/users.service'
 import type { ProfileRepository } from './modules/users/users.types'
+import { createPrismaAdminListingsRepository } from './admin/listings/admin-listings.repository'
+import { createAdminListingsRoutes } from './admin/listings/admin-listings.routes'
+import { createAdminListingsService } from './admin/listings/admin-listings.service'
+import type { AdminListingsRepository } from './admin/listings/admin-listings.types'
+import { createAdminRoutes } from './admin/admin.routes'
+import { createPrismaAdminUsersRepository } from './admin/users/admin-users.repository'
+import { createAdminUsersRoutes } from './admin/users/admin-users.routes'
+import { createAdminUsersService } from './admin/users/admin-users.service'
+import type { AdminUsersRepository } from './admin/users/admin-users.types'
+import { createPrismaAuditLogRepository } from './admin/audit-logs/audit-logs.repository'
+import { createAuditLogsRoutes } from './admin/audit-logs/audit-logs.routes'
+import { createAuditLogsService } from './admin/audit-logs/audit-logs.service'
+import type { AuditLogRepository } from './admin/audit-logs/audit-logs.types'
 import { createAuthenticate } from './shared/middlewares/authenticate'
 import { errorHandler, notFoundHandler } from './shared/middlewares/error-handler'
 import { createRateLimiter } from './shared/middlewares/rate-limiter'
@@ -36,6 +49,13 @@ import type { OAuthProvider } from './shared/providers/oauth/oauth.provider'
 import { createLocalStorageProvider } from './shared/providers/storage/local.provider'
 import type { StorageProvider } from './shared/providers/storage/storage.provider'
 
+/** Repositories da área admin (src/admin/). As fatias seguintes acrescentam `users` e `listings`. */
+export type AdminDeps = {
+  auditLogs: AuditLogRepository
+  users?: AdminUsersRepository
+  listings?: AdminListingsRepository
+}
+
 export type AppDeps = {
   users: UserRepository
   profiles: ProfileRepository
@@ -45,6 +65,7 @@ export type AppDeps = {
   categories?: CategoryRepository
   listings?: ListingRepository
   storage?: StorageProvider
+  admin?: AdminDeps
   /** Pasta servida em /uploads. Só com o driver local (desenvolvimento e teste). */
   uploadsDir?: string
   now?: () => Date
@@ -110,6 +131,34 @@ export function createApp(deps?: AppDeps) {
       })
       app.use('/api/v1/listings', createListingsRoutes(listingsService, authenticate))
     }
+    // RN-ADM-01: toda a área admin atrás de uma proteção só.
+    app.use(
+      '/api/v1/admin',
+      createAdminRoutes(authenticate, {
+        ...(deps.admin && {
+          auditLogs: createAuditLogsRoutes(
+            createAuditLogsService({ auditLogs: deps.admin.auditLogs }),
+          ),
+          ...(deps.admin.listings && {
+            listings: createAdminListingsRoutes(
+              createAdminListingsService({
+                listings: deps.admin.listings,
+                mail: deps.mail,
+                ...(deps.now && { now: deps.now }),
+              }),
+            ),
+          }),
+          ...(deps.admin.users && {
+            users: createAdminUsersRoutes(
+              createAdminUsersService({
+                users: deps.admin.users,
+                ...(deps.now && { now: deps.now }),
+              }),
+            ),
+          }),
+        }),
+      }),
+    )
   }
 
   // Imagens do driver local. O Helmet manda `same-origin`, o que impediria o front (outra porta)
@@ -164,6 +213,11 @@ export const app = createApp({
   categories: createPrismaCategoryRepository(prisma),
   listings: createPrismaListingRepository(prisma),
   storage: pickStorageProvider(),
+  admin: {
+    auditLogs: createPrismaAuditLogRepository(prisma),
+    users: createPrismaAdminUsersRepository(prisma),
+    listings: createPrismaAdminListingsRepository(prisma),
+  },
   uploadsDir: UPLOADS_DIR,
 })
 export default app // a Vercel usa este export; nada aqui chama listen
