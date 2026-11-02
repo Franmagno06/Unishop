@@ -48,6 +48,9 @@ function stubApi() {
       if (method === 'POST' && String(url).endsWith('/users/me/email-change')) {
         return reply(202, { data: { pendingEmail: body?.email, expiresInMinutes: 30 } })
       }
+      if (method === 'DELETE' && deleteStatus === 409) {
+        return reply(409, { error: { code: 'HAS_OPEN_PAID_ORDERS', message: 'Há pedido pago em aberto.' } })
+      }
       return reply(204)
     }),
   )
@@ -55,8 +58,10 @@ function stubApi() {
 }
 
 let calls: Call[]
+let deleteStatus = 204
 
 beforeEach(() => {
+  deleteStatus = 204
   setToken('token-de-teste')
   calls = stubApi()
 })
@@ -197,6 +202,21 @@ describe('Editar perfil (05b)', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
     expect(getToken()).toBeNull()
     expect(calls.find((call) => call.method === 'DELETE')?.body).toEqual({ confirmation: 'EXCLUIR' })
+  })
+
+  it('RN-PER-06: 409 HAS_OPEN_PAID_ORDERS mostra o motivo no pop-up e mantém a sessão', async () => {
+    deleteStatus = 409
+    const router = renderApp('/perfil/editar')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Excluir perfil' }))
+    const dialog = screen.getByRole('dialog')
+    await user.type(within(dialog).getByLabelText('Digite EXCLUIR para confirmar'), 'EXCLUIR')
+    await user.click(within(dialog).getByRole('button', { name: 'Excluir perfil' }))
+
+    expect(await within(dialog).findByText(/pedidos pagos ou com retirada combinada em aberto/)).toBeInTheDocument()
+    expect(getToken()).toBe('token-de-teste')
+    expect(router.state.location.pathname).toBe('/perfil/editar')
   })
 
   it('cancelar o pop-up não exclui nada', async () => {

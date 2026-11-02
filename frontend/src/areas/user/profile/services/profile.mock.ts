@@ -13,7 +13,7 @@ export const mockProfile = {
       name: input.name,
       course: input.course,
       whatsapp: input.whatsapp,
-      avatarUrl: input.avatarUrl,
+      avatarUrl: input.avatarFile ? URL.createObjectURL(input.avatarFile) : current.avatarUrl,
     })
     return { pendingEmail: input.email !== current.email ? input.email : null }
   },

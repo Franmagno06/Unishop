@@ -17,7 +17,7 @@ export type UpdateProfileInput = {
   email: string
   course: string
   whatsapp: string // só dígitos (RN-PER-07)
-  avatarUrl: string | null // a foto só é enviada na Etapa 5 (upload); aqui ainda não vai à API
+  avatarFile: File | null // foto nova (JPG ou PNG, até 4 MB), já conferida pela tela; null = sem mudança
 }
 
 export type UpdateProfileResult = {
@@ -43,23 +43,42 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
   })
   setCurrentUser(fromApi(saved.data.user))
 
+  // RN-PER-05: a foto vai em PUT /users/me/avatar (multipart, campo "image"), uma por requisição.
+  if (input.avatarFile) {
+    try {
+      const form = new FormData()
+      form.append('image', input.avatarFile)
+      const photo = await api<{ data: { user: ProfileApiUser } }>('/users/me/avatar', {
+        method: 'PUT',
+        body: form,
+      })
+      setCurrentUser(fromApi(photo.data.user))
+    } catch (error) {
+      throw savedButFailed(error, 'a foto não foi enviada')
+    }
+  }
+
   const newEmail = input.email.trim().toLowerCase()
   if (newEmail === currentEmail.toLowerCase()) return { pendingEmail: null }
   try {
     await requestEmailChange(newEmail)
   } catch (error) {
-    if (error instanceof ApiError) {
-      throw new ApiError(
-        error.status,
-        error.code,
-        'Seus dados foram salvos, mas o e-mail não foi trocado: ' + error.message,
-        error.fieldErrors,
-        error.retryAfter,
-      )
-    }
-    throw error
+    throw savedButFailed(error, 'o e-mail não foi trocado')
   }
   return { pendingEmail: newEmail }
+}
+
+// O PATCH já gravou nome, curso e WhatsApp: o erro de um passo seguinte diz isso, para o aluno não
+// achar que perdeu o que digitou.
+function savedButFailed(error: unknown, what: string): unknown {
+  if (!(error instanceof ApiError)) return error
+  return new ApiError(
+    error.status,
+    error.code,
+    'Seus dados foram salvos, mas ' + what + ': ' + error.message,
+    error.fieldErrors,
+    error.retryAfter,
+  )
 }
 
 // RN-PER-06: o servidor anonimiza a conta. O pedido leva a confirmação digitada ("EXCLUIR").

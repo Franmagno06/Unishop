@@ -54,6 +54,7 @@ export function EditProfilePage() {
 function EditProfileForm({ user }: { user: CurrentUser }) {
   const save = useUpdateProfile()
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoError, setPhotoError] = useState<string>()
   const [deleting, setDeleting] = useState(false)
 
@@ -78,7 +79,7 @@ function EditProfileForm({ user }: { user: CurrentUser }) {
       email: values.email,
       course: values.course,
       whatsapp: onlyDigits(values.whatsapp),
-      avatarUrl: photoUrl ?? user.avatarUrl,
+      avatarFile: photoFile,
     })
   }
 
@@ -86,6 +87,7 @@ function EditProfileForm({ user }: { user: CurrentUser }) {
     if (photoUrl) URL.revokeObjectURL(photoUrl)
     setPhotoError(undefined)
     setPhotoUrl(URL.createObjectURL(file))
+    setPhotoFile(file)
   }
 
   return (
