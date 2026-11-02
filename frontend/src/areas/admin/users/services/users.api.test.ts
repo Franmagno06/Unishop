@@ -68,6 +68,7 @@ describe('API real · usuários do admin', () => {
     expect(api).toHaveBeenCalledWith('/admin/users/7', expect.anything())
     expect(detail).toMatchObject({ listings, stats: { listings: 1, sales: 0, purchases: 2 } })
     expect(detail?.user.name).toBe('Ana Lima')
+    expect(detail?.user).toMatchObject({ course: '', whatsapp: '', lastAccessAt: null })
   })
 
   it('getUserDetail devolve null no 404 e relança os outros erros', async () => {

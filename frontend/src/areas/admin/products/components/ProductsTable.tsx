@@ -51,7 +51,9 @@ export function ProductsTable({ products, onDelete }: ProductsTableProps) {
                         <span className="font-semibold text-text group-hover:text-primary group-hover:underline">
                           {product.title}
                         </span>
-                        <span className="line-clamp-2 text-xs text-text-muted">{product.description}</span>
+                        {product.description ? (
+                          <span className="line-clamp-2 text-xs text-text-muted">{product.description}</span>
+                        ) : null}
                       </span>
                     </Link>
                   </td>

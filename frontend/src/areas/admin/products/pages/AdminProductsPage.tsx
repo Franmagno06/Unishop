@@ -19,15 +19,15 @@ import { SEARCH_MAX_LENGTH } from '../../../../shared/constants/search'
 
 const number = new Intl.NumberFormat('pt-BR')
 
-// RF022 · RN-ADM-07 (Figma A03). Busca, categoria e página ficam na URL, como na lista de usuários.
-// Dados de exemplo; sem API até o backend existir.
+// RF022 · RN-ADM-07 (Figma A03). Busca, categoria e página ficam na URL, como na lista de usuários.
 export function AdminProductsPage() {
   useDocumentTitle('Produtos · Admin')
   const [params, setParams] = useSearchParams()
   const urlSearch = (params.get('busca') ?? '').slice(0, SEARCH_MAX_LENGTH)
   const categoryParam = Number(params.get('categoria'))
   const categoryId = Number.isInteger(categoryParam) && categoryParam > 0 ? categoryParam : null
-  const page = Math.max(1, Number(params.get('pagina')) || 1)
+  const pageParam = Number(params.get('pagina'))
+  const page = Number.isSafeInteger(pageParam) && pageParam > 0 ? pageParam : 1 // a API recusa página fracionária
 
   const [searchText, setSearchText] = useState(urlSearch)
   const debouncedSearch = useDebounce(searchText.trim(), 300)

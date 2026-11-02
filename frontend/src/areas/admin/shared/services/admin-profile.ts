@@ -26,6 +26,7 @@ export function initialsOf(name: string): string {
 export function useAdminProfile(): AdminProfile {
   const user = useCurrentUser()
   if (import.meta.env.DEV && MOCK_MODE) return ADMIN_PROFILE
-  const name = user.name || ADMIN_PROFILE.name
+  if (!user.name) return { ...ADMIN_PROFILE, email: '' }
+  const name = user.name
   return { name, initials: initialsOf(name), email: user.email }
 }

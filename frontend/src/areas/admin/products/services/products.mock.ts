@@ -27,8 +27,8 @@ export async function getCategories(): Promise<AdminCategory[]> {
   return CATEGORIES
 }
 
-// RN-ADM-07: ativos, pausados e vendidos no mês. "No mês" = nos últimos 30 dias (a regra não diz
-// se é mês de calendário).
+// RN-ADM-07: ativos, pausados e vendidos no mês. "No mês" = nos últimos 30 dias (o servidor usa o mês de
+// calendário em Fortaleza, pela data da venda; o exemplo é só aproximado).
 export async function getProductStats(signal?: AbortSignal): Promise<ProductStats> {
   await wait()
   signal?.throwIfAborted()

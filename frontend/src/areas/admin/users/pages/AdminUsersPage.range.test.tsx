@@ -11,8 +11,8 @@ vi.mock('../services/users.service', () => ({
 
 import { AdminUsersPage } from './AdminUsersPage'
 
-describe('AdminUsersPage · página além do fim', () => {
-  it('RN-ADM-02: depois de excluir o último item da página 2, a URL volta à página 1 e a lista reaparece', async () => {
+describe('AdminUsersPage · página na URL', () => {
+  it('RN-ADM-02: página além do fim (ex.: excluiu o último item) volta à última página que existe', async () => {
     const row = { id: 1, name: 'Ana Lima', email: 'ana@edu.unifor.br', course: '', whatsapp: '', avatarUrl: null,
       status: 'active', createdAt: '2026-10-01T10:00:00Z', lastAccessAt: '2026-10-01T10:00:00Z', isOnline: false, listingsCount: 0 }
     listUsers.mockImplementation(async ({ page }: { page: number }) =>
@@ -30,5 +30,20 @@ describe('AdminUsersPage · página além do fim', () => {
     )
     expect(await screen.findByText('Ana Lima')).toBeInTheDocument()
     await waitFor(() => expect(router.state.location.search).toBe(''))
+  })
+
+  it('?pagina=2.5 pede a página 1 (a API recusa página fracionária com 400)', async () => {
+    listUsers.mockClear()
+    const router = createMemoryRouter([{ path: '/admin/usuarios', element: <AdminUsersPage /> }], {
+      initialEntries: ['/admin/usuarios?pagina=2.5'],
+    })
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    )
+    await screen.findByText('Ana Lima')
+    expect(listUsers).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }), expect.anything())
+    expect(listUsers).not.toHaveBeenCalledWith(expect.objectContaining({ page: 2.5 }), expect.anything())
   })
 })

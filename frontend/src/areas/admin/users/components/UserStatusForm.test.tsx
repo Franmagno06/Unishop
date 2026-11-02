@@ -39,4 +39,12 @@ describe('UserStatusForm · RN-ADM-05, 12', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     expect(await screen.findByText(/último administrador ativo/)).toBeInTheDocument()
   })
+
+  it('403 ACCOUNT_SUSPENDED (admin suspenso durante a sessão) mostra a mensagem do servidor', async () => {
+    updateUser.mockRejectedValueOnce(new ApiError(403, 'ACCOUNT_SUSPENDED', 'Sua conta está suspensa.'))
+    renderForm()
+    await userEvent.selectOptions(screen.getByLabelText('Status da conta'), 'suspended')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(await screen.findByText('Sua conta está suspensa.')).toBeInTheDocument()
+  })
 })
