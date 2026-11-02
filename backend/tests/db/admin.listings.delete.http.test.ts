@@ -1,7 +1,8 @@
 import { createAdminListingsService } from '../../src/admin/listings/admin-listings.service'
 import { createPrismaAdminListingsRepository } from '../../src/admin/listings/admin-listings.repository'
 import request from 'supertest'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushBackground } from '../../src/shared/utils/background'
 import { buildDbApp } from '../helpers/db-app'
 import { createFakeMail } from '../helpers/fakes'
 import { createListing, createOrder, createUser, resetDb, testDb } from '../helpers/db'
@@ -15,6 +16,11 @@ beforeEach(async () => {
   ctx = buildDbApp() // e-mails falsos zerados a cada teste
   admin = await createUser({ name: 'Admin Um', role: 'admin' })
   seller = await createUser({ name: 'Ana Vendedora', email: 'ana.v@edu.unifor.br' })
+})
+
+afterEach(async () => {
+  vi.restoreAllMocks()
+  await flushBackground() // o e-mail roda em segundo plano
 })
 
 let ctx = buildDbApp()
@@ -91,6 +97,7 @@ describe('DELETE /admin/listings/:id', () => {
     const c = buildDbApp()
     const l = await createListing(seller.id, { name: 'Calculadora Científica' })
     expect((await del(l.id, c)).status).toBe(204)
+    await flushBackground()
     expect(c.mail.listingRemoved).toEqual([
       { to: 'ana.v@edu.unifor.br', name: 'Ana Vendedora', listingTitle: 'Calculadora Científica' },
     ])
@@ -111,6 +118,51 @@ describe('DELETE /admin/listings/:id', () => {
     expect(res.status).toBe(204)
     expect((await rowOf(l.id)).deletedAt).not.toBeNull()
     expect(await testDb.auditLog.count()).toBe(1)
+  })
+
+  it('RN-NOT-02: e-mail que falha não vaza e-mail nem nome no log de aplicação', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const mail = createFakeMail()
+    const c = buildDbApp({
+      mail: {
+        ...mail.provider,
+        sendListingRemoved: async ({ to }) => {
+          throw new Error('falha para ' + to)
+        },
+      },
+    })
+    const l = await createListing(seller.id, { name: 'Calculadora Científica' })
+    expect((await del(l.id, c)).status).toBe(204)
+    await flushBackground()
+    const logged = JSON.stringify(spy.mock.calls)
+    expect(logged).toContain(String(l.id))
+    expect(logged).not.toContain('ana.v@edu.unifor.br')
+    expect(logged).not.toContain('Ana Vendedora')
+    expect(logged).not.toContain('Calculadora')
+  })
+
+  it('RN-NOT-02: a resposta não espera o e-mail (provider que nunca resolve)', async () => {
+    let release: () => void = () => undefined
+    const hang = new Promise<void>((resolve) => (release = resolve))
+    const mail = createFakeMail()
+    const c = buildDbApp({ mail: { ...mail.provider, sendListingRemoved: () => hang } })
+    const l = await createListing(seller.id)
+    const res = await del(l.id, c)
+    expect(res.status).toBe(204)
+    release() // solta a tarefa para o afterEach não travar
+  })
+
+  it('RN-NOT-02: exclusão bloqueada (409) ou produto inexistente (404) não envia e-mail', async () => {
+    const l = await createListing(seller.id)
+    const buyer = await createUser()
+    await createOrder(l.id, buyer.id, seller.id, {
+      status: 'pago',
+      negotiationType: 'pagamento_site',
+    })
+    expect((await del(l.id)).status).toBe(409)
+    expect((await del(99999)).status).toBe(404)
+    await flushBackground()
+    expect(ctx.mail.listingRemoved).toHaveLength(0)
   })
 
   it('RN-ADM-10: exclusão grava log delete_listing só com ids e contagens', async () => {

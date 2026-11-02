@@ -24,6 +24,12 @@
       "prompt": "o pagamento recusado do cartao, quando o aluno tenta de novo eu faco UPDATE na mesma linha do pagamento ou crio outra?",
       "expected_output": "Cria outra linha (histórico de tentativas); uq_pagamento_ativo permite só uma pendente/aprovado por pedido; chave_idempotencia inclui o número da tentativa; sem UNIQUE em id_pedido.",
       "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "dois alunos confirmam a troca de email para o mesmo endereco ao mesmo tempo. como o banco decide?",
+      "expected_output": "O indice unico uq_usuario_email_lower decide: o segundo UPDATE falha com P2002 e a transação inteira é desfeita (token não consumido), vira 409 EMAIL_ALREADY_REGISTERED; o consumo do token é UPDATE condicional (usado_em IS NULL) que serializa dois confirm do mesmo token.",
+      "files": []
     }
   ]
 }

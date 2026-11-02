@@ -24,6 +24,18 @@
       "prompt": "configurei o job expire-pix-payments pra rodar a cada minuto no vercel cron e a rota GET /api/v1/internal/jobs/expire-pix-payments confere o Bearer com ===",
       "expected_output": "Vercel Cron Hobby é diário (expressão frequente quebra o deploy); jobs frequentes a cada 30 min no cron-job.org externo; comparar com Secret e timingSafeEqual, testar Bearer undefined = 401; job idempotente; cancelamento também sob demanda ao ler ou pagar o pedido.",
       "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "quero trocar o e-mail do aluno no PATCH /users/me, so mudar o campo email. ta certo?",
+      "expected_output": "Não: a troca é por POST /users/me/email-change (link de 30 min, uso único, enviado ao NOVO endereço, só o hash do token no banco) e POST /users/me/email-change/confirm com sessão do dono (RN-PER-02); PATCH aceita email só se igual ao atual, senão 400 VALIDATION_ERROR; domínio @edu.unifor.br (403), e-mail em uso (409); confirmar invalida os outros links pendentes; sessões continuam.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "preciso listar so os alunos online no painel admin com paginacao. como fica a rota e o filtro?",
+      "expected_output": "GET /admin/users?presence=online|offline|all (padrão all, outro valor 400); online = conta ativa com ultimo_acesso nos últimos 5 min (inclusivo); offline = suspensa, nulo ou antigo (tratar NULL à parte); total e totalPages seguem o filtro; relógio injetado.",
+      "files": []
     }
   ]
 }

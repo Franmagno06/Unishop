@@ -17,6 +17,7 @@ import type {
   UserRepository,
 } from '../../src/modules/auth/auth.types'
 import type {
+  EmailChangeMail,
   ListingRemovedMail,
   MailProvider,
   OrderRefundedMail,
@@ -121,7 +122,7 @@ export function createFakeTokens() {
   let nextId = 1
   const repo: TokenRepository = {
     async create(data) {
-      rows.push({ id: nextId++, usedAt: null, ...data })
+      rows.push({ ...data, id: nextId++, usedAt: null, newEmail: data.newEmail ?? null })
     },
     async findByHash(tokenHash: string, type: TokenType) {
       return rows.find((t) => t.tokenHash === tokenHash && t.type === type) ?? null
@@ -144,6 +145,7 @@ export function createFakeMail() {
   const listingRemoved: ListingRemovedMail[] = []
   const sales: SaleConfirmedMail[] = []
   const refunds: OrderRefundedMail[] = []
+  const emailChanges: EmailChangeMail[] = []
   const provider: MailProvider = {
     async sendPasswordReset(mail) {
       sent.push(mail)
@@ -157,8 +159,11 @@ export function createFakeMail() {
     async sendOrderRefunded(mail) {
       refunds.push(mail)
     },
+    async sendEmailChange(mail) {
+      emailChanges.push(mail)
+    },
   }
-  return { provider, sent, listingRemoved, sales, refunds }
+  return { provider, sent, listingRemoved, sales, refunds, emailChanges }
 }
 
 export function createFakeOAuth() {
@@ -180,7 +185,10 @@ export type FakeListing = {
 }
 
 // Perfil em memória sobre as mesmas linhas de usuário do fake de auth; `listings` simula a tabela anuncio.
-export function createFakeProfiles(userRows: UserRecord[]) {
+export function createFakeProfiles(
+  userRows: UserRecord[],
+  tokenRows: (TokenRecord & { tokenHash: string })[] = [],
+) {
   const listings: FakeListing[] = []
   const find = (id: number) => userRows.find((r) => r.id === id)!
 
@@ -189,7 +197,6 @@ export function createFakeProfiles(userRows: UserRecord[]) {
       const user = find(id)
       const before = user.whatsapp
       if (patch.name !== undefined) user.name = patch.name
-      if (patch.email !== undefined) user.email = patch.email
       if (patch.course !== undefined) user.course = patch.course
       if (patch.whatsapp !== undefined) user.whatsapp = patch.whatsapp
       if (patch.whatsapp && patch.whatsapp !== before) {
@@ -200,6 +207,24 @@ export function createFakeProfiles(userRows: UserRecord[]) {
     },
     async setPhoto(id, url) {
       find(id).photoUrl = url
+    },
+    async confirmEmailChange(tokenId, userId, newEmail, at) {
+      const token = tokenRows.find((t) => t.id === tokenId && t.userId === userId)
+      if (!token || token.type !== 'troca_email' || token.usedAt || token.expiresAt <= at) {
+        return 'invalid'
+      }
+      const taken = userRows.some(
+        (u) => u.id !== userId && u.email.toLowerCase() === newEmail.toLowerCase(),
+      )
+      if (taken) return 'taken'
+      token.usedAt = at
+      const user = find(userId)
+      user.email = newEmail
+      user.verified = true
+      for (const t of tokenRows) {
+        if (t.userId === userId && !t.usedAt) t.usedAt = at
+      }
+      return 'ok'
     },
     async anonymize(id) {
       const user = find(id)

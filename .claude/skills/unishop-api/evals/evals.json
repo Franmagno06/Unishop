@@ -24,6 +24,12 @@
       "prompt": "o resend ta devolvendo erro de dominio quando mando o email de confirmacao pro aluno em producao, o app ta em unishop.vercel.app",
       "expected_output": "Resend exige domínio verificado por DNS (SPF/DKIM); vercel.app não permite; precisa de domínio próprio (pendência 2 do api.md e 3 do deploy); limite de 100 e-mails por dia; MailProvider por interface; sugere resend/email-best-practices para os detalhes.",
       "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "vou subir o preview na vercel com MAIL_DRIVER=console e STORAGE_DRIVER=local, ta ok?",
+      "expected_output": "Não: em preview e production o env.ts recusa console e local (o disco da Vercel é temporário); a API não sobe e a mensagem cita só o nome da variável; o driver real de e-mail e o armazenamento de imagens ainda não estão definidos (ADR-009 e ADR-004 reabertos para o deploy); FRONTEND_URL precisa de https sem * e CRON_SECRET de 32+ caracteres.",
+      "files": []
     }
   ]
 }

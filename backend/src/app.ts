@@ -21,10 +21,9 @@ import { createPaymentsRoutes } from './modules/payments/payments.routes'
 import { createPaymentsService } from './modules/payments/payments.service'
 import type { PaymentRepository } from './modules/payments/payments.types'
 import { prisma } from './shared/database/prisma'
-import { buildPaymentGateway } from './shared/providers/payment'
+import { buildProviders } from './shared/providers'
 import type { MockPaymentGateway } from './shared/providers/payment/mock.provider'
 import type { PaymentGateway } from './shared/providers/payment/payment.gateway'
-import { consoleMailProvider } from './shared/providers/mail/console.provider'
 import { createAuthService } from './modules/auth/auth.service'
 import { createAuthRoutes } from './modules/auth/auth.routes'
 import { createPrismaListingRepository } from './modules/listings/listings.repository'
@@ -57,10 +56,9 @@ import { createAuthenticate } from './shared/middlewares/authenticate'
 import { errorHandler, notFoundHandler } from './shared/middlewares/error-handler'
 import { createRateLimiter } from './shared/middlewares/rate-limiter'
 import { requestId } from './shared/middlewares/request-id'
+import { withDeliveryGuard } from './shared/providers/mail/guard'
 import type { MailProvider } from './shared/providers/mail/mail.provider'
-import { createGoogleProvider } from './shared/providers/oauth/google.provider'
 import type { OAuthProvider } from './shared/providers/oauth/oauth.provider'
-import { createLocalStorageProvider } from './shared/providers/storage/local.provider'
 import type { StorageProvider } from './shared/providers/storage/storage.provider'
 
 /** Repositories da área admin (src/admin/). As fatias seguintes acrescentam `users` e `listings`. */
@@ -121,8 +119,11 @@ export function createApp(deps?: AppDeps) {
 
   if (deps) {
     const jwt = createJwt(env.JWT_SECRET, env.JWT_EXPIRES_IN)
+    // Todo driver passa pela guarda: nada é enviado a endereço anonimizado (RN-NOT-03).
+    const mail = withDeliveryGuard(deps.mail)
     const service = createAuthService({
       ...deps,
+      mail,
       jwt,
       config: {
         allowedEmailDomain: env.ALLOWED_EMAIL_DOMAIN,
@@ -139,17 +140,31 @@ export function createApp(deps?: AppDeps) {
         ? (((_req, _res, next) => next()) satisfies express.RequestHandler)
         : createRateLimiter(10)
     const routes = createAuthRoutes(service, authenticate, limiter)
+    // Troca de e-mail: mesmo teto (10 por minuto por IP), mas contador próprio, para não gastar o orçamento do login.
+    const emailChangeLimiter =
+      env.APP_ENV === 'test'
+        ? (((_req, _res, next) => next()) satisfies express.RequestHandler)
+        : createRateLimiter(10)
     const usersService = createUsersService({
       users: deps.users,
       profiles: deps.profiles,
-      config: { allowedEmailDomain: env.ALLOWED_EMAIL_DOMAIN },
+      tokens: deps.tokens,
+      mail,
+      config: {
+        allowedEmailDomain: env.ALLOWED_EMAIL_DOMAIN,
+        frontendUrl: env.FRONTEND_URL[0] ?? '',
+      },
+      ...(deps.now && { now: deps.now }),
       ...(deps.storage && { storage: deps.storage }),
     })
     app.use('/api/v1/auth', routes.auth)
     app.use('/api/v1/users', routes.users)
     app.use(
       '/api/v1/users',
-      createUsersRoutes(usersService, authenticate, { avatar: Boolean(deps.storage) }),
+      createUsersRoutes(usersService, authenticate, {
+        avatar: Boolean(deps.storage),
+        limiter: emailChangeLimiter, // RN-PER-02: mesmo teto das rotas de /auth, contador próprio
+      }),
     )
     if (deps.categories) {
       const categoriesService = createCategoriesService({ categories: deps.categories })
@@ -176,7 +191,7 @@ export function createApp(deps?: AppDeps) {
             listings: createAdminListingsRoutes(
               createAdminListingsService({
                 listings: deps.admin.listings,
-                mail: deps.mail,
+                mail,
                 ...(deps.now && { now: deps.now }),
               }),
             ),
@@ -207,7 +222,7 @@ export function createApp(deps?: AppDeps) {
         orders: deps.orders,
         ordersService,
         gateway: deps.gateway,
-        mail: deps.mail,
+        mail,
         config: { expirationMinutes: env.PIX_EXPIRATION_MINUTES },
         ...(deps.now && { now: deps.now }),
       })
@@ -258,40 +273,19 @@ export function createApp(deps?: AppDeps) {
   return app
 }
 
-// O driver local grava no disco do servidor: só vale em desenvolvimento e teste (api.md §6.4).
-// Fora deles a API não sobe até existir o provider da Cloudinary (Etapa 10).
 const UPLOADS_DIR = resolve(process.cwd(), 'uploads')
-function pickStorageProvider() {
-  const local = env.APP_ENV === 'development' || env.APP_ENV === 'test'
-  if (env.STORAGE_DRIVER !== 'local' || !local) {
-    throw new Error(
-      `STORAGE_DRIVER "${env.STORAGE_DRIVER}" sem provider em APP_ENV "${env.APP_ENV}".`,
-    )
-  }
-  const apiUrl = env.API_PUBLIC_URL ?? `http://localhost:${env.PORT}`
-  return createLocalStorageProvider({ dir: UPLOADS_DIR, baseUrl: `${apiUrl}/uploads` })
-}
 
-// O provider de console imprime o link de redefinição no log: só vale em desenvolvimento e teste.
-// Fora deles a API não sobe até existir um provider real (Resend/Mailtrap, api.md §6.3).
-function pickMailProvider() {
-  const local = env.APP_ENV === 'development' || env.APP_ENV === 'test'
-  if (env.MAIL_DRIVER !== 'console' || !local) {
-    throw new Error(`MAIL_DRIVER "${env.MAIL_DRIVER}" sem provider em APP_ENV "${env.APP_ENV}".`)
-  }
-  return consoleMailProvider
-}
-
-// Ponto único de composição: repositories reais (Prisma).
+// Ponto único de composição: repositories reais (Prisma) e providers escolhidos por buildProviders.
+const providers = buildProviders(env, { uploadsDir: UPLOADS_DIR })
 export const app = createApp({
   users: createPrismaUserRepository(prisma),
   profiles: createPrismaProfileRepository(prisma),
   tokens: createPrismaTokenRepository(prisma),
-  mail: pickMailProvider(),
-  oauth: createGoogleProvider(env.GOOGLE_CLIENT_ID),
+  mail: providers.mail,
+  oauth: providers.oauth,
   categories: createPrismaCategoryRepository(prisma),
   listings: createPrismaListingRepository(prisma),
-  storage: pickStorageProvider(),
+  storage: providers.storage,
   admin: {
     auditLogs: createPrismaAuditLogRepository(prisma),
     users: createPrismaAdminUsersRepository(prisma),
@@ -300,7 +294,7 @@ export const app = createApp({
   uploadsDir: UPLOADS_DIR,
   orders: createPrismaOrderRepository(prisma),
   payments: createPrismaPaymentRepository(prisma),
-  gateway: buildPaymentGateway(),
+  gateway: providers.gateway,
   db: prisma,
 })
 export default app // a Vercel usa este export; nada aqui chama listen

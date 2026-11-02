@@ -88,15 +88,39 @@ export function createPrismaAdminUsersRepository(
     // RN-ADM-02: só alunos ativos e suspensos; contagem de anúncios na mesma consulta (sem N+1).
     async listStudents(filters, pagination) {
       const search = filters.search ? escapeLike(filters.search) : undefined
+      // RN-ADM-03: online = conta ativa com acesso dentro da janela (inclusivo); offline = o complemento
+      // (suspensa, sem acesso ou acesso antigo). Escrito sem NOT para tratar o NULL de ultimo_acesso.
+      const { presence, onlineSince } = filters
+      const presenceWhere: Prisma.UserWhereInput[] =
+        onlineSince && presence === 'online'
+          ? [{ accountStatus: 'ativa', lastSeen: { gte: onlineSince } }]
+          : onlineSince && presence === 'offline'
+            ? [
+                {
+                  OR: [
+                    { accountStatus: 'suspensa' },
+                    { lastSeen: null },
+                    { lastSeen: { lt: onlineSince } },
+                  ],
+                },
+              ]
+            : []
       const where: Prisma.UserWhereInput = {
         role: 'aluno',
         accountStatus: { in: ['ativa', 'suspensa'] },
-        ...(search && {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { email: { contains: search, mode: 'insensitive' } },
-          ],
-        }),
+        AND: [
+          ...(search
+            ? [
+                {
+                  OR: [
+                    { name: { contains: search, mode: 'insensitive' as const } },
+                    { email: { contains: search, mode: 'insensitive' as const } },
+                  ],
+                },
+              ]
+            : []),
+          ...presenceWhere,
+        ],
       }
       const [rows, total] = await db.$transaction([
         db.user.findMany({

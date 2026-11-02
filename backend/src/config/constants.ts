@@ -9,6 +9,7 @@ export const LIMITS = {
 
 export const BCRYPT_COST = 12
 export const PASSWORD_RESET_MINUTES = 30 // RN-ACE-10
+export const EMAIL_CHANGE_MINUTES = 30 // validade do link de troca de e-mail (RN-PER-02; prazo não definido nas Regras, por analogia à RN-ACE-10)
 export const LAST_SEEN_THROTTLE_MS = 60_000
 
 // Maior valor de uma chave int4 do PostgreSQL: id maior que isso estoura a consulta (500); vira 400.

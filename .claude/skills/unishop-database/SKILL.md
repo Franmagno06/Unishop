@@ -3,7 +3,7 @@ name: unishop-database
 description: Banco de dados do Unishop (PostgreSQL no Supabase, usado só como banco; Prisma): as 8 tabelas em português (usuario, categoria, anuncio, imagem_anuncio, pedido, pagamento, log_admin, token_usuario), colunas, constraints, valores de estado, mapeamento banco × backend com `@map`, migração `0_init` mais migração manual, seed, view `anuncio_visivel`, papéis do banco, consultas críticas, estoque atômico, liquidação de pagamento, anonimização (LGPD) e backup. Use SEMPRE que o usuário falar de schema, `schema.prisma`, migração, tabela, coluna, índice, CHECK, seed, consulta SQL, repository, estoque, exclusão ou anonimização de dados, papéis `unishop_*` ou DER/MER do Unishop, mesmo que não diga "banco de dados" ou "Unishop".
 metadata:
   author: unishop-team
-  version: "0.2.2"
+  version: "0.2.3"
 ---
 
 # Banco de dados do Unishop
@@ -70,3 +70,9 @@ Admin não compra, dono não compra o próprio anúncio, mínimo de 1 imagem, ad
 - Regras que o banco apoia, limites de campos → `unishop-rules`. Repository, service e rotas → `unishop-backend`.
 - Supabase: conexões pooler × direta, ambientes por projeto, backup e produção → `unishop-deploy`; boas práticas de SQL → `supabase-postgres-best-practices`.
 - SQL, índices, locks e planos de execução → `supabase-postgres-best-practices`.
+
+## Atualização de 01/11/2026 (Banco v0.2.2)
+
+- Filtro de presença do admin: online = `status_conta = 'ativa' AND ultimo_acesso >= now() - 5 min`; offline = suspensa OU `ultimo_acesso IS NULL` OU antigo (NOT (... >= x) perderia o NULL). Usa `ix_usuario_ultimo_acesso`; sem migração.
+- Confirmar troca de e-mail: uma transação (`UPDATE token_usuario ... WHERE usado_em IS NULL AND expira_em > agora`, `UPDATE usuario`; P2002 do `uq_usuario_email_lower` desfaz) e marca como usados todos os tokens pendentes do usuário.
+- Ordem de travas auditada: usuario → pedido → anuncio (sem ciclo); `FOR UPDATE` nos admins ativos medido com 5 mil usuários em ~0,4 ms (sem índice novo). O backend não envia e-mail para `@removido.invalid`.

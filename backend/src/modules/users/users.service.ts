@@ -1,17 +1,31 @@
-import type { UserRecord, UserRepository } from '../auth/auth.types'
+import { EMAIL_CHANGE_MINUTES } from '../../config/constants'
+import type { TokenRepository, UserRecord, UserRepository } from '../auth/auth.types'
 import { AppError, hasOpenPaidOrders } from '../../shared/errors/app-error'
+import type { MailProvider } from '../../shared/providers/mail/mail.provider'
+import { generateToken, hashToken } from '../../shared/utils/hash'
 import type { StorageProvider } from '../../shared/providers/storage/storage.provider'
 import type { MyProfile, ProfilePatch, ProfileRepository } from './users.types'
 
 export type UsersDeps = {
   users: UserRepository
   profiles: ProfileRepository
-  config: { allowedEmailDomain: string }
+  tokens: TokenRepository
+  mail: MailProvider
+  config: { allowedEmailDomain: string; frontendUrl: string }
+  now?: () => Date
   /** Sem storage a rota de foto não é montada. */
   storage?: StorageProvider
 }
 
-export function createUsersService({ users, profiles, config, storage }: UsersDeps) {
+export function createUsersService({
+  users,
+  profiles,
+  tokens,
+  mail,
+  config,
+  storage,
+  now = () => new Date(),
+}: UsersDeps) {
   async function load(userId: number): Promise<UserRecord> {
     const user = await users.findById(userId)
     if (!user) throw new AppError(401, 'UNAUTHENTICATED', 'Faça login para continuar.')
@@ -33,8 +47,8 @@ export function createUsersService({ users, profiles, config, storage }: UsersDe
     return { user: toProfile(await load(userId)) }
   }
 
-  // RN-PER-01, 03, 07. O e-mail troca direto (sem link de confirmação, decisão do gestor para esta
-  // fase; a RN-PER-02 pede confirmação no novo endereço), mas segue @edu.unifor.br e único (RN-ACE-02, 03).
+  // RN-PER-01, 03, 07. O e-mail não troca por aqui (RN-PER-02): a tela manda o e-mail atual junto
+  // com os demais campos, então o igual é ignorado e o diferente é recusado (D2).
   async function updateProfile(
     userId: number,
     input: {
@@ -45,30 +59,98 @@ export function createUsersService({ users, profiles, config, storage }: UsersDe
     },
   ) {
     const user = await load(userId)
+    if (
+      input.email !== undefined &&
+      input.email.trim().toLowerCase() !== user.email.toLowerCase()
+    ) {
+      throw new AppError(
+        400,
+        'VALIDATION_ERROR',
+        'Para trocar o e-mail, use a confirmação por link.',
+        [{ field: 'email', message: 'Para trocar o e-mail, use a confirmação por link.' }],
+      )
+    }
     const patch: ProfilePatch = {}
     if (input.name !== undefined) patch.name = input.name
     if (input.course !== undefined) patch.course = input.course || null
     if (input.whatsapp !== undefined) patch.whatsapp = input.whatsapp || null
 
-    if (input.email !== undefined) {
-      const email = input.email.trim().toLowerCase()
-      if (email !== user.email.toLowerCase()) {
-        if (!email.endsWith(`@${config.allowedEmailDomain}`)) {
-          throw new AppError(
-            403,
-            'EMAIL_DOMAIN_NOT_ALLOWED',
-            `Use seu e-mail institucional @${config.allowedEmailDomain}.`,
-          )
-        }
-        const taken = await users.findByEmail(email)
-        if (taken && taken.id !== userId) {
-          throw new AppError(409, 'EMAIL_ALREADY_REGISTERED', 'Este e-mail já está cadastrado.')
-        }
-        patch.email = email
-      }
+    if (Object.keys(patch).length > 0) await profiles.updateProfile(userId, patch)
+    return me(userId)
+  }
+
+  // RN-PER-02, RF013.4: o novo endereço (@edu.unifor.br, único) recebe um link de `EMAIL_CHANGE_MINUTES`
+  // minutos e uso único; só o hash do token vai ao banco. O envio usa await (e-mail de segurança) e
+  // falha vira 502 sem detalhe. Vale para aluno e admin (D6); o JWT não leva e-mail, então as
+  // sessões continuam (D5).
+  async function requestEmailChange(userId: number, rawEmail: string) {
+    const user = await load(userId)
+    const email = rawEmail.trim().toLowerCase()
+    if (!email.endsWith(`@${config.allowedEmailDomain}`)) {
+      throw new AppError(
+        403,
+        'EMAIL_DOMAIN_NOT_ALLOWED',
+        `Use seu e-mail institucional @${config.allowedEmailDomain}.`,
+      )
+    }
+    if (email === user.email.toLowerCase()) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Este já é o seu e-mail.')
+    }
+    if (await users.findByEmail(email)) {
+      throw new AppError(409, 'EMAIL_ALREADY_REGISTERED', 'Este e-mail já está cadastrado.')
     }
 
-    if (Object.keys(patch).length > 0) await profiles.updateProfile(userId, patch)
+    const at = now()
+    const token = generateToken()
+    await tokens.invalidatePending(userId, 'troca_email', at)
+    await tokens.create({
+      userId,
+      type: 'troca_email',
+      tokenHash: hashToken(token),
+      expiresAt: new Date(at.getTime() + EMAIL_CHANGE_MINUTES * 60_000),
+      newEmail: email,
+    })
+    try {
+      await mail.sendEmailChange({
+        to: email,
+        name: user.name,
+        link: `${config.frontendUrl}/confirmar-troca-email/${token}`,
+        expiresInMinutes: EMAIL_CHANGE_MINUTES,
+      })
+    } catch {
+      throw new AppError(
+        502,
+        'EXTERNAL_SERVICE_ERROR',
+        'Não foi possível enviar o e-mail agora. Tente novamente.',
+      )
+    }
+    return { pendingEmail: email, expiresInMinutes: EMAIL_CHANGE_MINUTES }
+  }
+
+  // RN-PER-02: só o dono do link confirma (D4). Ausente, usado, de outro tipo ou de outro usuário
+  // dá o mesmo TOKEN_INVALID. O consumo do token e a troca são uma transação só (profiles).
+  async function confirmEmailChange(userId: number, token: string) {
+    await load(userId)
+    const at = now()
+    const record = await tokens.findByHash(hashToken(token), 'troca_email')
+    if (!record || record.usedAt || record.userId !== userId || !record.newEmail) {
+      throw new AppError(400, 'TOKEN_INVALID', 'Link inválido.')
+    }
+    if (record.expiresAt <= at) {
+      throw new AppError(400, 'TOKEN_EXPIRED', 'Link expirado. Peça outro.')
+    }
+    if (!record.newEmail.endsWith(`@${config.allowedEmailDomain}`)) {
+      throw new AppError(
+        403,
+        'EMAIL_DOMAIN_NOT_ALLOWED',
+        `Use seu e-mail institucional @${config.allowedEmailDomain}.`,
+      )
+    }
+    const result = await profiles.confirmEmailChange(record.id, userId, record.newEmail, at)
+    if (result === 'invalid') throw new AppError(400, 'TOKEN_INVALID', 'Link inválido.')
+    if (result === 'taken') {
+      throw new AppError(409, 'EMAIL_ALREADY_REGISTERED', 'Este e-mail já está cadastrado.')
+    }
     return me(userId)
   }
 
@@ -107,6 +189,6 @@ export function createUsersService({ users, profiles, config, storage }: UsersDe
       throw new AppError(401, 'UNAUTHENTICATED', 'Faça login para continuar.')
   }
 
-  return { me, updateProfile, setAvatar, deleteAccount }
+  return { me, updateProfile, requestEmailChange, confirmEmailChange, setAvatar, deleteAccount }
 }
 export type UsersService = ReturnType<typeof createUsersService>

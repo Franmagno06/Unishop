@@ -10,10 +10,10 @@ import type { AdminUsersService } from './admin-users.service'
 export function createAdminUsersController(service: AdminUsersService) {
   return {
     async list(req: Request, res: Response) {
-      const { page, limit, search } = req.validatedQuery as z.output<
+      const { page, limit, search, presence } = req.validatedQuery as z.output<
         typeof listAdminUsersQuerySchema
       >
-      res.json(await service.list({ search }, { page, limit }))
+      res.json(await service.list({ search, presence }, { page, limit }))
     },
     async stats(_req: Request, res: Response) {
       res.json({ data: await service.stats() })

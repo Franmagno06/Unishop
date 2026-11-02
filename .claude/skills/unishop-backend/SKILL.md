@@ -3,7 +3,7 @@ name: unishop-backend
 description: Regras e arquitetura do backend do Unishop (Node.js + Express + TypeScript, Prisma, PostgreSQL, JWT). Use SEMPRE que o usuário criar, editar ou revisar rotas, controllers, services, repositories, middlewares, providers, jobs, autenticação (e-mail e senha, Google, troca de senha), pagamentos (cartão, Pix, webhook, estorno), estoque, pedidos, anúncios, imagens, área admin, logs de auditoria ou erros da API do Unishop, mesmo que não diga "backend" ou "Unishop" explicitamente.
 metadata:
   author: unishop-team
-  version: "0.3.3"
+  version: "0.3.4"
 ---
 
 # Backend do Unishop
@@ -105,3 +105,11 @@ Casos de teste obrigatórios: duas compras simultâneas da última unidade (só 
 - Schema, índice, transação, lock ou query lenta no PostgreSQL → `supabase-postgres-best-practices` (sem adotar nada específico do Supabase: o banco é um PostgreSQL hospedado lá, acessado só pelo Prisma). Conexões: `DATABASE_URL` no Transaction pooler (6543, `?pgbouncer=true`) e `DATABASE_URL_UNPOOLED` no Session pooler ou direta (5432) para migração; veja `unishop-deploy`.
 - Revisão final de código com `code-review` / `security-review` antes do PR.
 - Para criar ou melhorar skills do projeto → `skill-creator`.
+
+## Atualização de 01/11/2026 (backend finalizado)
+
+- **Troca de e-mail (RN-PER-02):** `POST /users/me/email-change` (202) e `/confirm` (200); token `troca_email` de 30 min e uso único (só o hash no banco), vinculado ao usuário logado; consumo do token e troca em uma transação; `PATCH /users/me` aceita `email` só se igual ao atual (400 `VALIDATION_ERROR` se diferente). Aluno e admin. A confirmação invalida todos os outros links pendentes do usuário.
+- **Admin:** `GET /admin/users?presence=all|online|offline` (online = ativa e acesso nos últimos 5 min, inclusivo; offline = o complemento, com NULL).
+- **E-mail:** e-mail ao vendedor na exclusão pelo admin roda em segundo plano (`runInBackground`); estorno continua com `await`. Modelos em `shared/providers/mail/templates.ts` com HTML escapado; `withDeliveryGuard` descarta `@removido.invalid`.
+- **Providers:** `shared/providers/index.ts` (`buildProviders`); o `env.ts` (`parseEnv`) recusa e-mail console, disco local, `FRONTEND_URL` sem https e `CRON_SECRET` curta em preview e production.
+- Cobertura: `npm run test:coverage` (80% nos services de auth, payments, listings e orders).

@@ -67,6 +67,8 @@ export type TokenRecord = {
   type: TokenType
   expiresAt: Date
   usedAt: Date | null
+  /** Só no tipo `troca_email`: o endereço que o link confirma (RN-PER-02). */
+  newEmail: string | null
 }
 
 export interface TokenRepository {
@@ -75,6 +77,7 @@ export interface TokenRepository {
     type: TokenType
     tokenHash: string
     expiresAt: Date
+    newEmail?: string
   }): Promise<void>
   findByHash(tokenHash: string, type: TokenType): Promise<TokenRecord | null>
   /** Consome o link de forma atômica: `false` se outra requisição já o usou (RN-ACE-10). */

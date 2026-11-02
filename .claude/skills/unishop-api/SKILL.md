@@ -3,7 +3,7 @@ name: unishop-api
 description: APIs externas e segurança do Unishop (Google Identity, Mercado Pago, Resend/Mailtrap, Cloudinary, WhatsApp wa.me, Turnstile, Supabase (só o banco), Sentry, UptimeRobot, GitHub Actions), modelo "backend-cofre", providers, webhook assinado, segredos e variáveis de ambiente. Use SEMPRE que o usuário integrar, trocar, testar ou revisar qualquer serviço externo, mexer em `shared/providers`, `config/env.ts`, `.env`, chaves, tokens, webhook, assinatura HMAC, idempotência, estorno, timeout/retry, drivers mock, travas de produção, custos e limites gratuitos ou ADRs, mesmo que não diga "API externa" ou "Unishop".
 metadata:
   author: unishop-team
-  version: "0.3.3"
+  version: "0.3.4"
 ---
 
 # APIs externas e segurança do Unishop
@@ -83,3 +83,9 @@ Google 5 s · Mercado Pago cobrar 15 s (retry só com a mesma chave de idempotê
 - Detalhes e armadilhas da API do Resend (idempotência, webhooks, domínios) → `resend`; entregabilidade e SPF/DKIM/DMARC → `email-best-practices`. Siga a interface `MailProvider` do projeto; ignore o que for de caixa de entrada para agentes, marketing ou contatos, que o Unishop não usa.
 - Banco Supabase, projetos por ambiente e conexões → `unishop-deploy` e `unishop-database`.
 - Antes do PR, em mudança de pagamento ou segredo → `/security-review`.
+
+## Atualização de 01/11/2026 (providers)
+
+- Decisão do gestor: sem Mailtrap, Resend, domínio próprio nem Cloudinary nesta fase. `MAIL_DRIVER=console` e `STORAGE_DRIVER=local` valem só em development e test; ADR-004 e ADR-009 ficam reabertos para o deploy (SMTP de conta Gmail, modo demonstração ou Resend; Vercel Blob para imagens): **não definido**.
+- `buildProviders(env, { uploadsDir })` (`shared/providers/index.ts`) escolhe mail, storage, oauth e gateway; o `parseEnv` do `config/env.ts` aplica as travas por `APP_ENV` (e-mail console, disco local, `FRONTEND_URL` https sem `*`, `CRON_SECRET` com 32+ caracteres). Mensagens citam só o nome da variável.
+- E-mail passa por `withDeliveryGuard` (nunca envia a `@removido.invalid`); modelos escapam o HTML.
