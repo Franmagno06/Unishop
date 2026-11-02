@@ -67,6 +67,12 @@ export const userRoutes: RouteObject[] = [
             }),
           },
           {
+            path: 'confirmar-troca-email/:token',
+            lazy: async () => ({
+              Component: (await import('./profile/pages/ConfirmEmailChangePage')).ConfirmEmailChangePage,
+            }),
+          },
+          {
             path: 'trocar-senha',
             lazy: async () => ({
               Component: (await import('./profile/pages/ChangePasswordPage')).ChangePasswordPage,

@@ -11,8 +11,9 @@ import { ProfilePage } from './ProfilePage'
 // "Meus anúncios" usa os dados de exemplo; o perfil (GET, PATCH e DELETE de /users/me) usa a API simulada abaixo.
 vi.mock('../../listings/services/my-listings.service', () => import('../../listings/services/my-listings.mock'))
 
-// API simulada: GET, PATCH e DELETE de /users/me (backend.md §9), com o estado do aluno em memória.
-type Call = { method: string; body: Record<string, unknown> | undefined }
+// API simulada: GET, PATCH e DELETE de /users/me e o pedido de troca de e-mail (backend.md §9), com o
+// estado do aluno em memória. Como o servidor, o PATCH recusa um e-mail diferente do atual (RN-PER-02).
+type Call = { url: string; method: string; body: Record<string, unknown> | undefined }
 function stubApi() {
   let user = {
     id: 1,
@@ -32,14 +33,20 @@ function stubApi() {
 
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (_url: string, init?: RequestInit) => {
+    vi.fn(async (url: string, init?: RequestInit) => {
       const method = init?.method ?? 'GET'
       const body = init?.body ? (JSON.parse(String(init.body)) as Call['body']) : undefined
-      calls.push({ method, body })
+      calls.push({ url: String(url), method, body })
       if (method === 'GET') return reply(200, { data: { user } })
       if (method === 'PATCH') {
+        if (body?.email !== user.email) {
+          return reply(400, { error: { code: 'VALIDATION_ERROR', message: 'O e-mail só muda por link.' } })
+        }
         user = { ...user, ...body }
         return reply(200, { data: { user } })
+      }
+      if (method === 'POST' && String(url).endsWith('/users/me/email-change')) {
+        return reply(202, { data: { pendingEmail: body?.email, expiresInMinutes: 30 } })
       }
       return reply(204)
     }),
@@ -129,7 +136,7 @@ describe('Editar perfil (05b)', () => {
     expect(screen.getByText('Perfil atualizado')).toBeInTheDocument()
   })
 
-  it('o e-mail novo é salvo direto e já aparece no perfil', async () => {
+  it('RN-PER-02: o e-mail novo não troca na hora: o PATCH leva o atual, o link é pedido e o perfil avisa', async () => {
     renderApp('/perfil/editar')
     const user = userEvent.setup()
 
@@ -137,11 +144,13 @@ describe('Editar perfil (05b)', () => {
     await user.type(screen.getByLabelText('E-mail institucional'), 'novo.email@edu.unifor.br')
     await user.click(screen.getByRole('button', { name: 'Salvar' }))
 
-    expect(await screen.findByText('novo.email@edu.unifor.br')).toBeInTheDocument()
+    expect(await screen.findByText(/Enviamos um link de confirmação para novo.email@edu.unifor.br/)).toBeInTheDocument()
     expect(calls.find((call) => call.method === 'PATCH')?.body).toMatchObject({
+      email: 'aluno.teste@edu.unifor.br',
+    })
+    expect(calls.find((call) => call.url.endsWith('/users/me/email-change'))?.body).toEqual({
       email: 'novo.email@edu.unifor.br',
     })
-    expect(screen.queryByText('Confirme o novo e-mail')).not.toBeInTheDocument()
   })
 
   it('recusa e-mail fora do domínio institucional', async () => {

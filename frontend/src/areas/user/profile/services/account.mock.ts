@@ -1,3 +1,4 @@
+import type { ProfileApiUser } from '../../../../shared/lib/current-user'
 import { getToken } from '../../../../shared/lib/session'
 import type { AccountState } from './account.service'
 
@@ -9,6 +10,24 @@ export const mockAccount = {
   async changePassword(): Promise<string> {
     await wait()
     return getToken() ?? 'mock-token'
+  },
+
+  async requestEmailChange(): Promise<void> {
+    await wait()
+  },
+
+  async confirmEmailChange(): Promise<ProfileApiUser> {
+    await wait()
+    return {
+      id: 1,
+      name: 'Aluno Teste',
+      email: 'novo.email@edu.unifor.br',
+      course: null,
+      whatsapp: null,
+      avatarUrl: null,
+      role: 'student',
+      pendingEmail: null,
+    }
   },
 
   async completeProfile(): Promise<AccountState> {
