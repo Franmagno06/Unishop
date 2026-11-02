@@ -1,9 +1,9 @@
 ---
 title: Documentação Técnica — Banco de Dados
 project: Unishop
-version: 0.2.2
-date: 2026-11-01
-changelog: "0.2.2 — filtro de presença do admin (9.4) e guarda do endereço anonimizado (10). 0.2.1 — RLS e papéis testados no unishop-prod e no unishop-dev; SELECT nas sequências para o unishop_backup; migrações testadas em banco vazio; seção 15 revisada contra o código."
+version: 0.2.3
+date: 2026-11-02
+changelog: "0.2.3 — migração 3_motivo_cancelamento aplicada no unishop-prod (02/11/2026); pendência 11 (checksum das migrações × fim de linha). 0.2.2 — filtro de presença do admin (9.4) e guarda do endereço anonimizado (10). 0.2.1 — RLS e papéis testados no unishop-prod e no unishop-dev; SELECT nas sequências para o unishop_backup; migrações testadas em banco vazio; seção 15 revisada contra o código."
 status: vigente com pendências
 owners: Ana Clara (banco de dados)
 reviewers: Felipe Bessa (backend), Pedro Cândido (API), Francisco Magno (integração front-back)
@@ -1189,14 +1189,16 @@ Aplicada no `unishop-dev` e no PostgreSQL 17 do Docker em 01/11/2026 (teste `RN-
 | 3 | Busca por texto no nome do anúncio | **Feita:** `contains` insensível a maiúsculas (nome e descrição) no `listings.repository.ts`. `pg_trgm` só se ficar lento |
 | 5 | ~~Testar a migração `0_init` + manual em um banco vazio~~ **Resolvida:** as três migrações (`0_init`, `1_regras_manuais`, `2_rls_politicas`) foram aplicadas em banco vazio no `unishop-dev` (01/11/2026) e no PostgreSQL 17 do Docker (`npm run test:db`, 87 testes verdes) | — |
 | 6 | **Valores de estado em português no banco × inglês na API:** o `schema.prisma` usa `String` (com `CHECK` na migração manual) e o backend converte nos repositories; a seção 7 prevê enum do Prisma com `@map` | Decidir com Felipe: manter a conversão nos repositories (e corrigir a seção 7) ou migrar para enums com `@map` |
-| 7 | ~~**`pedido.motivo_cancelamento`** (P9)~~ **Feita em 01/11/2026:** migração `3_motivo_cancelamento` (coluna `varchar(30)` anulável e `ck_pedido_motivo`), aplicada no `unishop-dev` e no Docker; **falta aplicar no `unishop-prod`** e a Ana Clara confirmar os três nomes | Aplicar no prod com `migrate deploy` antes de a Etapa 6 gravar o motivo |
+| 7 | ~~**`pedido.motivo_cancelamento`** (P9)~~ **Feita em 01/11/2026:** migração `3_motivo_cancelamento` (coluna `varchar(30)` anulável e `ck_pedido_motivo`), aplicada no `unishop-dev`, no Docker e, em **02/11/2026, no `unishop-prod`** (`prisma migrate deploy`, por decisão do Francisco; coluna, `ck_pedido_motivo` e privilégios de `unishop_app` e `unishop_backup` conferidos) | Se a Ana Clara pedir outros nomes, a troca entra numa migração nova (não editar a `3_motivo_cancelamento`) |
 | 8 | `unishop_backup` precisa de `SELECT` também nas sequências (o `pg_dump` lê o `last_value`; sem isso falha com `permission denied for sequence`) e do `--enable-row-security` | **Feito** no bloco de papéis (seção 14) e aplicado no `unishop-dev`; conferir a mesma permissão ao criar o próximo ambiente |
 | 9 | O comentário da `1_regras_manuais` diz "PostgreSQL 18", mas o banco é o 17 | Não editar a migração já aplicada (o Prisma confere o checksum); corrigir só numa migração nova |
 | 10 | O MER (`mer_unishop.drawio`) segue com as divergências da seção 12 | Decidido por Pedro em 01/11/2026: não atualizar o MER agora; o banco vale mais que o MER e a seção 12 é o registro das divergências |
+| 11 | **Checksum das migrações × fim de linha (conferido em 02/11/2026).** O Prisma grava o SHA-256 do arquivo como ele estava no disco. No `unishop-prod`, `0_init`, `1_regras_manuais` e `3_motivo_cancelamento` foram registradas a partir de cópias com CRLF (Windows, `core.autocrlf=true`) e a `2_rls_politicas` a partir de uma cópia com LF (a do Git). O `migrate deploy` só aplica o que falta e não é afetado; o `migrate dev` acusaria as diferenças e pediria `reset` | Nunca rodar `migrate dev`, `migrate reset` ou `migrate resolve` contra o `unishop-prod`. Sugestão (não decidida): `.gitattributes` com `backend/prisma/migrations/** text eol=lf`, para todas as máquinas e a Vercel lerem o mesmo arquivo |
 
 ### Próximos passos
 
 1. ~~Gerar o `schema.prisma` pelo mapeamento da seção 7 e a migração `0_init`~~ **Feito.**
 2. ~~Rodar a migração manual (seção 14) em um banco de desenvolvimento e conferir com os testes de integridade~~ **Feito** (`npm run test:db`).
 3. ~~Escrever o seed (categorias e conta admin)~~ **Feito** (`prisma/seed.ts`; rodado no `unishop-dev`).
-4. ~~Criar a migração `3_motivo_cancelamento` (pendência 7)~~ **Feito** (falta aplicar no `unishop-prod`).
+4. ~~Criar a migração `3_motivo_cancelamento` (pendência 7)~~ **Feito** (aplicada no `unishop-prod` em 02/11/2026).
+5. Rodar o seed do admin no `unishop-prod` (hoje: 6 categorias e nenhum usuário, conferido em 02/11/2026), digitando a senha no terminal (Deploy §7.3).

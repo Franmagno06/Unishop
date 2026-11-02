@@ -1,9 +1,9 @@
 ---
 title: Documentação Técnica — Deploy
 project: Unishop
-version: 0.3.1
-date: 2026-11-01
-changelog: "0.3.1 — Prisma 7 (sem directUrl no schema); papéis e RLS resolvidos no prod e no dev; pendências novas (vercel.json, workflows, seed do admin em produção)."
+version: 0.3.2
+date: 2026-11-02
+changelog: "0.3.2 — revisão contra o código e o banco: migração 3 no prod, pendências 17 (resolvida), 18 (.env local) e 19 (pool); estado do build (sem prisma generate). 0.3.1 — Prisma 7 (sem directUrl no schema); papéis e RLS resolvidos no prod e no dev; pendências novas (vercel.json, workflows, seed do admin em produção)."
 status: vigente; alinhado ao conjunto de documentos v0.4/v0.3 de 16/10/2026; pendências abertas na seção 17.3
 owners: Francisco Magno (gestão e integração front-back)
 related: docs/backend/, docs/frontend/, docs/api/, docs/banco-de-dados/, docs/regras-de-negocio/
@@ -13,7 +13,7 @@ language: pt-BR (código e pastas em inglês; documentação em português)
 
 # Documentação Técnica — Deploy (Vercel + Supabase)
 
-- Versão 0.3.1 · 30/10/2026 (banco trocado de Neon para Supabase)
+- Versão 0.3.2 · 02/11/2026 (revisão contra o código e o banco; a 0.3.1, de 30/10/2026, trocou o Neon pelo Supabase)
 - Base: Regras de Negócio v0.4, Banco de Dados v0.2, Backend v0.3, API v0.3, Frontend v0.4 e requisitos RNF001–RNF016
 - Elaboração: Francisco Magno (gestão e integração front-back)
 - Documentos relacionados: Backend (docs/backend/), Frontend (docs/frontend/), API e segurança das APIs externas (docs/api/api.md), Banco de Dados (docs/banco-de-dados/banco-de-dados.md)
@@ -42,6 +42,7 @@ language: pt-BR (código e pastas em inglês; documentação em português)
 |---|---|---|
 | 0.1 | 15/10/2026 | Primeira versão, como alternativa a um deploy em servidor próprio (Oracle + Docker). |
 | 0.2 | 15/10/2026 | Vira o guia oficial e autossuficiente. Gateway fixado no Mercado Pago (ADR-002). Acrescenta: limites do plano Hobby (conta única de dono); `waitUntil` para tarefas depois da resposta; upload de imagens pela API, uma por requisição, até 4 MB; tabela dos jobs reais e agendador externo; backup diário automatizado; correção da pendência do bloqueio de login (já fica no banco); avisos para Windows; dev, testes e trava de teste dentro deste guia. |
+| 0.3.2 | 02/11/2026 | Revisão contra o código e o banco: migração `3_motivo_cancelamento` aplicada no `unishop-prod`; pendência 17 resolvida (`/health/db` existe); pendências 18 (`.env` local apontando para o prod como `postgres`) e 19 (tamanho do pool); estado do build na seção 5.4 (falta `prisma generate`). |
 | 0.3.1 | 30/10/2026 | **Banco trocado de Neon para Supabase (ADR-005 revisado).** Supabase gratuito (conferido em 30/10/2026): 500 MB por projeto, 2 projetos ativos, pausa após 1 semana sem atividade, **sem branching, sem backup automático e sem restauração a ponto no tempo**. Ambientes: um projeto Supabase para produção e outro para desenvolvimento e preview (sem branch por preview). Conexões: Transaction pooler (6543) para a API e Session pooler ou direta (5432) para migração e backup. Backup passa a depender só do workflow do GitHub Actions. Versão do PostgreSQL a conferir (pendência 13). |
 | 0.3 | 16/10/2026 | Alinhado ao conjunto v0.4/v0.3. **Neon (substituído em 30/10/2026):** limites corrigidos (1 GB de armazenamento por projeto, 100 CU-h por mês, 10 branches, restauração de 6 h, dorme em 5 min, **sem lista de IPs no plano gratuito**), PostgreSQL 18, três papéis (`unishop_migrator`, `unishop_app`, `unishop_backup`) e previews derivados do branch de desenvolvimento. **Backup:** o workflow usa o segredo `DATABASE_URL_BACKUP` (somente leitura), separado do usado nas migrações, e `pg_dump` 18. **Jobs:** a cada 30 minutos (cabe nas CU-horas do Neon, hoje sem efeito no Supabase). **Saúde:** `/health` leve e `/health/db`. **Código:** comparação do `CRON_SECRET` com `Secret` e `timingSafeEqual` (e testes de `Bearer undefined`), `env.frontendUrls`, `env.appEnv`. **Variáveis:** `EMAIL_VERIFICATION_REQUIRED`. **Metas:** 500 usuários e 99% passam a metas de produto, fora do MVP (§14.3). **Limite de 4 MB** confirmado pelo grupo. **Pendências** renumeradas na seção 17.3 (os números 1, 3 e 7 não mudaram, pois a API os cita). |
 
@@ -399,7 +400,9 @@ export default defineConfig({
 })
 ```
 
-A API em execução usa a `DATABASE_URL` (com pooler) pelo adapter `@prisma/adapter-pg`, em `src/shared/database/prisma.ts`.
+A API em execução usa a `DATABASE_URL` (com pooler) pelo adapter `@prisma/adapter-pg`, em `src/shared/database/prisma.ts`. O tamanho do pool vem do `max` passado ao adapter, não da URL (pendência 19).
+
+> **Estado em 02/11/2026:** o `scripts/vercel-build.sh` ainda não existe, e o `package.json` do backend não roda `prisma generate` (o build é só `tsc`). Como `src/generated/` está no `.gitignore`, o build na Vercel falha sem esse passo. Criar na Etapa 11.
 
 Em Preview, a `DATABASE_URL` aponta para o projeto `unishop-dev`, então a migração roda ali, e não em produção. Como todos os previews dividem esse banco, dois PRs com migrações diferentes podem se atrapalhar: aplique um de cada vez ou recrie o banco de desenvolvimento (`prisma migrate reset`, só nele). O build usa o papel `unishop_migrator` (via `DATABASE_URL_UNPOOLED`); a API em execução usa o papel `unishop_app`, sem permissão de alterar a estrutura (seção 7.1). Para o Transaction pooler do Supabase, acrescente à `DATABASE_URL` os parâmetros `?pgbouncer=true&connection_limit=1`.
 
@@ -995,7 +998,9 @@ A decisão "uma única instância da API" do Backend §14 **deixa de valer** na 
 | 14 | **RLS ligada × papéis `unishop_*`:** a RLS está ligada nas 8 tabelas e `unishop_app` e `unishop_backup` (não donos) ficam sem acesso se não houver política; o `pg_dump` sairia vazio sem erro | Decidido por Francisco em 30/10/2026: política `app_all` para `unishop_app` e `backup_select` para `unishop_backup` em cada tabela, nenhuma para `anon` e `authenticated` (migração `2_rls_politicas`). **Aplicada em 31/10/2026** no projeto `UNISHOP DB`: papéis criados, `unishop_migrator` dono das tabelas e da view, políticas `app_all` e `backup_select` nas 8 tabelas (na `_prisma_migrations` só `backup_select`), `anon` e `authenticated` sem privilégio, Security Advisor sem alertas, migração registrada. O passo 6 da 7.5 (login de cada papel pelo pooler e `pg_dump` do `unishop_backup` com contagem de linhas) passou no prod (31/10/2026) e no `unishop-dev` (01/11/2026, migrações em banco vazio, seed e `unishop_backup` com `SELECT` nas sequências). O `backend/.env` do prod já usa `unishop_app` (6543) e `unishop_migrator` (5432), e o `unishop_backup` fica no `.env.backup` (conferido em 01/11/2026): pendência concluída |
 | 15 | **Nada publicado ainda:** não há `vercel.json` (`rewrite` do React Router, `buildCommand`), nem projetos Vercel apontados para o repositório, nem workflows em `.github/workflows/` (testes e backup diário) | Criar na Etapa 11 do `roteiro-backend.md`; o workflow de backup deve usar `pg_dump` com `--enable-row-security` e a URL do `unishop_backup` (Session pooler, sem os parâmetros do Prisma) |
 | 16 | **Seed do admin em produção:** o `unishop-prod` tem as 6 categorias e **nenhum admin** (o seed do admin rodou só no `unishop-dev`); o `backend/.env` do prod guarda `ADMIN_EMAIL` e `ADMIN_PASSWORD` | Rodar o seed no prod só quando o painel admin estiver pronto, digitando a senha no terminal e apagando as duas variáveis do `.env` depois |
-| 17 | **`GET /health/db` não existe** e o UptimeRobot e o aviso de pausa do Supabase dependem dele | Criar na Etapa 1 do `roteiro-backend.md` |
+| 17 | ~~**`GET /health/db` não existe**~~ **Resolvida:** a rota existe em `src/app.ts` (`SELECT 1`, 503 se o banco cair) | — |
+| 18 | **`backend/.env` local aponta para o `unishop-prod` como `postgres` (conferido em 02/11/2026).** Depois da conferência de 01/11 (pendência 14), o arquivo ganhou um segundo `DATABASE_URL` (Transaction pooler do `unishop-prod`, usuário `postgres`, sem `sslmode`) numa linha que começa com espaço em vez de `#`, então **não está comentada** e o dotenv usa esse valor. Efeito: `npm run dev` grava no banco de produção com o superusuário do Supabase (que ignora a RLS) e sem TLS, enquanto o `DATABASE_URL_UNPOOLED` do mesmo arquivo aponta para o Docker. O `DIRECT_URL` do arquivo não é lido por nenhum código | Comentar (ou apagar) as linhas do Supabase no `.env` de desenvolvimento e manter o local no Docker; usar o `unishop-prod` só com `unishop_app` (6543) e `unishop_migrator` (5432), como manda a seção 7.1, e só nos ambientes da Vercel |
+| 19 | **Tamanho do pool de conexões.** O `connection_limit=1` da URL é parâmetro do motor antigo do Prisma: com o `@prisma/adapter-pg` o driver `pg` o ignora e cada instância da função abre até 10 conexões (padrão do `pg.Pool`). O `pgbouncer=true` também é ignorado (e não é necessário: o adapter usa comandos preparados sem nome, compatíveis com o Transaction pooler) | Passar `max` pequeno ao `PrismaPg` em `src/shared/database/prisma.ts` (sugestão: 3, a decidir) antes do primeiro deploy |
 
 ### 17.4 O que cada pessoa confirma
 
