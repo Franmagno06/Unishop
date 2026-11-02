@@ -69,6 +69,20 @@ export function AdminProductsPage() {
   const products = useProducts({ search: urlSearch, categoryId, page })
   const data = products.data
 
+  // Excluir o último item de uma página deixa a URL além do fim: volta para a última página que existe.
+  useEffect(() => {
+    if (!data || data.items.length > 0 || page <= data.totalPages) return
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (data.totalPages <= 1) next.delete('pagina')
+        else next.set('pagina', String(data.totalPages))
+        return next
+      },
+      { replace: true },
+    )
+  }, [data, page, setParams])
+
   return (
     <>
       <AdminPageHeading title="Produtos" subtitle="Todos os produtos anunciados na plataforma." />
