@@ -5,7 +5,10 @@ import { MOCK_MODE } from '../../../../shared/lib/mock-mode'
 // Conta e sessão do aluno logado (backend.md §9): completar cadastro, trocar senha e trocar e-mail.
 // Em modo de demonstração (MOCK_MODE) as chamadas vão para `account.mock.ts`; o `import.meta.env.DEV`
 // escrito aqui é o que deixa o Vite apagar o código de exemplo do build de produção.
-export type AccountState = { user: ProfileApiUser | null; needsTermsAcceptance: boolean }
+export type AccountState = {
+  user: { id: number; name: string; role: 'student' | 'admin' } | null
+  needsTermsAcceptance: boolean
+}
 
 export type CompleteProfileInput = {
   course: string
@@ -27,6 +30,13 @@ export async function changePassword(input: ChangePasswordInput): Promise<string
     body: input,
   })
   return response.data.token
+}
+
+// RN-ACE-15: conta Google sem senha cria a primeira pela recuperação de senha. O servidor responde 202
+// igual exista ou não a conta (RN-ACE-10); o link vai ao e-mail da conta.
+export async function requestPasswordReset(email: string): Promise<void> {
+  if (import.meta.env.DEV && MOCK_MODE) return (await import('./account.mock')).mockAccount.requestPasswordReset()
+  await api<unknown>('/auth/forgot-password', { method: 'POST', body: { email } })
 }
 
 // RN-PER-02: pede o link de confirmação para o e-mail novo (30 minutos, uso único). O atual segue

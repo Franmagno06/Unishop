@@ -16,6 +16,7 @@ import { formatWhatsapp, onlyDigits } from '../../../../shared/utils/whatsapp'
 import { AvatarUploader } from '../components/AvatarUploader'
 import { DeleteAccountModal } from '../components/DeleteAccountModal'
 import { useUpdateProfile } from '../hooks/use-update-profile'
+import { SavedButFailedError } from '../services/profile.service'
 import { profileSchema, type ProfileValues } from '../schemas/profile.schemas'
 
 // RF013 · RN-PER-01 a 03, 05 e 07 (Figma 05b). Nome, curso, WhatsApp e foto valem ao salvar; o
@@ -99,7 +100,8 @@ function EditProfileForm({ user }: { user: CurrentUser }) {
         <form noValidate onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
           {save.isError ? (
             <ErrorAlert title="Não foi possível salvar">
-              {save.error instanceof ApiError && save.error.status < 500
+              {save.error instanceof SavedButFailedError ||
+              (save.error instanceof ApiError && save.error.status < 500)
                 ? save.error.message
                 : 'Confira sua conexão e tente de novo.'}
             </ErrorAlert>

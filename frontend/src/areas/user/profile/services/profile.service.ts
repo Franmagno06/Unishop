@@ -54,7 +54,11 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
       })
       setCurrentUser(fromApi(photo.data.user))
     } catch (error) {
-      throw savedButFailed(error, 'a foto não foi enviada')
+      const emailPending = input.email.trim().toLowerCase() !== currentEmail.toLowerCase()
+      throw savedButFailed(
+        error,
+        emailPending ? 'a foto não foi enviada e a troca de e-mail não foi pedida' : 'a foto não foi enviada',
+      )
     }
   }
 
@@ -69,10 +73,13 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
 }
 
 // O PATCH já gravou nome, curso e WhatsApp: o erro de um passo seguinte diz isso, para o aluno não
-// achar que perdeu o que digitou.
+// achar que perdeu o que digitou. A tela mostra a mensagem em qualquer status (também no 502 do envio
+// de e-mail), por isso o erro tem tipo próprio.
+export class SavedButFailedError extends ApiError {}
+
 function savedButFailed(error: unknown, what: string): unknown {
   if (!(error instanceof ApiError)) return error
-  return new ApiError(
+  return new SavedButFailedError(
     error.status,
     error.code,
     'Seus dados foram salvos, mas ' + what + ': ' + error.message,

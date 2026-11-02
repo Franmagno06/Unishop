@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router'
 import { ROUTES } from '../../../../shared/constants/routes'
+import { reloadCurrentUser } from '../../../../shared/lib/current-user'
 import { completeProfile } from '../services/account.service'
 
 type LocationState = { from?: string } | null
@@ -19,6 +20,8 @@ export function useCompleteProfile() {
         { queryKey: ['auth', 'me'] },
         (current: object | undefined) => ({ ...current, ...state }),
       )
+      // Com o aceite pendente o GET /users/me respondia 403 (o cabeçalho pode ter gravado erro): busca de novo.
+      void reloadCurrentUser()
       navigate(from ?? ROUTES.categories, { replace: true })
     },
   })

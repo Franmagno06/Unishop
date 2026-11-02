@@ -61,6 +61,9 @@ export function fromApi(user: ProfileApiUser): CurrentUser {
 
 let state: State = initialState()
 let inflight: Promise<void> | null = null
+// Cada gravação direta (setCurrentUser) vale mais que uma resposta de GET /users/me que ainda estava
+// a caminho: a versão muda e a resposta antiga é descartada (ex.: o e-mail confirmado pelo link).
+let version = 0
 const listeners = new Set<() => void>()
 
 function setState(next: State): void {
@@ -81,6 +84,7 @@ export function updateCurrentUser(changes: Partial<CurrentUser>): void {
 }
 
 export function setCurrentUser(user: CurrentUser): void {
+  version += 1
   setState({ user, status: 'loaded' })
 }
 
@@ -101,9 +105,10 @@ export function loadCurrentUser(): Promise<void> {
   if (inflight) return inflight
 
   const forToken = getToken()
+  const forVersion = version
   const request = api<{ data: { user: ProfileApiUser } }>('/users/me')
     .then((response) => {
-      if (getToken() === forToken) setCurrentUser(fromApi(response.data.user))
+      if (getToken() === forToken && version === forVersion) setCurrentUser(fromApi(response.data.user))
     })
     .catch(() => {
       if (getToken() === forToken) setState({ ...state, status: 'error' })

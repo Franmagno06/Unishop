@@ -9,7 +9,7 @@ vi.mock('../../../../shared/lib/api', async (importOriginal) => ({
   api: (...args: unknown[]) => api(...args),
 }))
 
-import { updateProfile } from './profile.service'
+import { SavedButFailedError, updateProfile } from './profile.service'
 
 const apiUser = {
   id: 4, name: 'Ana Souza', email: 'ana@edu.unifor.br', course: null, whatsapp: null, avatarUrl: null,
@@ -89,7 +89,8 @@ describe('updateProfile · RN-PER-02', () => {
     const photo = new File(['png'], 'foto.png', { type: 'image/png' })
     const error = await updateProfile({ ...input, avatarFile: photo, email: 'novo@edu.unifor.br' }).catch((e: unknown) => e)
     expect(error).toMatchObject({ status: 413, code: 'FILE_TOO_LARGE' })
-    expect((error as ApiError).message).toMatch(/dados foram salvos, mas a foto não foi enviada/)
+    expect(error).toBeInstanceOf(SavedButFailedError)
+    expect((error as ApiError).message).toMatch(/dados foram salvos, mas a foto não foi enviada e a troca de e-mail não foi pedida/)
     expect(api).toHaveBeenCalledTimes(2)
   })
 })

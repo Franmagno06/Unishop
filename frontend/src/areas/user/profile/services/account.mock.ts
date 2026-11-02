@@ -12,6 +12,10 @@ export const mockAccount = {
     return getToken() ?? 'mock-token'
   },
 
+  async requestPasswordReset(): Promise<void> {
+    await wait()
+  },
+
   async requestEmailChange(): Promise<void> {
     await wait()
   },

@@ -1,7 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useId } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
-import { Link } from 'react-router'
 import { ErrorAlert, SuccessAlert } from '../../../../shared/components/ui/Alert'
 import { ArrowLink } from '../../../../shared/components/ui/ArrowLink'
 import { Button } from '../../../../shared/components/ui/Button'
@@ -11,11 +10,10 @@ import { PasswordRequirements } from '../../../../shared/components/ui/PasswordR
 import { ROUTES } from '../../../../shared/constants/routes'
 import { useDocumentTitle } from '../../../../shared/hooks/use-document-title'
 import { ApiError } from '../../../../shared/lib/api'
+import { useCurrentUser } from '../../../../shared/hooks/use-current-user'
 import { useChangePassword } from '../hooks/use-change-password'
+import { useRequestPasswordReset } from '../hooks/use-request-password-reset'
 import { changePasswordSchema, type ChangePasswordValues } from '../schemas/profile.schemas'
-
-const inlineLink =
-  'rounded font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
@@ -31,6 +29,8 @@ export function ChangePasswordPage() {
   useDocumentTitle('Trocar senha')
   const requirementsId = useId()
   const save = useChangePassword()
+  const email = useCurrentUser().email
+  const sendLink = useRequestPasswordReset()
   const {
     register,
     handleSubmit,
@@ -75,13 +75,24 @@ export function ChangePasswordPage() {
             {...register('currentPassword')}
           />
           {wrongCurrent ? (
-            <p className="-mt-3 text-[13px] text-text-muted">
-              Entrou com o Google e ainda não criou uma senha?{' '}
-              <Link to={ROUTES.forgotPassword} className={inlineLink}>
-                Esqueci minha senha
-              </Link>{' '}
-              para criar a primeira.
-            </p>
+            <div className="-mt-3 flex flex-col items-start gap-2 text-[13px] text-text-muted">
+              <p>Entrou com o Google e ainda não criou uma senha? Receba um link para criar a primeira.</p>
+              {sendLink.isSuccess ? (
+                <p role="status" className="font-semibold text-whatsapp">
+                  Se a conta existir, enviamos o link para {email}.
+                </p>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={sendLink.isPending || !email}
+                  onClick={() => sendLink.mutate(email)}
+                >
+                  {sendLink.isPending ? 'Enviando…' : 'Enviar link para criar senha'}
+                </Button>
+              )}
+              {sendLink.isError ? <p className="text-danger">Não foi possível enviar o link agora. Tente de novo.</p> : null}
+            </div>
           ) : null}
           <Field
             label="Nova senha"

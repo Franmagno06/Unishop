@@ -8,6 +8,7 @@ import { Checkbox } from '../../../../shared/components/ui/Checkbox'
 import { Field } from '../../../../shared/components/ui/Field'
 import { ROUTES } from '../../../../shared/constants/routes'
 import { useDocumentTitle } from '../../../../shared/hooks/use-document-title'
+import { useLogout } from '../../../../shared/hooks/use-logout'
 import { ApiError } from '../../../../shared/lib/api'
 import { onlyDigits } from '../../../../shared/utils/whatsapp'
 import { useCompleteProfile } from '../hooks/use-complete-profile'
@@ -22,6 +23,7 @@ const inlineLink =
 export function CompleteProfilePage() {
   useDocumentTitle('Completar cadastro')
   const save = useCompleteProfile()
+  const logout = useLogout()
   const {
     register,
     handleSubmit,
@@ -81,6 +83,11 @@ export function CompleteProfilePage() {
 
           <Button type="submit" fullWidth disabled={save.isPending}>
             {save.isPending ? 'Salvando…' : 'Continuar'}
+          </Button>
+          {/* Entrou com a conta Google errada, ou não quer aceitar agora: sem cabeçalho do aluno aqui, o
+              "Sair" é a saída (/login devolveria quem tem sessão para esta tela). */}
+          <Button type="button" variant="secondary" fullWidth onClick={logout}>
+            Sair
           </Button>
         </form>
       </Card>

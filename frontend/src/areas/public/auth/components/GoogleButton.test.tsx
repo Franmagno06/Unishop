@@ -20,6 +20,8 @@ vi.mock('../utils/google-identity', () => ({ loadGoogleIdentity: () => loadGoogl
 
 import { GoogleButton } from './GoogleButton'
 
+let lastClient: QueryClient
+
 function renderButtonAt() {
   const router = createMemoryRouter(
     [
@@ -28,8 +30,9 @@ function renderButtonAt() {
     ],
     { initialEntries: ['/login'] },
   )
+  lastClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}>
+    <QueryClientProvider client={lastClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
@@ -74,6 +77,8 @@ describe('GoogleButton · RN-ACE-14', () => {
     expect(await screen.findByText('Categorias')).toBeInTheDocument()
     expect(loginWithGoogle.mock.calls[0]?.[0]).toBe('id-token')
     expect(getToken()).toBe('jwt-novo')
+    // a resposta já traz o aceite dos Termos: o PrivateRoute não consulta GET /auth/me de novo
+    expect(lastClient.getQueryData(['auth', 'me', 'jwt-novo'])).toMatchObject({ needsTermsAcceptance: false })
     expect(router.state.location.pathname).toBe('/categorias')
   })
 
@@ -86,12 +91,28 @@ describe('GoogleButton · RN-ACE-14', () => {
     expect(getToken()).toBeNull()
   })
 
-  it('403 EMAIL_NOT_VERIFIED e 503 mostram mensagem própria do Google', async () => {
+  it('403 EMAIL_NOT_VERIFIED mostra a mensagem própria do Google', async () => {
     loginWithGoogle.mockRejectedValueOnce(new ApiError(403, 'EMAIL_NOT_VERIFIED', 'x'))
     renderButtonAt()
     await waitFor(() => expect(config).toBeDefined())
     config!.callback({ credential: 'a' })
     expect(await screen.findByText(/não confirmou este e-mail/i)).toBeInTheDocument()
+  })
+
+  it('503 (Google sem Client ID no servidor) sugere entrar com e-mail e senha', async () => {
+    loginWithGoogle.mockRejectedValueOnce(new ApiError(503, 'EXTERNAL_SERVICE_ERROR', 'x'))
+    renderButtonAt()
+    await waitFor(() => expect(config).toBeDefined())
+    config!.callback({ credential: 'a' })
+    expect(await screen.findByText(/indisponível no momento/i)).toBeInTheDocument()
+  })
+
+  it('401 TOKEN_INVALID pede para tentar de novo', async () => {
+    loginWithGoogle.mockRejectedValueOnce(new ApiError(401, 'TOKEN_INVALID', 'x'))
+    renderButtonAt()
+    await waitFor(() => expect(config).toBeDefined())
+    config!.callback({ credential: 'a' })
+    expect(await screen.findByText(/Não foi possível validar sua conta Google/)).toBeInTheDocument()
   })
 
   it('falha ao carregar o script do Google mostra o botão indisponível', async () => {

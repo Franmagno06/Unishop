@@ -2,12 +2,19 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../../../shared/lib/api'
+import { clearToken, getToken, setToken } from '../../../../shared/lib/session'
 
 const completeProfile = vi.fn()
 vi.mock('../services/account.service', () => ({
   completeProfile: (...args: unknown[]) => completeProfile(...args),
+}))
+
+const reloadCurrentUser = vi.fn()
+vi.mock('../../../../shared/lib/current-user', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../../shared/lib/current-user')>()),
+  reloadCurrentUser: () => reloadCurrentUser(),
 }))
 
 import { CompleteProfilePage } from './CompleteProfilePage'
@@ -17,6 +24,7 @@ function renderPage(state?: { from: string }) {
   queryClient.setQueryData(['auth', 'me', 'jwt'], { user: null, needsTermsAcceptance: true })
   const router = createMemoryRouter(
     [
+      { path: '/', element: <p>Tela inicial</p> },
       { path: '/completar-cadastro', element: <CompleteProfilePage /> },
       { path: '/categorias', element: <p>Categorias</p> },
       { path: '/produtos/:id', element: <p>Produto</p> },
@@ -35,9 +43,13 @@ const accept = () => userEvent.click(screen.getByRole('checkbox', { name: /Li e 
 const submit = () => userEvent.click(screen.getByRole('button', { name: 'Continuar' }))
 
 beforeEach(() => {
+  reloadCurrentUser.mockReset()
   completeProfile.mockReset()
+  setToken('jwt', 'student')
   completeProfile.mockResolvedValue({ user: { id: 1 }, needsTermsAcceptance: false })
 })
+
+afterEach(() => clearToken())
 
 describe('CompleteProfilePage · RN-ACE-06, 14', () => {
   it('RN-ACE-06: não deixa continuar sem aceitar os Termos e a Política', async () => {
@@ -84,6 +96,20 @@ describe('CompleteProfilePage · RN-ACE-06, 14', () => {
     expect(await screen.findByText('Produto')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/produtos/7')
     expect(queryClient.getQueryData(['auth', 'me', 'jwt'])).toMatchObject({ needsTermsAcceptance: false })
+  })
+
+  it('depois do aceite recarrega o perfil em cache (o GET /users/me respondia 403 antes)', async () => {
+    renderPage()
+    await accept()
+    await submit()
+    await screen.findByText('Categorias')
+    expect(reloadCurrentUser).toHaveBeenCalledTimes(1)
+  })
+
+  it('"Sair" encerra a sessão: quem entrou com a conta Google errada não fica preso aqui', async () => {
+    renderPage()
+    await userEvent.click(screen.getByRole('button', { name: 'Sair' }))
+    await waitFor(() => expect(getToken()).toBeNull())
   })
 
   it('sem destino guardado vai às Categorias', async () => {

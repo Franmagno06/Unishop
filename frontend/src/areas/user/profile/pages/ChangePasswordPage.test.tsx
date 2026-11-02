@@ -7,8 +7,13 @@ import { ApiError } from '../../../../shared/lib/api'
 import { clearToken, getRole, getToken, setToken } from '../../../../shared/lib/session'
 
 const changePassword = vi.fn()
+const requestPasswordReset = vi.fn()
 vi.mock('../services/account.service', () => ({
   changePassword: (...args: unknown[]) => changePassword(...args),
+  requestPasswordReset: (...args: unknown[]) => requestPasswordReset(...args),
+}))
+vi.mock('../../../../shared/hooks/use-current-user', () => ({
+  useCurrentUser: () => ({ name: 'Ana', email: 'ana@edu.unifor.br', course: '', whatsapp: '', avatarUrl: null }),
 }))
 
 import { ChangePasswordPage } from './ChangePasswordPage'
@@ -38,6 +43,7 @@ const submit = () => userEvent.click(screen.getByRole('button', { name: 'Trocar 
 
 beforeEach(() => {
   changePassword.mockReset()
+  requestPasswordReset.mockReset()
   setToken('token-antigo', 'student')
 })
 afterEach(() => clearToken())
@@ -91,13 +97,15 @@ describe('ChangePasswordPage · RN-ACE-15', () => {
     expect(getToken()).toBe('token-antigo')
   })
 
-  it('RN-ACE-15: conta Google sem senha é levada ao "Esqueci minha senha"', async () => {
-    changePassword.mockRejectedValue(new ApiError(400, 'CURRENT_PASSWORD_INVALID', 'A senha atual está incorreta.'))
+  it('RN-ACE-15: conta Google sem senha pede o link para criar a primeira, sem sair da tela (o /recuperar-senha é só para visitante)', async () => {
+    changePassword.mockRejectedValueOnce(new ApiError(400, 'CURRENT_PASSWORD_INVALID', 'A senha atual está incorreta.'))
+    requestPasswordReset.mockResolvedValue(undefined)
     renderPage()
     await fill('Qualquer1', 'Nova12345', 'Nova12345')
     await submit()
-    const link = await screen.findByRole('link', { name: /Esqueci minha senha/ })
-    expect(link).toHaveAttribute('href', '/recuperar-senha')
+    await userEvent.click(await screen.findByRole('button', { name: 'Enviar link para criar senha' }))
+    expect(await screen.findByText(/enviamos o link para ana@edu\.unifor\.br/)).toBeInTheDocument()
+    expect(requestPasswordReset.mock.calls[0]?.[0]).toBe('ana@edu.unifor.br')
   })
 
   it('erro de rede mostra a mensagem de conexão e mantém a sessão', async () => {

@@ -45,6 +45,9 @@ function stubApi() {
         user = { ...user, ...body }
         return reply(200, { data: { user } })
       }
+      if (method === 'POST' && String(url).endsWith('/users/me/email-change') && emailChangeStatus === 502) {
+        return reply(502, { error: { code: 'EXTERNAL_SERVICE_ERROR', message: 'Não foi possível enviar o e-mail agora.' } })
+      }
       if (method === 'POST' && String(url).endsWith('/users/me/email-change')) {
         return reply(202, { data: { pendingEmail: body?.email, expiresInMinutes: 30 } })
       }
@@ -59,9 +62,11 @@ function stubApi() {
 
 let calls: Call[]
 let deleteStatus = 204
+let emailChangeStatus = 202
 
 beforeEach(() => {
   deleteStatus = 204
+  emailChangeStatus = 202
   setToken('token-de-teste')
   calls = stubApi()
 })
@@ -156,6 +161,18 @@ describe('Editar perfil (05b)', () => {
     expect(calls.find((call) => call.url.endsWith('/users/me/email-change'))?.body).toEqual({
       email: 'novo.email@edu.unifor.br',
     })
+  })
+
+  it('RN-PER-02: falha no envio do e-mail (502) depois do PATCH avisa que os dados foram salvos', async () => {
+    emailChangeStatus = 502
+    renderApp('/perfil/editar')
+    const user = userEvent.setup()
+
+    await user.clear(await screen.findByLabelText('E-mail institucional'))
+    await user.type(screen.getByLabelText('E-mail institucional'), 'novo.email@edu.unifor.br')
+    await user.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    expect(await screen.findByText(/Seus dados foram salvos, mas o e-mail não foi trocado/)).toBeInTheDocument()
   })
 
   it('recusa e-mail fora do domínio institucional', async () => {

@@ -3,7 +3,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../../shared/lib/api'
-import { clearToken, setToken } from '../../../shared/lib/session'
+import { clearToken, getToken, setToken } from '../../../shared/lib/session'
 
 vi.mock('../../../shared/lib/mock-mode', () => ({ MOCK_MODE: false }))
 const api = vi.fn()
@@ -19,6 +19,7 @@ const me = (needsTermsAcceptance: boolean) => ({ data: { user: { id: 1 }, needsT
 function renderAt(path: string) {
   const router = createMemoryRouter(
     [
+      { path: '/', element: <p>Tela inicial</p> },
       { path: '/login', element: <p>Tela de login</p> },
       {
         element: <PrivateRoute />,
@@ -106,6 +107,25 @@ describe('PrivateRoute', () => {
     api.mockResolvedValue(me(true))
     renderAt('/completar-cadastro')
     expect(await screen.findByText('Completar cadastro')).toBeInTheDocument()
+  })
+
+  it('403 ACCOUNT_SUSPENDED no /auth/me mostra a conta suspensa com "Sair", sem oferecer nova tentativa', async () => {
+    setToken('jwt', 'student')
+    api.mockRejectedValueOnce(new ApiError(403, 'ACCOUNT_SUSPENDED', 'Sua conta está suspensa.'))
+    renderAt('/categorias')
+    expect(await screen.findByText(/conta está suspensa/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tentar de novo' })).not.toBeInTheDocument()
+    expect(api).toHaveBeenCalledTimes(1)
+  })
+
+  it('429 TOO_MANY_REQUESTS no /auth/me pede para aguardar, e "Sair" encerra a sessão (sem laço com o login)', async () => {
+    setToken('jwt', 'student')
+    api.mockRejectedValueOnce(new ApiError(429, 'TOO_MANY_REQUESTS', 'x'))
+    renderAt('/categorias')
+    expect(await screen.findByText(/Aguarde um minuto/)).toBeInTheDocument()
+    screen.getByRole('button', { name: 'Sair' }).click()
+    await waitFor(() => expect(getToken()).toBeNull())
+    await waitFor(() => expect(screen.queryByText(/Aguarde um minuto/)).not.toBeInTheDocument())
   })
 
   it('falha de rede no /auth/me mostra o erro com "Tentar de novo", sem liberar a página', async () => {
