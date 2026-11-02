@@ -13,7 +13,6 @@ export const ROUTES = {
   profile: '/perfil',
   editProfile: '/perfil/editar',
   completeProfile: '/completar-cadastro',
-  changePassword: '/trocar-senha',
   confirmEmailChange: '/confirmar-troca-email',
   myOrders: '/meus-pedidos',
   createListing: '/anunciar',

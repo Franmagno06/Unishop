@@ -15,30 +15,6 @@ export type CompleteProfileInput = {
   whatsapp: string // só dígitos (RN-PER-07)
 }
 
-export type ChangePasswordInput = {
-  currentPassword: string
-  newPassword: string
-  confirmation: string
-}
-
-// RN-ACE-15: confere a senha atual e devolve um token novo (o anterior deixa de valer). Conta Google
-// sem senha recebe 400 CURRENT_PASSWORD_INVALID e cria a primeira pela recuperação de senha.
-export async function changePassword(input: ChangePasswordInput): Promise<string> {
-  if (import.meta.env.DEV && MOCK_MODE) return (await import('./account.mock')).mockAccount.changePassword()
-  const response = await api<{ data: { token: string } }>('/users/me/password', {
-    method: 'POST',
-    body: input,
-  })
-  return response.data.token
-}
-
-// RN-ACE-15: conta Google sem senha cria a primeira pela recuperação de senha. O servidor responde 202
-// igual exista ou não a conta (RN-ACE-10); o link vai ao e-mail da conta.
-export async function requestPasswordReset(email: string): Promise<void> {
-  if (import.meta.env.DEV && MOCK_MODE) return (await import('./account.mock')).mockAccount.requestPasswordReset()
-  await api<unknown>('/auth/forgot-password', { method: 'POST', body: { email } })
-}
-
 // RN-PER-02: pede o link de confirmação para o e-mail novo (30 minutos, uso único). O atual segue
 // valendo até a confirmação. 409 EMAIL_ALREADY_REGISTERED; 403 EMAIL_DOMAIN_NOT_ALLOWED.
 export async function requestEmailChange(email: string): Promise<void> {

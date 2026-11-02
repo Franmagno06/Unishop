@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { newPasswordSchema } from '../../../../shared/schemas/password'
 import { onlyDigits } from '../../../../shared/utils/whatsapp'
 
 // RN-PER-01, 02, 05 e 07 e limites de Regras §9. O erro final sempre vem do backend.
@@ -41,20 +40,6 @@ export const completeProfileSchema = z.object({
 })
 
 export type CompleteProfileValues = z.input<typeof completeProfileSchema>
-
-// RN-ACE-15: senha atual, senha nova (mesma regra do cadastro) e confirmação igual.
-export const changePasswordSchema = z
-  .object({
-    currentPassword: z.string().min(1, 'Informe sua senha atual.'),
-    newPassword: newPasswordSchema,
-    confirmation: z.string().min(1, 'Confirme a nova senha.'),
-  })
-  .refine((data) => data.newPassword === data.confirmation, {
-    path: ['confirmation'],
-    message: 'As senhas não são iguais.',
-  })
-
-export type ChangePasswordValues = z.infer<typeof changePasswordSchema>
 
 // Foto de perfil: JPG ou PNG de até 4 MB (RN-PER-05). Devolve a mensagem de erro ou null.
 export function validateAvatarFile(file: Pick<File, 'type' | 'size'>): string | null {

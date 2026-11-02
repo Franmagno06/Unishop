@@ -73,12 +73,6 @@ export const userRoutes: RouteObject[] = [
             }),
           },
           {
-            path: 'trocar-senha',
-            lazy: async () => ({
-              Component: (await import('./profile/pages/ChangePasswordPage')).ChangePasswordPage,
-            }),
-          },
-          {
             path: 'meus-pedidos',
             lazy: async () => ({
               Component: (await import('./orders/pages/MyOrdersPage')).MyOrdersPage,
