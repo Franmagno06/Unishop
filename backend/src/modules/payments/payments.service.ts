@@ -5,9 +5,15 @@ import { runInBackground } from '../../shared/utils/background'
 import type { OrdersService } from '../orders/orders.service'
 import type { OrderRepository } from '../orders/orders.types'
 import { toOrderJson } from '../orders/orders.serializer'
-import type { PaymentRepository, PaymentRow, SettleOutcome } from './payments.types'
+import {
+  GATEWAY_ERROR,
+  type PaymentRepository,
+  type PaymentRow,
+  type SettleOutcome,
+} from './payments.types'
 
 export const MAX_REFUND_ATTEMPTS = 10 // backend.md §14
+const EXPIRED_LOOKBACK_MS = 24 * 60 * 60_000 // por quanto tempo uma cobrança expirada ainda é reconsultada
 
 type Deps = {
   payments: PaymentRepository
@@ -137,7 +143,9 @@ export function createPaymentsService({
           ? 'OUT_OF_STOCK'
           : outcome.reason === 'listing_unavailable'
             ? 'LISTING_UNAVAILABLE'
-            : 'ORDER_CANCELLED'
+            : outcome.reason === 'amount_mismatch'
+              ? 'PAYMENT_AMOUNT_MISMATCH'
+              : 'ORDER_CANCELLED'
       throw new AppError(409, code, 'Não foi possível concluir a compra. O valor será estornado.')
     }
     return orderResponse(orderId)
@@ -148,7 +156,7 @@ export function createPaymentsService({
     try {
       return await run()
     } catch (err) {
-      await payments.setStatus(paymentId, ['pendente'], 'recusado', 'GATEWAY_ERROR')
+      await payments.setStatus(paymentId, ['pendente'], 'recusado', GATEWAY_ERROR)
       throw err
     }
   }
@@ -157,17 +165,57 @@ export function createPaymentsService({
     if (!row.gatewayTxId) return
     const gw = await gateway.getPayment(row.gatewayTxId)
     if (gw.status === 'approved') {
+      // RN-PAG-05: o valor que o gateway cobrou tem de ser o registrado na tentativa. Se não for,
+      // não liquida: estorna o que foi cobrado e o pedido segue como está.
+      if (gw.amountInCents !== row.amountInCents) {
+        const marked = await payments.setStatus(
+          row.id,
+          ['pendente', 'expirado'],
+          'estorno_pendente',
+          'VALOR_DIVERGENTE',
+        )
+        if (marked) await refund(row.id)
+        return
+      }
       await finish(row.id, await payments.settle(row.id))
     } else if (gw.status === 'declined') {
       await payments.setStatus(row.id, ['pendente'], 'recusado')
     } else if (gw.status === 'cancelled') {
       await payments.setStatus(row.id, ['pendente'], 'expirado')
+    } else if (gw.status === 'refunded') {
+      if (row.status === 'estorno_pendente') {
+        await payments.markRefunded(row.id) // o nosso estorno já saiu; o aviso chegou antes da marcação
+      } else {
+        // Estorno ou chargeback feito fora do sistema (painel do Mercado Pago): o dinheiro já voltou ao
+        // comprador. Registra para o admin ver e não mexe sozinho no pedido (decisão humana).
+        await payments.setStatus(row.id, ['aprovado'], 'estornado', 'ESTORNO_EXTERNO')
+      }
     }
   }
 
+  // Timeout do gateway: a cobrança pode ter sido criada lá e a tentativa ficou sem id. O aviso traz o id
+  // e a `reference` (`pedido:N`): se o pedido tem uma tentativa órfã de mesmo valor, ela ganha o id e
+  // segue o fluxo normal (liquida se ainda der, senão estorna).
+  async function adoptOrphan(gatewayTxId: string): Promise<PaymentRow | null> {
+    let gw
+    try {
+      gw = await gateway.getPayment(gatewayTxId)
+    } catch {
+      return null // id que não é nosso (ou gateway fora): nada a reconciliar
+    }
+    const match = /^pedido:(\d+)$/.exec(gw.reference ?? '')
+    if (!match) return null
+    const orphan = await payments.findOrphanAttempt(Number(match[1]))
+    if (!orphan || orphan.amountInCents !== gw.amountInCents) return null
+    if (!(await payments.claimOrphan(orphan.id, gatewayTxId))) return null
+    // Cobrança ainda aberta que ninguém espera: cancela (melhor esforço). Aprovada segue para a liquidação.
+    if (gw.status === 'pending') await gateway.cancelPayment(gatewayTxId).catch(() => undefined)
+    return payments.findById(orphan.id)
+  }
+
   async function syncFromGateway(gatewayTxId: string): Promise<void> {
-    const row = await payments.findByGatewayId(gatewayTxId)
-    if (!row) return // não é nosso (ou a linha ainda não recebeu o id): o job de conciliação corrige
+    const row = (await payments.findByGatewayId(gatewayTxId)) ?? (await adoptOrphan(gatewayTxId))
+    if (!row) return // não é nosso
     await syncRow(row)
   }
 
@@ -276,6 +324,7 @@ export function createPaymentsService({
     async reconcilePending(olderThanMinutes = 2, limit = 50) {
       const rows = await payments.findStalePending(
         new Date(now().getTime() - olderThanMinutes * 60_000),
+        new Date(now().getTime() - EXPIRED_LOOKBACK_MS), // RN-PAG-13: Pix pago depois de expirar
         limit,
       )
       let synced = 0

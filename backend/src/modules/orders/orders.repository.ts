@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from '../../generated/prisma/client'
+import { AppError } from '../../shared/errors/app-error'
 import { decrementStock, lockListingRow, lockOrder } from '../../shared/database/stock'
 import { centsToDecimal, decimalToCents } from '../../shared/utils/money'
 import type {
@@ -125,15 +126,33 @@ export function createPrismaOrderRepository(db: PrismaClient): OrderRepository {
         const open = await db.order.findFirst({ where })
         if (!open) return null
         // Só o pedido Pendente tem valor a atualizar; a quantidade nova refaz o total (RN-PED-10).
-        await db.order.updateMany({
-          where: { id: open.id, status },
-          data: {
-            quantity: data.quantity,
-            unitPrice: centsToDecimal(data.listing.priceInCents),
-            serviceFee: centsToDecimal(data.feeInCents),
-            totalAmount: centsToDecimal(total),
-            updatedAt: new Date(),
-          },
+        // Com cobrança pendente ou aprovada o valor fica travado: a liquidação confere o valor cobrado
+        // com o do pedido (RN-PAG-05). Mesma quantidade devolve o pedido; outra, 409.
+        await db.$transaction(async (tx) => {
+          await lockOrder(tx, open.id)
+          if (status === 'pendente') {
+            const charging = await tx.payment.count({
+              where: { orderId: open.id, status: { in: ['pendente', 'aprovado'] } },
+            })
+            if (charging > 0) {
+              if (open.quantity === data.quantity) return
+              throw new AppError(
+                409,
+                'PAYMENT_IN_PROGRESS',
+                'Já existe um pagamento em andamento neste pedido. Conclua ou aguarde antes de mudar a quantidade.',
+              )
+            }
+          }
+          await tx.order.updateMany({
+            where: { id: open.id, status },
+            data: {
+              quantity: data.quantity,
+              unitPrice: centsToDecimal(data.listing.priceInCents),
+              serviceFee: centsToDecimal(data.feeInCents),
+              totalAmount: centsToDecimal(total),
+              updatedAt: new Date(),
+            },
+          })
         })
         return (await findById(open.id))!
       }

@@ -19,7 +19,7 @@ export type OrderRefundedMail = {
   name: string
   productName: string
   orderNumber: string
-  reason: 'out_of_stock' | 'listing_unavailable' | 'late_payment'
+  reason: 'out_of_stock' | 'listing_unavailable' | 'late_payment' | 'amount_mismatch'
 }
 
 // RN-PER-02: link de confirmação enviado ao NOVO endereço.

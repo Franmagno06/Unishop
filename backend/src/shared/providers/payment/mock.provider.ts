@@ -30,6 +30,8 @@ export type MockPaymentGateway = PaymentGateway & {
   failNextRefund(times?: number): void
   /** Faz as próximas cobranças falharem com 502. */
   failNextCreate(times?: number): void
+  /** A cobrança é criada, mas a resposta se perde (timeout): lança 502 depois de criar. */
+  loseNextCreateResponse(times?: number): void
   /** Zera pagamentos, chaves de idempotência, chamadas e falhas programadas (entre testes). */
   reset(): void
   /** Cabeçalhos e query de um aviso assinado, como o Mercado Pago mandaria. */
@@ -45,6 +47,14 @@ export function createMockPaymentGateway(
   const idempotent = new Map<string, string>()
   let refundFailures = 0
   let createFailures = 0
+  let lostResponses = 0
+
+  const loseIfAsked = () => {
+    if (lostResponses > 0) {
+      lostResponses--
+      throw new AppError(502, 'EXTERNAL_SERVICE_ERROR', 'Serviço de pagamento indisponível.')
+    }
+  }
 
   const failIfAsked = () => {
     if (createFailures > 0) {
@@ -77,6 +87,7 @@ export function createMockPaymentGateway(
       }
       payments.set(payment.id, payment)
       idempotent.set(input.idempotencyKey, payment.id)
+      loseIfAsked()
       return { ...payment }
     },
 
@@ -95,6 +106,7 @@ export function createMockPaymentGateway(
       }
       payments.set(id, payment)
       idempotent.set(input.idempotencyKey, id)
+      loseIfAsked()
       return { ...payment }
     },
 
@@ -134,6 +146,9 @@ export function createMockPaymentGateway(
     failNextRefund(times = 1) {
       refundFailures = times
     },
+    loseNextCreateResponse(times = 1) {
+      lostResponses = times
+    },
     failNextCreate(times = 1) {
       createFailures = times
     },
@@ -144,6 +159,7 @@ export function createMockPaymentGateway(
       calls.cancels.length = 0
       refundFailures = 0
       createFailures = 0
+      lostResponses = 0
     },
 
     signedWebhook(paymentId, at = now()) {
