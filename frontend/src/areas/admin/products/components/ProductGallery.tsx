@@ -1,21 +1,42 @@
-import { useState } from 'react'
-import type { AdminProductImage } from '../types/product.types'
+import { useState } from "react";
+import type { AdminProductImage } from "../types/product.types";
 
 // Galeria do produto (Figma A04): imagem grande e miniaturas. Sem foto de verdade, mostra o bloco
 // azul-claro do protótipo. A miniatura escolhida fica com borda azul.
-export function ProductGallery({ images, title }: { images: AdminProductImage[]; title: string }) {
-  const [selected, setSelected] = useState(0)
-  const current = images[Math.min(selected, images.length - 1)]
+export function ProductGallery({
+  images,
+  title,
+}: {
+  images: AdminProductImage[];
+  title: string;
+}) {
+  const [selected, setSelected] = useState(0);
+  const current = images[Math.min(selected, images.length - 1)];
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl bg-primary-soft">
+      <div className="flex aspect-[4/3] max-h-[460px] w-full items-center justify-center overflow-hidden rounded-2xl bg-primary-soft">
         {current?.url ? (
-          <img src={current.url} alt={title} className="size-full object-cover" />
+          <a
+            href={current.url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Abrir foto em tamanho real"
+            className="contents"
+          >
+            <img
+              src={current.url}
+              alt={title}
+              className="max-h-full max-w-full cursor-zoom-in rounded-2xl object-contain"
+            />
+          </a>
         ) : (
-          <span className="px-6 text-center text-sm text-text-muted">Sem foto para mostrar</span>
+          <span className="px-6 text-center text-sm text-text-muted">
+            Sem foto para mostrar
+          </span>
         )}
       </div>
+
       {images.length > 1 ? (
         <ul className="flex gap-3" aria-label="Fotos do produto">
           {images.map((image, index) => (
@@ -27,12 +48,18 @@ export function ProductGallery({ images, title }: { images: AdminProductImage[];
                 onClick={() => setSelected(index)}
                 className="block h-16 w-[84px] cursor-pointer overflow-hidden rounded-lg border-2 border-transparent bg-primary-soft transition-colors duration-150 aria-pressed:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
-                {image.url ? <img src={image.url} alt="" className="size-full object-cover" /> : null}
+                {image.url ? (
+                  <img
+                    src={image.url}
+                    alt=""
+                    className="size-full object-cover"
+                  />
+                ) : null}
               </button>
             </li>
           ))}
         </ul>
       ) : null}
     </div>
-  )
+  );
 }
