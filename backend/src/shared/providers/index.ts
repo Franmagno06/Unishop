@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer'
 import type { env } from '../../config/env'
-import { consoleMailProvider } from './mail/console.provider'
+import { consoleMailProvider, maskedConsoleMailProvider } from './mail/console.provider'
 import type { MailProvider } from './mail/mail.provider'
 import { createSmtpMailProvider } from './mail/smtp.provider'
 import {
@@ -49,7 +49,8 @@ export type Providers = {
 }
 
 function buildMail(e: ProvidersEnv, local: boolean): MailProvider {
-  if (e.MAIL_DRIVER === 'console' && (local || e.ALLOW_CONSOLE_MAIL)) return consoleMailProvider
+  if (e.MAIL_DRIVER === 'console' && local) return consoleMailProvider
+  if (e.MAIL_DRIVER === 'console' && e.ALLOW_CONSOLE_MAIL) return maskedConsoleMailProvider
   if (e.MAIL_DRIVER === 'smtp' && e.SMTP_USER && e.SMTP_PASS) {
     const transport = nodemailer.createTransport({
       host: e.SMTP_HOST ?? 'smtp.gmail.com',

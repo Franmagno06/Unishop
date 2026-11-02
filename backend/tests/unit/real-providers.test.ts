@@ -151,6 +151,21 @@ describe('modo demonstração de e-mail', () => {
     const p = buildProviders({ ...prod, ALLOW_CONSOLE_MAIL: true }, { uploadsDir: 'x' })
     expect(typeof p.mail.sendPasswordReset).toBe('function')
   })
+
+  it('em production o console não imprime link nem endereço completo', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const p = buildProviders({ ...prod, ALLOW_CONSOLE_MAIL: true }, { uploadsDir: 'x' })
+    await p.mail.sendPasswordReset({
+      to: 'aluno@edu.unifor.br',
+      name: 'Ana',
+      link: 'https://app/reset?token=SEGREDO',
+      expiresInMinutes: 30,
+    })
+    const printed = log.mock.calls.flat().join(' ')
+    log.mockRestore()
+    expect(printed).not.toMatch(/SEGREDO|aluno@/)
+    expect(printed).toContain('***@edu.unifor.br')
+  })
 })
 
 describe('env: variáveis dos drivers reais', () => {
