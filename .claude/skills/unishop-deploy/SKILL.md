@@ -3,7 +3,7 @@ name: unishop-deploy
 description: Deploy do Unishop em produção na Vercel (frontend e API serverless) com PostgreSQL no Supabase: ambientes, variáveis e segredos por ambiente, `APP_ENV`, `app.ts`/`dev-server.ts`, `vercel.json`, build com Prisma, CORS, jobs agendados por endpoint (Vercel Cron e agendador externo), upload de imagem, `waitUntil`, backup no GitHub Actions, rollback e checklist. Use SEMPRE que o usuário falar de deploy, publicar, "colocar no ar", Vercel, Supabase, variáveis de ambiente de produção, preview, domínio, HTTPS, CRON_SECRET, cron, migração em produção, seed, backup, restauração, rollback ou limites do plano Hobby, mesmo que não diga "deploy" ou "Unishop".
 metadata:
   author: unishop-team
-  version: "0.3.3"
+  version: "0.3.4"
 ---
 
 # Deploy do Unishop (Vercel + Supabase)
@@ -28,7 +28,7 @@ Dois projetos Vercel do mesmo repositório (`unishop-web` na pasta `frontend`, `
 
 `APP_ENV` define o ambiente de verdade (`production`, `preview`, `development`, `test`); na Vercel o `NODE_ENV` é `production` também no Preview. Lista completa na seção 4.2 do deploy e no `.env.example` do `api.md`. Pontos que costumam dar erro:
 
-- **Três papéis de banco:** `DATABASE_URL` com o Transaction pooler (porta 6543, `?pgbouncer=true&connection_limit=1`) e papel `unishop_app` para a API (sem permissão de alterar estrutura); `DATABASE_URL_UNPOOLED` (Session pooler ou direta, porta 5432, `directUrl` no `schema.prisma`, papel `unishop_migrator`) só para migração e seed, **fora do GitHub**; `DATABASE_URL_BACKUP` (papel `unishop_backup`, somente leitura, pelo Session pooler) só como segredo do GitHub, para o backup. Pelo pooler o usuário é `papel.ref-do-projeto`; a conexão direta é só IPv6 (o runner do GitHub não a alcança). As URLs vêm do botão Connect (aba ORM > Prisma) e são cadastradas à mão na Vercel. Criar e testar os papéis no Supabase ainda é pendência (12); a versão do PostgreSQL também (13).
+- **Três papéis de banco:** `DATABASE_URL` com o Transaction pooler (porta 6543, `?pgbouncer=true&connection_limit=1`) e papel `unishop_app` para a API (sem permissão de alterar estrutura); `DATABASE_URL_UNPOOLED` (Session pooler ou direta, porta 5432, `directUrl` no `schema.prisma`, papel `unishop_migrator`) só para migração e seed, **fora do GitHub**; `DATABASE_URL_BACKUP` (papel `unishop_backup`, somente leitura, pelo Session pooler) só como segredo do GitHub, para o backup. Pelo pooler o usuário é `papel.ref-do-projeto`; a conexão direta é só IPv6 (o runner do GitHub não a alcança). As URLs vêm do botão Connect (aba ORM > Prisma) e são cadastradas à mão na Vercel. Papéis criados e testados no prod e no dev; PostgreSQL 17.11. O `connection_limit=1` e o `pgbouncer=true` da URL são ignorados pelo `@prisma/adapter-pg`: o pool é o `max` do adapter (padrão 10; pendência 19).
 - `EMAIL_VERIFICATION_REQUIRED` (padrão `false`) e `CRON_SECRET` (mínimo de 32 caracteres) entram na lista de variáveis.
 - `ADMIN_EMAIL`/`ADMIN_PASSWORD` **não vão para painel**: o seed roda no terminal, uma vez, com as variáveis só naquela sessão.
 - Variáveis `VITE_*` são lidas **no build**: trocar uma exige novo deploy do site. As quatro são públicas.
@@ -80,4 +80,4 @@ Do computador do usuário (Git Bash ou WSL; no Windows os comandos do guia são 
 
 ## Pendências que bloqueiam ou mudam o deploy
 
-Numeração da seção 17.3 do deploy v0.3.1. Abertas: plano/equipe do Hobby (1) · **domínio próprio para o Resend** (3) · RNF012 a RNF016 não mapeados (6) · login com Google em `vercel.app` (7) · prova de conceito do Pix de teste do Mercado Pago (Payments API já escolhida) (10) · nome da tabela de categorias no teste de restauração, que é `categoria` (11) · criar e testar os três papéis no Supabase (12) · versão do PostgreSQL do Supabase (13). Decididas: exceção da regra 4 (2), cron-job.org a cada 30 min (4), 4 MB (5), rate limit em memória (8). Cite a pendência em vez de decidir sozinho.
+Numeração da seção 17.3 do deploy v0.3.2 (revisada contra o banco em 02/11/2026: papéis (12) e versão do PostgreSQL (13) resolvidos; novas: `.env` local apontando para o prod como `postgres` (18) e `max` do pool no `PrismaPg`, porque `connection_limit` na URL é ignorado pelo adapter (19)). Abertas: plano/equipe do Hobby (1) · **domínio próprio para o Resend** (3) · RNF012 a RNF016 não mapeados (6) · login com Google em `vercel.app` (7) · prova de conceito do Pix de teste do Mercado Pago (Payments API já escolhida) (10) · nome da tabela de categorias no teste de restauração, que é `categoria` (11). Decididas: exceção da regra 4 (2), cron-job.org a cada 30 min (4), 4 MB (5), rate limit em memória (8). Cite a pendência em vez de decidir sozinho.

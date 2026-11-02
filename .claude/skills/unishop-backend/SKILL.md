@@ -3,7 +3,7 @@ name: unishop-backend
 description: Regras e arquitetura do backend do Unishop (Node.js + Express + TypeScript, Prisma, PostgreSQL, JWT). Use SEMPRE que o usuário criar, editar ou revisar rotas, controllers, services, repositories, middlewares, providers, jobs, autenticação (e-mail e senha, Google, troca de senha), pagamentos (cartão, Pix, webhook, estorno), estoque, pedidos, anúncios, imagens, área admin, logs de auditoria ou erros da API do Unishop, mesmo que não diga "backend" ou "Unishop" explicitamente.
 metadata:
   author: unishop-team
-  version: "0.3.4"
+  version: "0.3.5"
 ---
 
 # Backend do Unishop
@@ -64,7 +64,7 @@ Estrutura: `src/modules/` (aluno: auth, users, categories, listings, orders, pay
 - **Gateway** (`shared/providers/payment`): interface `PaymentGateway`, `mock.provider` (tokens `mock_approved`, `mock_declined`, `mock_pending`; `setStatus`, `failNextRefund`, `failNextCreate`, `signedWebhook`) e `mercadopago.provider` (Payments API; erro vira 502 `EXTERNAL_SERVICE_ERROR`). `buildPaymentGateway` e o `superRefine` do `env.ts` impedem subir com mock em `APP_ENV=production`, com `PAYMENT_MODE=production` fora de produção ou com `mercadopago` sem `MP_ACCESS_TOKEN` e `MP_WEBHOOK_SECRET`. O mercadopago **nunca rodou contra a API real**.
 - **E-mail:** `MailProvider` ganhou `sendSaleConfirmed` e `sendOrderRefunded`; o e-mail sai com `runInBackground` (`shared/utils/background.ts`, `waitUntil`) e os testes usam `flushBackground`.
 - **Jobs** (`src/jobs`): `registry.ts`, `jobs.routes.ts` (`GET /api/v1/internal/jobs/:name`) e `scheduler.ts` (só o `dev-server`): `expire-pix-payments`, `reconcile-pending-payments`, `cleanup-expired-tokens`. Rota técnica `GET /health/db` existe.
-- **Ainda não existem:** módulo `notifications`, `src/admin/` e `openapi.yaml`. Guia de chaves e teste real: `docs/api/mercado-pago-passo-a-passo.md`.
+- **Ainda não existem:** módulo `notifications`, `openapi.yaml`, os providers reais de e-mail e de imagem (sem eles a API não sobe em `preview`/`production`: o `env.ts` proíbe `console`/`local` e o `buildProviders` só conhece esses dois) e o `prisma generate` no build. `src/admin/` já existe (Etapa 9). Guia de chaves e teste real: `docs/api/mercado-pago-passo-a-passo.md`.
 
 ## Convenções
 
