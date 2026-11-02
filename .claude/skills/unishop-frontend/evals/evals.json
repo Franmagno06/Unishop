@@ -24,6 +24,18 @@
       "prompt": "o admin abriu um produto Vendido e mandou voltar pra Ativo, mas deu erro generico. o que acontece?",
       "expected_output": "Marcar como vendido zera as unidades; o servidor devolve 409 INVALID_STATE (RN-ADM-08) e a tela mostra a mensagem do servidor (o vendedor precisa informar a quantidade antes de reativar); o admin pode voltar a Pausado; Salvar fica bloqueado quando o status nao mudou.",
       "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "o aluno trocou o e-mail no editar perfil e o PATCH deu 400. como tratar?",
+      "expected_output": "O PATCH /users/me só aceita o e-mail igual ao atual (RN-PER-02): a tela manda o atual no PATCH e pede o link em POST /users/me/email-change com { email }; o e-mail novo só vale depois que o aluno abre o link em /confirmar-troca-email/:token (confirma uma única vez); se o pedido falhar depois do PATCH, o erro diz que os dados foram salvos.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "depois de trocar a senha a pagina carregando de novo e o aviso de sucesso sumiu, por que?",
+      "expected_output": "A troca devolve token novo (RN-ACE-15) e a chave do GET /auth/me leva o token; sem keepPreviousData o PrivateRoute volta ao carregando e desmonta a página; o /auth/me usa staleTime e não refaz ao focar, porque o /auth do servidor limita 10 requisições por minuto.",
+      "files": []
     }
   ]
 }
