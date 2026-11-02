@@ -18,9 +18,8 @@ import {
   USERS_WITH_OPEN_PAID_ORDERS,
 } from './users.data'
 
-// Formato assumido das rotas do backend.md §9 (GET /admin/users, GET e PATCH /admin/users/:id,
-// DELETE /admin/users/:id); o openapi.yaml ainda não existe. Quando a API chegar, só este arquivo muda.
-export const USERS_PAGE_SIZE = 7 // as 7 linhas do Figma (A01)
+// Dados de exemplo (modo de demonstração, VITE_USE_MOCKS=true). O caminho real fica em users.service.ts.
+import { USERS_PAGE_SIZE } from './users.service'
 
 const notFound = () => new ApiError(404, 'NOT_FOUND', 'Usuário não encontrado.')
 
