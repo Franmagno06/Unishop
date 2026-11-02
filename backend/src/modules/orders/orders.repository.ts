@@ -189,6 +189,19 @@ export function createPrismaOrderRepository(db: PrismaClient): OrderRepository {
 
     findById,
 
+    async findOpen(buyerId, listingId, negotiation) {
+      const row = await db.order.findFirst({
+        where: {
+          buyerId,
+          listingId,
+          negotiationType: negotiation === 'whatsapp' ? 'whatsapp' : 'pagamento_site',
+          status: negotiation === 'whatsapp' ? 'em_negociacao' : 'pendente',
+        },
+        include,
+      })
+      return row ? toRecord(row) : null
+    },
+
     async findByBuyer(buyerId) {
       const rows = await db.order.findMany({
         where: { buyerId },
