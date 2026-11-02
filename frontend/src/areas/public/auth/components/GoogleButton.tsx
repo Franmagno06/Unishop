@@ -1,11 +1,10 @@
 import googleIcon from '../../../../assets/google.svg'
 import { Button } from '../../../../shared/components/ui/Button'
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
-
 // O fluxo real (Google Identity Services → POST /auth/google) ainda não está integrado.
 // Sem VITE_GOOGLE_CLIENT_ID o botão fica desabilitado.
 export function GoogleButton() {
+  const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
   return (
     <Button
       variant="social"

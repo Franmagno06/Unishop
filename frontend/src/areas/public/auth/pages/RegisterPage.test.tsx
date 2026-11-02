@@ -62,6 +62,7 @@ const submit = () => userEvent.click(screen.getByRole('button', { name: 'Criar c
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
 })
 
 describe('RegisterPage · estrutura', () => {
@@ -125,6 +126,7 @@ describe('RegisterPage · estrutura', () => {
   })
 
   it('tem o link para entrar e o botão do Google desabilitado sem Client ID', () => {
+    vi.stubEnv('VITE_GOOGLE_CLIENT_ID', '') // não depende do .env local
     renderRegister()
 
     expect(screen.getByRole('link', { name: 'Já tem conta? Entrar' })).toHaveAttribute('href', '/login')
