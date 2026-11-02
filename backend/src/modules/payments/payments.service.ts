@@ -4,7 +4,7 @@ import type { PaymentGateway, WebhookInput } from '../../shared/providers/paymen
 import { runInBackground } from '../../shared/utils/background'
 import type { OrdersService } from '../orders/orders.service'
 import type { OrderRepository } from '../orders/orders.types'
-import { toOrderJson } from '../orders/orders.serializer'
+import { formatOrderNumber, toOrderJson } from '../orders/orders.serializer'
 import {
   GATEWAY_ERROR,
   type PaymentRepository,
@@ -32,9 +32,6 @@ export type CardInput = {
   issuerId?: string | undefined
   installments: number
 }
-
-const orderNumber = (id: number, createdAt: Date) =>
-  `UNI-${createdAt.getUTCFullYear()}-${String(id).padStart(4, '0')}`
 
 export function createPaymentsService({
   payments,
@@ -65,7 +62,7 @@ export function createPaymentsService({
       productName: ctx.productName,
       quantity: ctx.quantity,
       totalInCents: ctx.totalInCents,
-      orderNumber: orderNumber(ctx.orderId, ctx.createdAt),
+      orderNumber: formatOrderNumber(ctx.orderId, ctx.createdAt),
     })
   }
 
@@ -95,7 +92,7 @@ export function createPaymentsService({
       to: ctx.buyerEmail,
       name: ctx.buyerName,
       productName: ctx.productName,
-      orderNumber: orderNumber(ctx.orderId, ctx.createdAt),
+      orderNumber: formatOrderNumber(ctx.orderId, ctx.createdAt),
       reason: ctx.reason,
     })
   }

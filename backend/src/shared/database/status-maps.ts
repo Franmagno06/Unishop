@@ -1,4 +1,5 @@
 import type { AccountStatus } from '../../modules/auth/auth.types'
+import type { CancelReason, OrderStatus } from '../../modules/orders/orders.types'
 import type { ListingStatus } from '../../modules/listings/listings.types'
 import type { UserRole } from '../types/express'
 
@@ -22,6 +23,30 @@ export const LISTING_STATUS_FROM_DB: Record<string, ListingStatus> = {
   pausado: 'paused',
   vendido: 'sold',
 }
+export const ORDER_STATUS_FROM_DB: Record<string, OrderStatus> = {
+  pendente: 'pending',
+  pago: 'paid',
+  retirada_combinada: 'pickup_arranged',
+  concluido: 'completed',
+  em_negociacao: 'negotiating',
+  cancelado: 'cancelled',
+}
+export const ORDER_STATUS_TO_DB = Object.fromEntries(
+  Object.entries(ORDER_STATUS_FROM_DB).map(([db, api]) => [api, db]),
+) as Record<OrderStatus, string>
+
+// Único mapa de motivos de cancelamento (CHECK ck_pedido_motivo_cancelamento, migração 3).
+export const CANCEL_REASON_FROM_DB: Record<string, CancelReason> = {
+  vencido: 'expired',
+  sem_estoque: 'out_of_stock',
+  anuncio_indisponivel: 'listing_unavailable',
+}
+export const CANCEL_REASON_TO_DB: Record<CancelReason, string> = {
+  expired: 'vencido',
+  out_of_stock: 'sem_estoque',
+  listing_unavailable: 'anuncio_indisponivel',
+}
+
 export const LISTING_STATUS_TO_DB: Record<ListingStatus, string> = {
   active: 'ativo',
   paused: 'pausado',

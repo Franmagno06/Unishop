@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from '../../generated/prisma/client'
+import { CANCEL_REASON_FROM_DB, CANCEL_REASON_TO_DB } from '../../shared/database/status-maps'
 import { decrementStock, lockListingRow, lockOrder } from '../../shared/database/stock'
 import { centsToDecimal, decimalToCents } from '../../shared/utils/money'
 import {
@@ -173,10 +174,11 @@ export function createPrismaPaymentRepository(db: PrismaClient): PaymentReposito
           listing.user.accountStatus !== 'ativa' ||
           current.status === 'pausado' ||
           (current.status === 'vendido' && current.quantity > 0)
-        if (unavailable) return toRefund('listing_unavailable', 'anuncio_indisponivel') // RN-PAG-14
+        if (unavailable)
+          return toRefund('listing_unavailable', CANCEL_REASON_TO_DB.listing_unavailable) // RN-PAG-14
 
         if (!(await decrementStock(tx, listing.id, order.quantity))) {
-          return toRefund('out_of_stock', 'sem_estoque') // RN-PAG-08
+          return toRefund('out_of_stock', CANCEL_REASON_TO_DB.out_of_stock) // RN-PAG-08
         }
         await tx.order.update({
           where: { id: order.id },
@@ -284,7 +286,7 @@ export function createPrismaPaymentRepository(db: PrismaClient): PaymentReposito
         include: { order: { include: { buyer: { select: { name: true, email: true } } } } },
       })
       if (!p) return null
-      const cancel = p.order.cancelReason
+      const cancel = p.order.cancelReason ? CANCEL_REASON_FROM_DB[p.order.cancelReason] : undefined
       return {
         buyerEmail: p.order.buyer.email,
         buyerName: p.order.buyer.name,
@@ -294,9 +296,9 @@ export function createPrismaPaymentRepository(db: PrismaClient): PaymentReposito
         reason:
           p.lastError === AMOUNT_MISMATCH
             ? 'amount_mismatch'
-            : cancel === 'sem_estoque'
+            : cancel === 'out_of_stock'
               ? 'out_of_stock'
-              : cancel === 'anuncio_indisponivel'
+              : cancel === 'listing_unavailable'
                 ? 'listing_unavailable'
                 : 'late_payment',
       }
