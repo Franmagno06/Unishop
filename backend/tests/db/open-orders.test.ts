@@ -90,7 +90,7 @@ describe('cancelUnpaidOrders', () => {
       const open = await lockOpenOrders(tx, { listingId: listing.id })
       return cancelUnpaidOrders(tx, open, new Date())
     })
-    expect(cancelled.sort()).toEqual([pendente.id, negociacao.id].sort())
+    expect(cancelled.ids.sort()).toEqual([pendente.id, negociacao.id].sort())
     const status = async (id: number) =>
       (await testDb.order.findUniqueOrThrow({ where: { id } })).status
     expect(await status(pendente.id)).toBe('cancelado')
@@ -98,6 +98,37 @@ describe('cancelUnpaidOrders', () => {
     expect(await status(pago.id)).toBe('pago')
     expect(await status(concluido.id)).toBe('concluido')
     expect(await status(cancelado.id)).toBe('cancelado')
+  })
+
+  it('RN-PAG-13: expira o pagamento pendente do pedido cancelado e devolve o id do gateway', async () => {
+    const order = await orderWith('pendente')
+    await testDb.payment.createMany({
+      data: [
+        {
+          orderId: order.id,
+          method: 'pix',
+          status: 'pendente',
+          amount: '45.00',
+          gatewayTxId: 'gw-1',
+          idempotencyKey: 'k1',
+        },
+        {
+          orderId: order.id,
+          method: 'pix',
+          status: 'recusado',
+          amount: '45.00',
+          gatewayTxId: 'gw-0',
+          idempotencyKey: 'k0',
+        },
+      ],
+    })
+    const cancelled = await testDb.$transaction(async (tx) => {
+      const open = await lockOpenOrders(tx, { listingId: listing.id })
+      return cancelUnpaidOrders(tx, open, new Date())
+    })
+    expect(cancelled.gatewayIds).toEqual(['gw-1'])
+    const rows = await testDb.payment.findMany({ orderBy: { id: 'asc' } })
+    expect(rows.map((r) => r.status)).toEqual(['expirado', 'recusado'])
   })
 
   it('cancelUnpaidOrders grava atualizado_em', async () => {
@@ -115,6 +146,6 @@ describe('cancelUnpaidOrders', () => {
     const cancelled = await testDb.$transaction((tx) =>
       cancelUnpaidOrders(tx, [{ id: 1, status: 'pago' }], new Date()),
     )
-    expect(cancelled).toEqual([])
+    expect(cancelled).toEqual({ ids: [], gatewayIds: [] })
   })
 })

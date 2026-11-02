@@ -163,7 +163,7 @@ export function createPrismaAdminListingsRepository(
         if (!row || row.deleted) return 'not_found' as const
         if (hasOpenPaidOrders(orders)) return 'blocked' as const
         const now = new Date()
-        const cancelledOrderIds = await cancelUnpaidOrders(tx, orders, now)
+        const { ids: cancelledOrderIds } = await cancelUnpaidOrders(tx, orders, now)
         await tx.listing.update({ where: { id }, data: { deletedAt: now } })
         await audit(tx, hooks.audit({ cancelledOrderIds }))
         return { seller: { name: row.seller_name, email: row.seller_email }, title: row.title }
