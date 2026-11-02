@@ -66,6 +66,9 @@ export function ProfilePage() {
           <ButtonLink to={ROUTES.editProfile} variant="secondary" fullWidth>
             Editar perfil
           </ButtonLink>
+          <ButtonLink to={ROUTES.changePassword} variant="secondary" fullWidth>
+            Trocar senha
+          </ButtonLink>
         </Card>
 
         <div className="flex min-w-0 flex-1 flex-col gap-4">
