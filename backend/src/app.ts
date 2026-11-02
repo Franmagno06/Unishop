@@ -301,7 +301,7 @@ export const app = createApp({
     users: createPrismaAdminUsersRepository(prisma),
     listings: createPrismaAdminListingsRepository(prisma),
   },
-  uploadsDir: UPLOADS_DIR,
+  ...(env.STORAGE_DRIVER === 'local' ? { uploadsDir: UPLOADS_DIR } : {}),
   orders: createPrismaOrderRepository(prisma),
   payments: createPrismaPaymentRepository(prisma),
   gateway: providers.gateway,

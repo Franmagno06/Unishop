@@ -27,6 +27,10 @@ export const envSchema = z
     MP_WEBHOOK_SECRET: z.string().optional(),
     RESEND_API_KEY: z.string().optional(),
     MAIL_FROM: z.string().optional(),
+    SMTP_HOST: z.string().optional(), // padrão smtp.gmail.com
+    SMTP_PORT: z.coerce.number().int().positive().optional(), // padrão 465
+    SMTP_USER: z.string().optional(),
+    SMTP_PASS: z.string().optional(),
     CLOUDINARY_URL: z.string().optional(),
 
     SERVICE_FEE_PERCENT: z.coerce.number().min(0).default(0),
@@ -39,7 +43,7 @@ export const envSchema = z
 
     PAYMENT_MODE: z.enum(['sandbox', 'production']).default('sandbox'),
     PAYMENT_DRIVER: z.enum(['mock', 'mercadopago']).default('mock'),
-    MAIL_DRIVER: z.enum(['console', 'mailtrap', 'resend']).default('console'),
+    MAIL_DRIVER: z.enum(['console', 'smtp', 'resend']).default('console'),
     STORAGE_DRIVER: z.enum(['local', 'cloudinary']).default('local'),
     CLOUDINARY_UPLOAD_FOLDER: z.string().default('unishop-dev'),
     API_PUBLIC_URL: z.string().optional(), // base das URLs de imagem do driver local; padrão http://localhost:PORT
@@ -62,6 +66,14 @@ export const envSchema = z
       if (!e.MP_ACCESS_TOKEN) fail('MP_ACCESS_TOKEN', 'Obrigatória com PAYMENT_DRIVER=mercadopago.')
       if (!e.MP_WEBHOOK_SECRET)
         fail('MP_WEBHOOK_SECRET', 'Obrigatória com PAYMENT_DRIVER=mercadopago.')
+    }
+
+    if (e.MAIL_DRIVER === 'smtp') {
+      if (!e.SMTP_USER) fail('SMTP_USER', 'Obrigatória com MAIL_DRIVER=smtp.')
+      if (!e.SMTP_PASS) fail('SMTP_PASS', 'Obrigatória com MAIL_DRIVER=smtp.')
+    }
+    if (e.STORAGE_DRIVER === 'cloudinary' && !e.CLOUDINARY_URL) {
+      fail('CLOUDINARY_URL', 'Obrigatória com STORAGE_DRIVER=cloudinary.')
     }
 
     // Travas de ambiente publicado (api.md §6.3, §9). As mensagens citam só o nome da variável.

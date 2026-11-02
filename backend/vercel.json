@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "bash scripts/vercel-build.sh",
+  "regions": ["iad1"],
+  "crons": [{ "path": "/api/v1/internal/jobs/cleanup-expired-tokens", "schedule": "0 6 * * *" }]
+}
