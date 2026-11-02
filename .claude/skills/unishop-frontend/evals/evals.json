@@ -30,6 +30,12 @@
       "prompt": "o aluno trocou o e-mail no editar perfil e o PATCH deu 400. como tratar?",
       "expected_output": "O PATCH /users/me só aceita o e-mail igual ao atual (RN-PER-02): a tela manda o atual no PATCH e pede o link em POST /users/me/email-change com { email }; o e-mail novo só vale depois que o aluno abre o link em /confirmar-troca-email/:token (confirma uma única vez); se o pedido falhar depois do PATCH, o erro diz que os dados foram salvos.",
       "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "o aluno clica em Sair numa pagina do catalogo e cai no login em vez da tela inicial. por que?",
+      "expected_output": "O PrivateRoute via o token sumir antes da navegacao terminar e tratava como sessao ausente (RN-ACE-11); o useLogout marca a sessao como saindo (clearToken com leaving) e navega: aluno para a tela inicial, admin para o login; o guard so espera (render null) e nao guarda destino.",
+      "files": []
     }
   ]
 }
