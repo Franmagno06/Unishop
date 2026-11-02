@@ -1,5 +1,5 @@
-import { CheckCircleIcon, CircleIcon } from '../../../../shared/components/ui/icons'
-import { PASSWORD_RULES } from '../schemas/auth.schemas'
+import { PASSWORD_RULES } from '../../schemas/password'
+import { CheckCircleIcon, CircleIcon } from './icons'
 
 // Lista que marca cada requisito da senha enquanto o aluno digita (RN-ACE-04).
 // Cada item diz "atendido" ou "pendente" por texto (leitor de tela), não só pela cor ou pelo ícone.
