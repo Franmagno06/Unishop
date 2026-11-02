@@ -12,20 +12,13 @@ export function useLogout(): () => void {
   const navigate = useNavigate()
 
   return useCallback(() => {
-    // Admin sai do painel direto para o login comum (sem /admin/login nem destino guardado); o
-    // AdminRoute vê a saída em andamento e não redireciona por conta própria.
-    if (getRole() === 'admin') {
-      clearToken({ leaving: true })
-      queryClient.clear()
-      void navigate(ROUTES.login, { replace: true })
-      return
-    }
-    // Aluno: primeiro sai da tela, depois apaga a sessão: se o token sumisse antes, o guard da área
-    // em que a pessoa está a mandaria ao login em vez de à tela inicial.
-    void (async () => {
-      await navigate(ROUTES.home, { replace: true })
-      clearToken()
-      queryClient.clear()
-    })()
+    // Admin sai do painel direto para o login comum (sem /admin/login nem destino guardado); aluno
+    // volta à tela inicial. Nos dois casos a sessão é marcada como "saindo": o guard da área em que a
+    // pessoa está (AdminRoute ou PrivateRoute) vê a saída em andamento, não guarda destino e leva ao
+    // mesmo lugar, em vez de tratar o token que sumiu como "sessão ausente".
+    const destination = getRole() === 'admin' ? ROUTES.login : ROUTES.home
+    clearToken({ leaving: true })
+    queryClient.clear()
+    void navigate(destination, { replace: true })
   }, [queryClient, navigate])
 }

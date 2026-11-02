@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
+import { loginAsStudent } from './support/login'
 
 // Tela 07: anúncios de uma categoria, com rolagem infinita, filtros e ordem (dados de exemplo).
+// O catálogo só abre para aluno logado (RN-CAT-04): todos os testes entram antes de navegar.
+test.beforeEach(async ({ page }) => loginAsStudent(page))
+
 const cards = (page: Page) => page.getByRole('main').getByRole('link', { name: /R\$/ })
 
 async function scrollUntil(page: Page, count: number) {
@@ -206,11 +210,7 @@ test.describe('Anúncios da categoria · teclado e erros', () => {
   })
 
   test('logado, o cabeçalho continua o de aluno nesta tela', async ({ page }) => {
-    await page.goto('/login')
-    await page.getByLabel('E-mail institucional').fill('aluno.teste@edu.unifor.br')
-    await page.getByLabel('Senha', { exact: true }).fill('Senha1234')
-    await page.getByRole('button', { name: 'Entrar' }).click()
-    await expect(page).toHaveURL('/categorias')
+    await page.goto('/categorias')
 
     await page.getByRole('link', { name: /Eletrônicos/ }).click()
 

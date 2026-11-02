@@ -124,8 +124,18 @@ describe('PrivateRoute', () => {
     renderAt('/categorias')
     expect(await screen.findByText(/Aguarde um minuto/)).toBeInTheDocument()
     screen.getByRole('button', { name: 'Sair' }).click()
-    await waitFor(() => expect(getToken()).toBeNull())
-    await waitFor(() => expect(screen.queryByText(/Aguarde um minuto/)).not.toBeInTheDocument())
+    expect(await screen.findByText('Tela inicial')).toBeInTheDocument()
+    expect(getToken()).toBeNull()
+  })
+
+  it('RN-ACE-11: com a saída em andamento o guard não manda ao login nem guarda destino (quem sai navega)', async () => {
+    setToken('jwt', 'student')
+    api.mockResolvedValue(me(false))
+    const router = renderAt('/categorias')
+    expect(await screen.findByText('Categorias')).toBeInTheDocument()
+    act(() => clearToken({ leaving: true }))
+    expect(screen.queryByText('Tela de login')).not.toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/categorias')
   })
 
   it('falha de rede no /auth/me mostra o erro com "Tentar de novo", sem liberar a página', async () => {

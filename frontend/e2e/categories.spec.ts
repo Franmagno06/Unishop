@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { loginAsStudent } from './support/login'
 
 // Fluxo da tela 04 sem backend: a tela inicial leva a /categorias pelo cabeçalho.
 test.describe('Categorias', () => {
+  // O catálogo só abre para aluno logado (RN-CAT-04): o PrivateRoute leva o visitante ao login.
+  test.beforeEach(async ({ page }) => loginAsStudent(page))
+
   test('da tela inicial até a lista, busca e clique num card', async ({ page }) => {
     const consoleErrors: string[] = []
     page.on('console', (message) => message.type() === 'error' && consoleErrors.push(message.text()))

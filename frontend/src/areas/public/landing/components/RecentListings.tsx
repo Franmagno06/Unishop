@@ -20,7 +20,8 @@ export function RecentListings() {
     return (
       <section aria-labelledby="recentes-titulo" className="flex w-full flex-col gap-4">
         <Heading />
-        <div role="status" aria-label="Carregando anúncios recentes" className="flex gap-4">
+        {/* overflow-hidden: dois esqueletos de 240 px passam da largura de um celular de 390 px. */}
+        <div role="status" aria-label="Carregando anúncios recentes" className="flex gap-4 overflow-hidden">
           <Skeleton className="h-72 w-60 shrink-0" />
           <Skeleton className="h-72 w-60 shrink-0" />
         </div>

@@ -19,8 +19,10 @@ export function PrivateRoute() {
   const from = `${location.pathname}${location.search}`
 
   if (!isLoggedIn) {
-    // "Sair": login comum, sem destino guardado.
-    if (isLeaving()) return <Navigate to={ROUTES.login} replace />
+    // "Sair": o useLogout navega logo em seguida (tela inicial para o aluno, login para o admin). O
+    // guard não guarda destino nem escolhe o lugar: só espera, para não tratar a saída como "sessão
+    // ausente".
+    if (isLeaving()) return null
     return <Navigate to={ROUTES.login} replace state={{ from }} />
   }
 
