@@ -44,13 +44,13 @@ describe('API real · usuários do admin', () => {
     expect(api).toHaveBeenCalledWith('/admin/users?page=1&limit=7&presence=online', expect.anything())
   })
 
-  it('usuário com curso, WhatsApp e último acesso nulos vira texto vazio e usa a data de cadastro', async () => {
+  it('usuário com curso, WhatsApp e último acesso nulos vira texto vazio e fica nulo (Nunca acessou)', async () => {
     api.mockResolvedValue({ data: [row], meta: { page: 1, limit: 7, total: 1, totalPages: 1 } })
     const [user] = (await listUsers({ search: '', presence: 'all', page: 1 })).items
     expect(user).toMatchObject({
       course: '',
       whatsapp: '',
-      lastAccessAt: row.createdAt,
+      lastAccessAt: null,
       listingsCount: 2,
     })
     expect(user).not.toHaveProperty('role')

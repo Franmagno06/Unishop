@@ -109,7 +109,7 @@ export function AdminProductsPage() {
           value={searchText}
           onChange={(event) => setSearchText(event.target.value)}
         />
-        <div className="md:w-[240px]">
+        <div className="md:w-60">
           <label htmlFor="categoria" className="sr-only">
             Filtrar por categoria
           </label>

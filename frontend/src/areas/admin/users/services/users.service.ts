@@ -17,13 +17,12 @@ import type {
 export const USERS_PAGE_SIZE = 7 // as 7 linhas do Figma (A01)
 
 // Formato da API: curso, WhatsApp e último acesso podem vir nulos (conta nova, Google sem perfil).
-type ApiUser = Omit<AdminUser, 'course' | 'whatsapp' | 'lastAccessAt'> & {
+type ApiUser = Omit<AdminUser, 'course' | 'whatsapp'> & {
   course: string | null
   whatsapp: string | null
-  lastAccessAt: string | null
 }
 
-// Quem nunca acessou mostra a data de cadastro como último acesso.
+// Quem nunca acessou vem com lastAccessAt nulo (a tela mostra "Nunca acessou").
 const toUser = (item: ApiUser): AdminUser => ({
   id: item.id,
   name: item.name,
@@ -33,7 +32,7 @@ const toUser = (item: ApiUser): AdminUser => ({
   avatarUrl: item.avatarUrl,
   status: item.status,
   createdAt: item.createdAt,
-  lastAccessAt: item.lastAccessAt ?? item.createdAt,
+  lastAccessAt: item.lastAccessAt,
   isOnline: item.isOnline,
 })
 

@@ -14,7 +14,7 @@ export type AdminUser = {
   avatarUrl: string | null
   status: AccountStatus
   createdAt: string // ISO (UTC)
-  lastAccessAt: string // ISO (UTC)
+  lastAccessAt: string | null // ISO (UTC); null = nunca acessou
   // "Logado agora": atividade nos últimos 5 minutos (RN-ADM-03). Quem decide é o servidor.
   isOnline: boolean
 }

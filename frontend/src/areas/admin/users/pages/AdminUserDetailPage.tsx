@@ -129,7 +129,7 @@ export function AdminUserDetailPage() {
             <Detail label="Curso">{user.course || 'Não informado'}</Detail>
             <Detail label="WhatsApp">{user.whatsapp ? formatWhatsapp(user.whatsapp) : 'Não informado'}</Detail>
             <Detail label="Cadastro">{formatDate(user.createdAt)}</Detail>
-            <Detail label="Último acesso">{formatLastAccess(user.lastAccessAt)}</Detail>
+            <Detail label="Último acesso">{user.lastAccessAt ? formatLastAccess(user.lastAccessAt) : 'Nunca acessou'}</Detail>
           </dl>
         </Card>
 

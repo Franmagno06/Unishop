@@ -22,7 +22,7 @@ export function UserPresence({
       className={`inline-flex items-center gap-2 ${user.isOnline ? 'font-semibold text-whatsapp' : 'text-text-muted'}`}
     >
       <span aria-hidden="true" className={`size-2 rounded-full ${dot}`} />
-      {user.isOnline ? 'Logado agora' : formatLastSeen(user.lastAccessAt)}
+      {user.isOnline ? 'Logado agora' : user.lastAccessAt ? formatLastSeen(user.lastAccessAt) : 'Nunca acessou'}
     </span>
   )
 }

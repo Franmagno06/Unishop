@@ -16,7 +16,7 @@ export function initialsOf(name: string): string {
     .trim()
     .split(/\s+/)
     .filter(Boolean)
-    .map((part) => part[0]!.toUpperCase())
+    .map((part) => Array.from(part)[0]!.toUpperCase())
   if (letters.length === 0) return ADMIN_PROFILE.initials
   return letters.length === 1 ? letters[0]! : letters[0]! + letters[letters.length - 1]!
 }

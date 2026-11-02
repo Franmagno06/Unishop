@@ -18,5 +18,6 @@ describe('useAdminProfile', () => {
     expect(initialsOf('Admin')).toBe('A')
     expect(initialsOf('   ')).toBe('AD')
     expect(initialsOf('  ana   lima ')).toBe('AL')
+    expect(initialsOf('😀 Ana')).toBe('😀A')
   })
 })
