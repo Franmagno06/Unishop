@@ -35,6 +35,7 @@ type ProvidersEnv = Pick<
       | 'SMTP_USER'
       | 'SMTP_PASS'
       | 'MAIL_FROM'
+      | 'ALLOW_CONSOLE_MAIL'
       | 'CLOUDINARY_URL'
       | 'CLOUDINARY_UPLOAD_FOLDER'
     >
@@ -48,7 +49,7 @@ export type Providers = {
 }
 
 function buildMail(e: ProvidersEnv, local: boolean): MailProvider {
-  if (e.MAIL_DRIVER === 'console' && local) return consoleMailProvider
+  if (e.MAIL_DRIVER === 'console' && (local || e.ALLOW_CONSOLE_MAIL)) return consoleMailProvider
   if (e.MAIL_DRIVER === 'smtp' && e.SMTP_USER && e.SMTP_PASS) {
     const transport = nodemailer.createTransport({
       host: e.SMTP_HOST ?? 'smtp.gmail.com',

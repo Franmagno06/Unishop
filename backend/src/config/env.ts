@@ -44,6 +44,7 @@ export const envSchema = z
     PAYMENT_MODE: z.enum(['sandbox', 'production']).default('sandbox'),
     PAYMENT_DRIVER: z.enum(['mock', 'mercadopago']).default('mock'),
     MAIL_DRIVER: z.enum(['console', 'smtp', 'resend']).default('console'),
+    ALLOW_CONSOLE_MAIL: bool.default(false), // modo demonstração: libera o e-mail por console em production
     STORAGE_DRIVER: z.enum(['local', 'cloudinary']).default('local'),
     CLOUDINARY_UPLOAD_FOLDER: z.string().default('unishop-dev'),
     API_PUBLIC_URL: z.string().optional(), // base das URLs de imagem do driver local; padrão http://localhost:PORT
@@ -78,7 +79,7 @@ export const envSchema = z
 
     // Travas de ambiente publicado (api.md §6.3, §9). As mensagens citam só o nome da variável.
     if (e.APP_ENV === 'preview' || e.APP_ENV === 'production') {
-      if (e.MAIL_DRIVER === 'console') {
+      if (e.MAIL_DRIVER === 'console' && !e.ALLOW_CONSOLE_MAIL) {
         fail('MAIL_DRIVER', 'O e-mail por console é proibido em preview e production.')
       }
       if (e.STORAGE_DRIVER === 'local') {

@@ -133,6 +133,26 @@ describe('buildProviders com drivers reais', () => {
   })
 })
 
+describe('modo demonstração de e-mail', () => {
+  const prod = {
+    APP_ENV: 'production',
+    PORT: 3000,
+    MAIL_DRIVER: 'console',
+    STORAGE_DRIVER: 'cloudinary',
+    PAYMENT_DRIVER: 'mercadopago',
+    PAYMENT_MODE: 'sandbox',
+    MP_ACCESS_TOKEN: 'TEST-token',
+    MP_WEBHOOK_SECRET: 'webhook',
+    CLOUDINARY_URL: 'cloudinary://key:segredo@nuvem',
+  } as const
+
+  it('console em production só com ALLOW_CONSOLE_MAIL', () => {
+    expect(() => buildProviders(prod, { uploadsDir: 'x' })).toThrow(/MAIL_DRIVER/)
+    const p = buildProviders({ ...prod, ALLOW_CONSOLE_MAIL: true }, { uploadsDir: 'x' })
+    expect(typeof p.mail.sendPasswordReset).toBe('function')
+  })
+})
+
 describe('env: variáveis dos drivers reais', () => {
   const base = {
     DATABASE_URL: 'postgresql://x',
