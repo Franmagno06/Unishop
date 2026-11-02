@@ -38,7 +38,9 @@ export function verifyWebhookSignature(
   const received = /^[0-9a-f]{64}$/i.test(v1) ? Buffer.from(v1, 'hex') : Buffer.alloc(0)
   if (received.length !== expected.length || !timingSafeEqual(received, expected)) throw invalid()
 
-  const age = Math.abs(args.now.getTime() - Number(ts))
+  // O Mercado Pago manda `ts` em segundos (10 dígitos, como na documentação deles); o mock, em ms.
+  const tsMs = Number(ts) < 1e11 ? Number(ts) * 1000 : Number(ts)
+  const age = Math.abs(args.now.getTime() - tsMs)
   if (!Number.isFinite(age) || age > WINDOW_MS) throw invalid()
 
   const type = String(args.query.type ?? args.query.topic ?? '')
