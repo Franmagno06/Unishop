@@ -1,13 +1,14 @@
 import { api } from '../../../../shared/lib/api'
 import { MOCK_MODE } from '../../../../shared/lib/mock-mode'
 
-// GET /categories?search= devolve { data: [{ id, name, activeListingCount }] } (backend.md §9.3,
+// GET /categories?search= devolve { data: [{ id, name, activeListingCount, imageUrl }] } (backend.md §9.3,
 // RN-CAT-01 a 04). Em modo de demonstração (MOCK_MODE) as chamadas vão para `categories.mock.ts`;
 // o `import.meta.env.DEV` escrito aqui é o que deixa o Vite apagar o código de exemplo do build.
 export type Category = {
   id: number
   name: string
   activeListingCount: number
+  imageUrl: string | null // capa: foto do primeiro anúncio visível da categoria (RN-CAT-02)
 }
 
 export async function getCategories(search = '', signal?: AbortSignal): Promise<Category[]> {

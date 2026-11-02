@@ -18,7 +18,7 @@ describe('getCategories (dados de exemplo)', () => {
 
   it('cada categoria traz a contagem de anúncios ativos (RN-CAT-02)', async () => {
     const [first] = await getCategories()
-    expect(first).toEqual({ id: 1, name: 'Livros e apostilas', activeListingCount: 48 })
+    expect(first).toEqual({ id: 1, name: 'Livros e apostilas', activeListingCount: 48, imageUrl: null })
   })
 
   it('a busca ignora maiúsculas e acentos (RN-CAT-03)', async () => {

@@ -840,7 +840,7 @@ São **seis categorias fixas** (RN-CAT-01), criadas pelo `seed`. Não há rota d
 |---|---|---|---|
 | `GET /categories` | Aluno | Lista as categorias com a quantidade de anúncios ativos; aceita `?search=` | RN-CAT-02, 03, 04 |
 
-A contagem usa o mesmo filtro de visibilidade das listagens (seção 9.4). A busca por texto da tela de categorias procura **categorias** em `GET /categories?search=` e **itens** em `GET /listings?search=`; o frontend mostra os dois resultados (RN-CAT-03).
+A contagem usa o mesmo filtro de visibilidade das listagens (seção 9.4). Cada categoria também traz `imageUrl`: a foto principal do **primeiro anúncio visível publicado nela** (o mais antigo; `null` se não houver), com o mesmo filtro, para o card de categoria não ficar em branco. Decisão do gestor em 02/11/2026; não consta no PDF nem nas Regras. A busca por texto da tela de categorias procura **categorias** em `GET /categories?search=` e **itens** em `GET /listings?search=`; o frontend mostra os dois resultados (RN-CAT-03).
 
 
 ### 9.4 listings
