@@ -63,6 +63,12 @@ export interface OrderRepository {
    * quantidade e valores (RN-PED-10). O índice único `uq_pedido_aberto` decide a corrida.
    */
   createOrReuse(data: NewOrderData): Promise<{ order: OrderRecord; created: boolean }>
+  /** Pedido aberto (Pendente ou Em negociação) do comprador neste anúncio e forma, se houver. */
+  findOpen(
+    buyerId: number,
+    listingId: number,
+    negotiation: Negotiation,
+  ): Promise<OrderRecord | null>
   findById(id: number): Promise<OrderRecord | null>
   findByBuyer(buyerId: number): Promise<OrderRecord[]>
   findBySeller(sellerId: number, listingId?: number): Promise<OrderRecord[]>

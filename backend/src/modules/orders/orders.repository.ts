@@ -1,39 +1,15 @@
 import { Prisma, type PrismaClient } from '../../generated/prisma/client'
+import { AppError } from '../../shared/errors/app-error'
+import {
+  CANCEL_REASON_FROM_DB,
+  CANCEL_REASON_TO_DB,
+  LISTING_STATUS_FROM_DB,
+  ORDER_STATUS_FROM_DB,
+  ORDER_STATUS_TO_DB,
+} from '../../shared/database/status-maps'
 import { decrementStock, lockListingRow, lockOrder } from '../../shared/database/stock'
 import { centsToDecimal, decimalToCents } from '../../shared/utils/money'
-import type {
-  CancelReason,
-  ListingForOrder,
-  Negotiation,
-  OrderRecord,
-  OrderRepository,
-  OrderStatus,
-} from './orders.types'
-
-const STATUS_FROM_DB: Record<string, OrderStatus> = {
-  pendente: 'pending',
-  pago: 'paid',
-  retirada_combinada: 'pickup_arranged',
-  concluido: 'completed',
-  em_negociacao: 'negotiating',
-  cancelado: 'cancelled',
-}
-const STATUS_TO_DB = Object.fromEntries(
-  Object.entries(STATUS_FROM_DB).map(([db, api]) => [api, db]),
-) as Record<OrderStatus, string>
-
-const REASON_FROM_DB: Record<string, CancelReason> = {
-  vencido: 'expired',
-  sem_estoque: 'out_of_stock',
-  anuncio_indisponivel: 'listing_unavailable',
-}
-export const REASON_TO_DB: Record<CancelReason, string> = {
-  expired: 'vencido',
-  out_of_stock: 'sem_estoque',
-  listing_unavailable: 'anuncio_indisponivel',
-}
-
-const LISTING_STATUS = { ativo: 'active', pausado: 'paused', vendido: 'sold' } as const
+import type { ListingForOrder, Negotiation, OrderRecord, OrderRepository } from './orders.types'
 
 const include = {
   buyer: { select: { name: true } },
@@ -52,7 +28,7 @@ function toRecord(row: OrderRow): OrderRecord {
     buyerId: row.buyerId,
     sellerId: row.sellerId,
     negotiation: row.negotiationType === 'whatsapp' ? 'whatsapp' : 'site_payment',
-    status: STATUS_FROM_DB[row.status]!,
+    status: ORDER_STATUS_FROM_DB[row.status]!,
     productName: row.productName,
     imageUrl: row.imageUrl,
     quantity: row.quantity,
@@ -61,7 +37,7 @@ function toRecord(row: OrderRow): OrderRecord {
     totalInCents: decimalToCents(row.totalAmount),
     createdAt: row.createdAt,
     completedAt: row.completedAt,
-    cancelReason: row.cancelReason ? (REASON_FROM_DB[row.cancelReason] ?? null) : null,
+    cancelReason: row.cancelReason ? (CANCEL_REASON_FROM_DB[row.cancelReason] ?? null) : null,
     buyerName: row.buyer.name,
     sellerName: row.seller.name,
     sellerWhatsapp: row.listing.whatsapp,
@@ -96,7 +72,8 @@ export function createPrismaOrderRepository(db: PrismaClient): OrderRepository {
         id: row.id,
         ownerId: row.userId,
         ownerActive: row.user.accountStatus === 'ativa',
-        status: LISTING_STATUS[row.status as keyof typeof LISTING_STATUS] ?? 'paused',
+        // valor desconhecido no banco: trata como pausado (nunca vende)
+        status: LISTING_STATUS_FROM_DB[row.status] ?? 'paused',
         deleted: row.deletedAt !== null,
         quantity: row.quantity,
         priceInCents: decimalToCents(row.price),
@@ -125,15 +102,33 @@ export function createPrismaOrderRepository(db: PrismaClient): OrderRepository {
         const open = await db.order.findFirst({ where })
         if (!open) return null
         // Só o pedido Pendente tem valor a atualizar; a quantidade nova refaz o total (RN-PED-10).
-        await db.order.updateMany({
-          where: { id: open.id, status },
-          data: {
-            quantity: data.quantity,
-            unitPrice: centsToDecimal(data.listing.priceInCents),
-            serviceFee: centsToDecimal(data.feeInCents),
-            totalAmount: centsToDecimal(total),
-            updatedAt: new Date(),
-          },
+        // Com cobrança pendente ou aprovada o valor fica travado: a liquidação confere o valor cobrado
+        // com o do pedido (RN-PAG-05). Mesma quantidade devolve o pedido; outra, 409.
+        await db.$transaction(async (tx) => {
+          await lockOrder(tx, open.id)
+          if (status === 'pendente') {
+            const charging = await tx.payment.count({
+              where: { orderId: open.id, status: { in: ['pendente', 'aprovado'] } },
+            })
+            if (charging > 0) {
+              if (open.quantity === data.quantity) return
+              throw new AppError(
+                409,
+                'PAYMENT_IN_PROGRESS',
+                'Já existe um pagamento em andamento neste pedido. Conclua ou aguarde antes de mudar a quantidade.',
+              )
+            }
+          }
+          await tx.order.updateMany({
+            where: { id: open.id, status },
+            data: {
+              quantity: data.quantity,
+              unitPrice: centsToDecimal(data.listing.priceInCents),
+              serviceFee: centsToDecimal(data.feeInCents),
+              totalAmount: centsToDecimal(total),
+              updatedAt: new Date(),
+            },
+          })
         })
         return (await findById(open.id))!
       }
@@ -170,6 +165,19 @@ export function createPrismaOrderRepository(db: PrismaClient): OrderRepository {
 
     findById,
 
+    async findOpen(buyerId, listingId, negotiation) {
+      const row = await db.order.findFirst({
+        where: {
+          buyerId,
+          listingId,
+          negotiationType: negotiation === 'whatsapp' ? 'whatsapp' : 'pagamento_site',
+          status: negotiation === 'whatsapp' ? 'em_negociacao' : 'pendente',
+        },
+        include,
+      })
+      return row ? toRecord(row) : null
+    },
+
     async findByBuyer(buyerId) {
       const rows = await db.order.findMany({
         where: { buyerId },
@@ -190,8 +198,8 @@ export function createPrismaOrderRepository(db: PrismaClient): OrderRepository {
 
     async transition(id, from, to) {
       const res = await db.order.updateMany({
-        where: { id, status: { in: from.map((s) => STATUS_TO_DB[s]) } },
-        data: { status: STATUS_TO_DB[to], updatedAt: new Date() },
+        where: { id, status: { in: from.map((s) => ORDER_STATUS_TO_DB[s]) } },
+        data: { status: ORDER_STATUS_TO_DB[to], updatedAt: new Date() },
       })
       return res.count === 1
     },
@@ -226,10 +234,10 @@ export function createPrismaOrderRepository(db: PrismaClient): OrderRepository {
     async cancel(id, from, reason) {
       return db.$transaction(async (tx) => {
         const res = await tx.order.updateMany({
-          where: { id, status: { in: from.map((s) => STATUS_TO_DB[s]) } },
+          where: { id, status: { in: from.map((s) => ORDER_STATUS_TO_DB[s]) } },
           data: {
             status: 'cancelado',
-            cancelReason: reason ? REASON_TO_DB[reason] : null,
+            cancelReason: reason ? CANCEL_REASON_TO_DB[reason] : null,
             updatedAt: new Date(),
           },
         })
@@ -242,7 +250,11 @@ export function createPrismaOrderRepository(db: PrismaClient): OrderRepository {
       return db.$transaction(async (tx) => {
         const res = await tx.order.updateMany({
           where: { id, status: 'pendente', createdAt: { lte: createdBefore } },
-          data: { status: 'cancelado', cancelReason: 'vencido', updatedAt: new Date() },
+          data: {
+            status: 'cancelado',
+            cancelReason: CANCEL_REASON_TO_DB.expired,
+            updatedAt: new Date(),
+          },
         })
         if (res.count === 1) await expirePendingPayments(tx, id)
         return res.count === 1

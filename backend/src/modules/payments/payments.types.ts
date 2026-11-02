@@ -1,3 +1,6 @@
+/** `ultimo_erro` da tentativa que falhou no gateway sem receber id (timeout): marca a candidata à conciliação. */
+export const GATEWAY_ERROR = 'GATEWAY_ERROR'
+
 export type PaymentStatus =
   'pendente' | 'aprovado' | 'recusado' | 'expirado' | 'estorno_pendente' | 'estornado'
 
@@ -7,7 +10,9 @@ export type PaymentRow = {
   gatewayTxId: string | null
   method: 'pix' | 'card'
   status: PaymentStatus
+  amountInCents: number
   refundAttempts: number
+  lastError: string | null
   createdAt: Date
 }
 
@@ -20,7 +25,8 @@ export type ChargeContext = {
   productName: string
 }
 
-export type RefundReason = 'out_of_stock' | 'listing_unavailable' | 'late_payment'
+export type RefundReason =
+  'out_of_stock' | 'listing_unavailable' | 'late_payment' | 'amount_mismatch'
 
 /** Resultado da liquidação (backend.md §11). `noop` = já liquidado antes (idempotência, RN-PAG-06). */
 export type SettleOutcome =
@@ -75,8 +81,15 @@ export interface PaymentRepository {
   findPendingRefunds(maxAttempts: number, limit: number): Promise<PaymentRow[]>
   markRefunded(paymentId: number): Promise<void>
   recordRefundFailure(paymentId: number, message: string): Promise<void>
-  /** Pagamentos pendentes com cobrança no gateway, criados antes do corte (job de conciliação). */
-  findStalePending(createdBefore: Date, limit: number): Promise<PaymentRow[]>
+  /**
+   * Pagamentos com cobrança no gateway para reconsultar (job de conciliação): pendente criados antes
+   * do corte e expirado criados desde expiredSince (Pix pago com webhook perdido, RN-PAG-13).
+   */
+  findStalePending(createdBefore: Date, expiredSince: Date, limit: number): Promise<PaymentRow[]>
+  /** Tentativa mais recente do pedido que falhou no gateway sem receber id (timeout), se houver. */
+  findOrphanAttempt(orderId: number): Promise<PaymentRow | null>
+  /** Anexa o id do gateway a uma tentativa órfã e a reabre como expirado. false se outra a pegou antes. */
+  claimOrphan(paymentId: number, gatewayTxId: string): Promise<boolean>
   saleMailContext(paymentId: number): Promise<SaleMailContext | null>
   refundMailContext(paymentId: number): Promise<RefundMailContext | null>
 }

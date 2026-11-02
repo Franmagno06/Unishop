@@ -54,7 +54,11 @@ import { createAuditLogsService } from './admin/audit-logs/audit-logs.service'
 import type { AuditLogRepository } from './admin/audit-logs/audit-logs.types'
 import { createAuthenticate } from './shared/middlewares/authenticate'
 import { errorHandler, notFoundHandler } from './shared/middlewares/error-handler'
-import { createRateLimiter } from './shared/middlewares/rate-limiter'
+import {
+  createGeneralLimiter,
+  createRateLimiter,
+  createUserLimiter,
+} from './shared/middlewares/rate-limiter'
 import { requestId } from './shared/middlewares/request-id'
 import { withDeliveryGuard } from './shared/providers/mail/guard'
 import type { MailProvider } from './shared/providers/mail/mail.provider'
@@ -99,6 +103,10 @@ export function createApp(deps?: AppDeps) {
   app.use(cors({ origin: env.FRONTEND_URL }))
   app.use(compression())
   app.use(express.json({ limit: '100kb' }))
+
+  // Limite geral: 100 por minuto por IP (backend.md §6). Desligado nos testes, como os demais; o /health,
+  // os jobs e o webhook ficam de fora (ver rate-limiter.ts).
+  if (env.APP_ENV !== 'test') app.use('/api/v1', createGeneralLimiter())
 
   app.get('/api/v1/health', (_req, res) => {
     res.json({ status: 'ok' })
@@ -236,6 +244,8 @@ export function createApp(deps?: AppDeps) {
         '/api/v1/payments',
         createPaymentsRoutes(paymentsService, authenticate, {
           webhookLimiter: env.APP_ENV === 'test' ? noLimit : createRateLimiter(300),
+          // 30 por minuto por usuário nas cobranças (backend.md §6)
+          userLimiter: env.APP_ENV === 'test' ? noLimit : createUserLimiter(30),
           ...(simulator && { devSimulator: simulator }),
         }),
       )

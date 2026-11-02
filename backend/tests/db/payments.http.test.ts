@@ -403,3 +403,149 @@ describe('simulador de desenvolvimento', () => {
     expect((await orderRow(order.id)).status).toBe('pago')
   })
 })
+
+describe('valor do pedido com cobrança aberta (RN-PED-10, RN-PAG-05)', () => {
+  it('RN-PED-10: com Pix pendente, mudar a quantidade do pedido = 409 PAYMENT_IN_PROGRESS e o valor não muda', async () => {
+    const order = await newOrder(1)
+    await pix(order.id)
+    const res = await api('post', '/orders', buyer, { listingId: listing.id, quantity: 2 })
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('PAYMENT_IN_PROGRESS')
+    expect(await orderRow(order.id)).toMatchObject({ quantity: 1 })
+    expect(Number((await orderRow(order.id)).totalAmount)).toBe(45)
+  })
+
+  it('RN-PED-10: com Pix pendente, repetir a mesma quantidade devolve o pedido sem alterar nada', async () => {
+    const order = await newOrder(1)
+    await pix(order.id)
+    const before = await orderRow(order.id)
+    const res = await api('post', '/orders', buyer, { listingId: listing.id, quantity: 1 })
+    expect(res.status).toBe(200)
+    expect(res.body.data.id).toBe(order.id)
+    expect((await orderRow(order.id)).updatedAt).toEqual(before.updatedAt)
+  })
+
+  it('RN-PAG-05: se o valor da cobrança difere do pedido, não liquida: estorna e o pedido segue Pendente', async () => {
+    const order = await newOrder(1)
+    await pix(order.id)
+    const [pay] = await payments(order.id)
+    await testDb.order.update({ where: { id: order.id }, data: { totalAmount: '90.00' } })
+    gateway.setStatus(pay!.gatewayTxId!, 'approved')
+    await webhook(pay!.gatewayTxId!)
+    expect(await orderRow(order.id)).toMatchObject({ status: 'pendente' })
+    expect((await payments(order.id))[0]).toMatchObject({ status: 'estornado' })
+    expect((await listingRow()).quantity).toBe(2)
+    expect(gateway.calls.refunds).toEqual([pay!.gatewayTxId])
+    await flushBackground()
+    expect(mail.refunds[0]).toMatchObject({ reason: 'amount_mismatch' })
+  })
+
+  it('RN-PAG-05: se o gateway cobrou valor diferente do registrado, estorna sem liquidar', async () => {
+    const order = await newOrder(1)
+    await pix(order.id)
+    const [pay] = await payments(order.id)
+    gateway.payments.get(pay!.gatewayTxId!)!.amountInCents = 100
+    gateway.setStatus(pay!.gatewayTxId!, 'approved')
+    await webhook(pay!.gatewayTxId!)
+    expect((await orderRow(order.id)).status).toBe('pendente')
+    expect((await payments(order.id))[0]!.status).toBe('estornado')
+    expect(gateway.calls.refunds).toHaveLength(1)
+    expect((await listingRow()).quantity).toBe(2)
+  })
+})
+
+describe('cobrança órfã por timeout do gateway (RN-PAG-05, 13)', () => {
+  const lostId = () => [...gateway.payments.keys()][0]!
+
+  it('RN-PAG-05: cartão aprovado cuja resposta se perdeu é reconciliado pela referência pedido:N', async () => {
+    const order = await newOrder(1)
+    gateway.loseNextCreateResponse()
+    expect((await card(order.id)).status).toBe(502)
+    expect((await payments(order.id))[0]).toMatchObject({ status: 'recusado', gatewayTxId: null })
+
+    expect((await webhook(lostId())).status).toBe(200)
+    expect(await orderRow(order.id)).toMatchObject({ status: 'pago' })
+    expect((await payments(order.id))[0]).toMatchObject({
+      status: 'aprovado',
+      gatewayTxId: lostId(),
+    })
+    expect((await listingRow()).quantity).toBe(1)
+    expect(gateway.calls.refunds).toHaveLength(0)
+  })
+
+  it('RN-PAG-13: se o pedido já foi cancelado, a cobrança reconciliada é estornada', async () => {
+    const order = await newOrder(1)
+    gateway.loseNextCreateResponse()
+    await card(order.id)
+    await api('post', `/orders/${order.id}/cancel`, buyer)
+    await webhook(lostId())
+    expect((await orderRow(order.id)).status).toBe('cancelado')
+    expect((await payments(order.id))[0]!.status).toBe('estornado')
+    expect(gateway.calls.refunds).toEqual([lostId()])
+    expect((await listingRow()).quantity).toBe(2)
+  })
+
+  it('aviso de id desconhecido, sem tentativa órfã correspondente, não muda nada', async () => {
+    const order = await newOrder(1)
+    gateway.payments.set('mock-estranho', {
+      id: 'mock-estranho',
+      status: 'approved',
+      amountInCents: 4500,
+      reference: `pedido:${order.id}`,
+      method: 'card',
+    })
+    expect((await webhook('mock-estranho')).status).toBe(200)
+    expect((await orderRow(order.id)).status).toBe('pendente')
+    expect(await payments(order.id)).toHaveLength(0)
+  })
+})
+
+describe('conciliação de Pix expirado e estorno externo (RN-PAG-13)', () => {
+  const reconcile = () =>
+    request(app)
+      .get('/api/v1/internal/jobs/reconcile-pending-payments')
+      .set('Authorization', `Bearer ${process.env.CRON_SECRET!}`)
+
+  it('RN-PAG-13: Pix expirado e pago com webhook perdido é achado pelo job e estornado', async () => {
+    const order = await newOrder(1)
+    await pix(order.id)
+    const [pay] = await payments(order.id)
+    await api('post', `/orders/${order.id}/cancel`, buyer)
+    expect((await payments(order.id))[0]!.status).toBe('expirado')
+    gateway.setStatus(pay!.gatewayTxId!, 'approved') // pagou depois de cancelar; o webhook se perdeu
+    await testDb.payment.update({
+      where: { id: pay!.id },
+      data: { createdAt: new Date(Date.now() - 10 * 60_000) },
+    })
+    await reconcile()
+    expect((await payments(order.id))[0]!.status).toBe('estornado')
+    expect(gateway.calls.refunds).toEqual([pay!.gatewayTxId])
+  })
+
+  it('o job não reconsulta expirados com mais de 24 horas', async () => {
+    const order = await newOrder(1)
+    await pix(order.id)
+    const [pay] = await payments(order.id)
+    await api('post', `/orders/${order.id}/cancel`, buyer)
+    gateway.setStatus(pay!.gatewayTxId!, 'approved')
+    await testDb.payment.update({
+      where: { id: pay!.id },
+      data: { createdAt: new Date(Date.now() - 25 * 3_600_000) },
+    })
+    await reconcile()
+    expect((await payments(order.id))[0]!.status).toBe('expirado')
+  })
+
+  it('estorno feito fora do sistema: a linha vira estornado com ESTORNO_EXTERNO e o pedido Pago não muda', async () => {
+    const order = await newOrder(1)
+    await card(order.id)
+    const [pay] = await payments(order.id)
+    gateway.setStatus(pay!.gatewayTxId!, 'refunded')
+    await webhook(pay!.gatewayTxId!)
+    expect((await payments(order.id))[0]).toMatchObject({
+      status: 'estornado',
+      lastError: 'ESTORNO_EXTERNO',
+    })
+    expect((await orderRow(order.id)).status).toBe('pago')
+  })
+})

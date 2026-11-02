@@ -21,13 +21,13 @@ export function createAuthRoutes(
 ) {
   const c = createAuthController(service)
 
+  // O limite por IP vale só para as rotas POST: o GET /me restaura a sessão a cada recarga.
   const auth = Router()
-  auth.use(limiter)
-  auth.post('/register', validateBody(registerSchema), c.register) // RN-ACE-01 a 07
-  auth.post('/login', validateBody(loginSchema), c.login) // RN-ACE-08, 09, 12, 13
-  auth.post('/google', validateBody(googleLoginSchema), c.google) // RN-ACE-14
-  auth.post('/forgot-password', validateBody(forgotPasswordSchema), c.forgotPassword) // RN-ACE-10
-  auth.post('/reset-password', validateBody(resetPasswordSchema), c.resetPassword) // RN-ACE-04, 10
+  auth.post('/register', limiter, validateBody(registerSchema), c.register) // RN-ACE-01 a 07
+  auth.post('/login', limiter, validateBody(loginSchema), c.login) // RN-ACE-08, 09, 12, 13
+  auth.post('/google', limiter, validateBody(googleLoginSchema), c.google) // RN-ACE-14
+  auth.post('/forgot-password', limiter, validateBody(forgotPasswordSchema), c.forgotPassword) // RN-ACE-10
+  auth.post('/reset-password', limiter, validateBody(resetPasswordSchema), c.resetPassword) // RN-ACE-04, 10
   auth.get('/me', authenticate({ allowPendingTerms: true }), c.me) // RN-ACE-11
 
   const users = Router()

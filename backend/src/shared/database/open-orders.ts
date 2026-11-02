@@ -38,24 +38,43 @@ export async function lockOpenOrders(
 export const hasOpenPaidOrders = (orders: OpenOrder[]) =>
   orders.some((o) => o.status === 'pago' || o.status === 'retirada_combinada')
 
+export type CancelledOrders = {
+  /** Pedidos cancelados. */
+  ids: number[]
+  /** Cobranças abertas no gateway desses pedidos: quem chama as cancela depois do commit (melhor esforço). */
+  gatewayIds: string[]
+}
+
 /**
- * Cancela os pendente/em_negociacao da lista (UPDATE condicional no status) e devolve os ids cancelados.
- * Ponto de extensão para as Etapas 6 e 7: quem chama recebe os ids e, depois do commit, poderá
- * cancelar a cobrança aberta no gateway (`cancelPayment`, backend.md §9.5). Hoje não há payments.
- * Não grava motivo: a coluna `motivo_cancelamento` (P9) ainda não existe.
+ * Cancela os pendente/em_negociacao da lista (UPDATE condicional no status), com motivo
+ * `anuncio_indisponivel` (o anúncio ou a conta saiu do ar), e expira os pagamentos `pendente` desses
+ * pedidos. Devolve os ids cancelados e os ids de gateway das cobranças expiradas: depois do commit,
+ * quem chama deve chamar `gateway.cancelPayment` neles (backend.md §9.5), sem travar a resposta se falhar.
+ * Se um Pix já pago chegar depois, a liquidação o estorna (RN-PAG-13).
  */
 export async function cancelUnpaidOrders(
   tx: Prisma.TransactionClient,
   orders: OpenOrder[],
   at: Date,
-): Promise<number[]> {
+): Promise<CancelledOrders> {
   const ids = orders
     .filter((o) => o.status === 'pendente' || o.status === 'em_negociacao')
     .map((o) => o.id)
-  if (ids.length === 0) return []
+  if (ids.length === 0) return { ids: [], gatewayIds: [] }
   await tx.order.updateMany({
     where: { id: { in: ids }, status: { in: ['pendente', 'em_negociacao'] } },
-    data: { status: 'cancelado', updatedAt: at },
+    data: { status: 'cancelado', cancelReason: 'anuncio_indisponivel', updatedAt: at },
   })
-  return ids
+  const charges = await tx.payment.findMany({
+    where: { orderId: { in: ids }, status: 'pendente' },
+    select: { id: true, gatewayTxId: true },
+  })
+  if (charges.length > 0) {
+    await tx.payment.updateMany({
+      where: { id: { in: charges.map((c) => c.id) }, status: 'pendente' },
+      data: { status: 'expirado' },
+    })
+  }
+  const gatewayIds = charges.flatMap((c) => (c.gatewayTxId ? [c.gatewayTxId] : []))
+  return { ids, gatewayIds }
 }

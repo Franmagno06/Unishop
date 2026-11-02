@@ -28,7 +28,7 @@ export function anonymizedFields(userId: number): {
 export type AnonymizeResult =
   | { status: 'not_found' }
   | { status: 'blocked' }
-  | { status: 'ok'; cancelledOrderIds: number[]; deletedListings: number }
+  | { status: 'ok'; cancelledOrderIds: number[]; gatewayIds: string[]; deletedListings: number }
 
 /**
  * Roda DENTRO da transação de quem chama. Ordem das travas: usuario -> pedido -> anuncio.
@@ -46,7 +46,7 @@ export async function anonymizeAccountTx(
   const orders = await lockOpenOrders(tx, { userId })
   if (hasOpenPaidOrders(orders)) return { status: 'blocked' }
 
-  const cancelledOrderIds = await cancelUnpaidOrders(tx, orders, at)
+  const { ids: cancelledOrderIds, gatewayIds } = await cancelUnpaidOrders(tx, orders, at)
   const fields = anonymizedFields(userId)
   const { count } = await tx.listing.updateMany({
     where: { userId, deletedAt: null },
@@ -56,5 +56,5 @@ export async function anonymizeAccountTx(
   await tx.listing.updateMany({ where: { userId }, data: fields.listing })
   await tx.userToken.deleteMany({ where: { userId } })
   await tx.user.update({ where: { id: userId }, data: fields.user })
-  return { status: 'ok', cancelledOrderIds, deletedListings: count }
+  return { status: 'ok', cancelledOrderIds, gatewayIds, deletedListings: count }
 }

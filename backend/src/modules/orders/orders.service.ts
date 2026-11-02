@@ -1,4 +1,5 @@
 import { AppError, forbidden, notFound } from '../../shared/errors/app-error'
+import { runInBackground } from '../../shared/utils/background'
 import type { PaymentGateway } from '../../shared/providers/payment/payment.gateway'
 import type { OrderRecord, OrderRepository } from './orders.types'
 import { toOrderJson } from './orders.serializer'
@@ -30,8 +31,17 @@ export function createOrdersService({ orders, gateway, config, now = () => new D
     if (order.status !== 'pending' || expiresAt(order) > now()) return order
     const gatewayId = await orders.findPendingGatewayId(order.id)
     const expired = await orders.expire(order.id, new Date(now().getTime() - ttlMs))
-    if (expired && gatewayId) await gateway.cancelPayment(gatewayId).catch(() => undefined)
+    // Fora do caminho da resposta: um GET não espera o gateway (melhor esforço).
+    if (expired && gatewayId)
+      runInBackground(gateway.cancelPayment(gatewayId).catch(() => undefined))
     return (await orders.findById(order.id)) ?? order
+  }
+
+  // Em série: cada vencido faz consultas no banco; sem Promise.all não há rajada de uma vez só.
+  async function expireInSeries(list: OrderRecord[]) {
+    const out = []
+    for (const o of list) out.push(json(await expireIfDue(o)))
+    return out
   }
 
   async function open(
@@ -55,6 +65,10 @@ export function createOrdersService({ orders, gateway, config, now = () => new D
     const subtotal = listing.priceInCents * input.quantity
     const feeInCents =
       negotiation === 'site_payment' ? Math.round((subtotal * config.serviceFeePercent) / 100) : 0
+    // RN-PAG-12: o Pendente vencido que o job ainda não varreu é cancelado antes, para o clique criar um
+    // pedido novo em vez de devolver (ou alterar) um pedido que já não vale.
+    const existing = await orders.findOpen(buyerId, listing.id, negotiation)
+    if (existing) await expireIfDue(existing)
     const { order, created } = await orders.createOrReuse({
       buyerId,
       listing,
@@ -94,12 +108,12 @@ export function createOrdersService({ orders, gateway, config, now = () => new D
 
     async mine(buyerId: number) {
       const list = await orders.findByBuyer(buyerId)
-      return Promise.all(list.map(async (o) => json(await expireIfDue(o))))
+      return expireInSeries(list)
     },
 
     async received(sellerId: number, listingId?: number) {
       const list = await orders.findBySeller(sellerId, listingId)
-      return Promise.all(list.map(async (o) => json(await expireIfDue(o))))
+      return expireInSeries(list)
     },
 
     async get(userId: number, id: number) {

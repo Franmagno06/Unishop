@@ -94,6 +94,7 @@ const REFUND_REASONS: Record<OrderRefundedMail['reason'], string> = {
   out_of_stock: 'o estoque acabou antes da confirmação do pagamento',
   listing_unavailable: 'o anúncio deixou de estar disponível',
   late_payment: 'o pagamento chegou depois do cancelamento do pedido',
+  amount_mismatch: 'o valor pago não confere com o valor do pedido',
 }
 
 // RN-NOT-03

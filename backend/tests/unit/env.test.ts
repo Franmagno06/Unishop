@@ -85,3 +85,22 @@ describe('parseEnv', () => {
     expect(dump).not.toContain('TEST-token-do-mercado-pago')
   })
 })
+
+describe('DATABASE_POOL_MAX', () => {
+  const pool = (v?: string) => {
+    const r = parseEnv(v === undefined ? base : { ...base, DATABASE_POOL_MAX: v })
+    return r.success ? r.data.DATABASE_POOL_MAX : 'invalido'
+  }
+
+  it('padrão 3: a Vercel abre uma instância por requisição simultânea e o pooler tem teto', () => {
+    expect(pool()).toBe(3)
+  })
+
+  it('aceita de 1 a 20 e recusa o resto', () => {
+    expect(pool('1')).toBe(1)
+    expect(pool('20')).toBe(20)
+    expect(pool('0')).toBe('invalido')
+    expect(pool('21')).toBe('invalido')
+    expect(pool('abc')).toBe('invalido')
+  })
+})

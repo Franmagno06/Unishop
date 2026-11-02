@@ -1,12 +1,14 @@
 import { Prisma, type PrismaClient } from '../../generated/prisma/client'
+import { CANCEL_REASON_FROM_DB, CANCEL_REASON_TO_DB } from '../../shared/database/status-maps'
 import { decrementStock, lockListingRow, lockOrder } from '../../shared/database/stock'
 import { centsToDecimal, decimalToCents } from '../../shared/utils/money'
-import type {
-  PaymentRepository,
-  PaymentRow,
-  PaymentStatus,
-  RefundReason,
-  SettleOutcome,
+import {
+  GATEWAY_ERROR,
+  type PaymentRepository,
+  type PaymentRow,
+  type PaymentStatus,
+  type RefundReason,
+  type SettleOutcome,
 } from './payments.types'
 
 type Row = Prisma.PaymentGetPayload<object>
@@ -17,9 +19,13 @@ const toRow = (r: Row): PaymentRow => ({
   gatewayTxId: r.gatewayTxId,
   method: r.method === 'pix' ? 'pix' : 'card',
   status: r.status as PaymentStatus,
+  amountInCents: r.amount ? decimalToCents(r.amount) : 0,
   refundAttempts: r.refundAttempts,
+  lastError: r.lastError,
   createdAt: r.createdAt,
 })
+
+const AMOUNT_MISMATCH = 'VALOR_DIVERGENTE'
 
 export function createPrismaPaymentRepository(db: PrismaClient): PaymentRepository {
   return {
@@ -112,7 +118,11 @@ export function createPrismaPaymentRepository(db: PrismaClient): PaymentReposito
           where: { id: payment.orderId },
           include: { listing: { include: { user: { select: { accountStatus: true } } } } },
         })
-        const toRefund = async (reason: RefundReason, cancelReason?: string) => {
+        const toRefund = async (
+          reason: RefundReason,
+          cancelReason?: string,
+          lastError?: string,
+        ) => {
           if (cancelReason) {
             await tx.order.update({
               where: { id: order.id },
@@ -122,13 +132,39 @@ export function createPrismaPaymentRepository(db: PrismaClient): PaymentReposito
           // `estorno_pendente` é gravado ANTES de chamar o gateway: se algo falhar no meio, o job acha a linha.
           await tx.payment.update({
             where: { id: payment.id },
-            data: { status: 'estorno_pendente', paidAt: new Date() },
+            data: {
+              status: 'estorno_pendente',
+              paidAt: new Date(),
+              ...(lastError !== undefined && { lastError }),
+            },
           })
           return { kind: 'refund', reason } as const
         }
 
         // Pedido que já não está Pendente (cancelado, ou pago por outra cobrança): estorna sem mexer no estoque.
         if (order.status !== 'pendente') return toRefund('late_payment')
+
+        // RN-PAG-05: o valor cobrado tem de ser o do pedido. Se divergir (pedido alterado depois da
+        // cobrança, ou cobrança errada), não liquida: estorna e deixa o pedido como está. Nenhum
+        // motivo_cancelamento do CHECK descreve isso, então o pedido não é cancelado.
+        if (
+          !payment.amount ||
+          decimalToCents(payment.amount) !== decimalToCents(order.totalAmount)
+        ) {
+          return toRefund('amount_mismatch', undefined, AMOUNT_MISMATCH)
+        }
+        // Cobrança reaberta (expirada ou órfã) com outra tentativa em andamento: o índice
+        // uq_pagamento_ativo não admite dois ativos. Estorna esta; a outra segue seu curso.
+        if (payment.status !== 'pendente') {
+          const active = await tx.payment.count({
+            where: {
+              orderId: order.id,
+              id: { not: payment.id },
+              status: { in: ['pendente', 'aprovado'] },
+            },
+          })
+          if (active > 0) return toRefund('late_payment')
+        }
 
         const listing = order.listing
         await lockListingRow(tx, listing.id)
@@ -138,10 +174,11 @@ export function createPrismaPaymentRepository(db: PrismaClient): PaymentReposito
           listing.user.accountStatus !== 'ativa' ||
           current.status === 'pausado' ||
           (current.status === 'vendido' && current.quantity > 0)
-        if (unavailable) return toRefund('listing_unavailable', 'anuncio_indisponivel') // RN-PAG-14
+        if (unavailable)
+          return toRefund('listing_unavailable', CANCEL_REASON_TO_DB.listing_unavailable) // RN-PAG-14
 
         if (!(await decrementStock(tx, listing.id, order.quantity))) {
-          return toRefund('out_of_stock', 'sem_estoque') // RN-PAG-08
+          return toRefund('out_of_stock', CANCEL_REASON_TO_DB.out_of_stock) // RN-PAG-08
         }
         await tx.order.update({
           where: { id: order.id },
@@ -165,9 +202,18 @@ export function createPrismaPaymentRepository(db: PrismaClient): PaymentReposito
     },
 
     async markRefunded(paymentId) {
+      // VALOR_DIVERGENTE fica gravado (o e-mail e o admin precisam dele); erros de estorno saem.
+      await db.payment.updateMany({
+        where: {
+          id: paymentId,
+          status: 'estorno_pendente',
+          OR: [{ lastError: null }, { lastError: { not: AMOUNT_MISMATCH } }],
+        },
+        data: { status: 'estornado', lastError: null },
+      })
       await db.payment.updateMany({
         where: { id: paymentId, status: 'estorno_pendente' },
-        data: { status: 'estornado', lastError: null },
+        data: { status: 'estornado' },
       })
     },
 
@@ -178,8 +224,11 @@ export function createPrismaPaymentRepository(db: PrismaClient): PaymentReposito
       })
     },
 
-    async findStalePending(createdBefore, limit) {
-      const rows = await db.payment.findMany({
+    // Pendentes (webhook perdido) e expirados recentes: um Pix pago no fim da janela, depois do
+    // cancelamento, precisa ser achado e estornado (RN-PAG-13). Duas consultas, cada uma com seu limite,
+    // para os expirados (que podem nunca mudar) não tomarem a vez dos pendentes.
+    async findStalePending(createdBefore, expiredSince, limit) {
+      const pending = await db.payment.findMany({
         where: {
           status: 'pendente',
           gatewayTxId: { not: null },
@@ -188,7 +237,30 @@ export function createPrismaPaymentRepository(db: PrismaClient): PaymentReposito
         orderBy: { id: 'asc' },
         take: limit,
       })
-      return rows.map(toRow)
+      const expired = await db.payment.findMany({
+        where: { status: 'expirado', gatewayTxId: { not: null }, createdAt: { gte: expiredSince } },
+        orderBy: { id: 'desc' },
+        take: limit,
+      })
+      return [...pending, ...expired].map(toRow)
+    },
+
+    // Timeout do gateway: a cobrança pode existir lá sem id aqui. A tentativa fica recusada com
+    // GATEWAY_ERROR e sem gatewayTxId; é ela que um aviso desconhecido reivindica.
+    async findOrphanAttempt(orderId) {
+      const r = await db.payment.findFirst({
+        where: { orderId, status: 'recusado', gatewayTxId: null, lastError: GATEWAY_ERROR },
+        orderBy: { id: 'desc' },
+      })
+      return r ? toRow(r) : null
+    },
+
+    async claimOrphan(paymentId, gatewayTxId) {
+      const res = await db.payment.updateMany({
+        where: { id: paymentId, status: 'recusado', gatewayTxId: null, lastError: GATEWAY_ERROR },
+        data: { gatewayTxId, status: 'expirado', lastError: null },
+      })
+      return res.count === 1
     },
 
     async saleMailContext(paymentId) {
@@ -214,7 +286,7 @@ export function createPrismaPaymentRepository(db: PrismaClient): PaymentReposito
         include: { order: { include: { buyer: { select: { name: true, email: true } } } } },
       })
       if (!p) return null
-      const cancel = p.order.cancelReason
+      const cancel = p.order.cancelReason ? CANCEL_REASON_FROM_DB[p.order.cancelReason] : undefined
       return {
         buyerEmail: p.order.buyer.email,
         buyerName: p.order.buyer.name,
@@ -222,11 +294,13 @@ export function createPrismaPaymentRepository(db: PrismaClient): PaymentReposito
         orderId: p.order.id,
         createdAt: p.order.createdAt,
         reason:
-          cancel === 'sem_estoque'
-            ? 'out_of_stock'
-            : cancel === 'anuncio_indisponivel'
-              ? 'listing_unavailable'
-              : 'late_payment',
+          p.lastError === AMOUNT_MISMATCH
+            ? 'amount_mismatch'
+            : cancel === 'out_of_stock'
+              ? 'out_of_stock'
+              : cancel === 'listing_unavailable'
+                ? 'listing_unavailable'
+                : 'late_payment',
       }
     },
   }

@@ -1,10 +1,11 @@
 import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { flushBackground } from '../../src/shared/utils/background'
 import { buildDbApp } from '../helpers/db-app'
 import { createListing, createOrder, createUser, resetDb, testDb } from '../helpers/db'
 
 // Pedidos (backend.md §9.5, RN-PED-01 a 13, RN-EST-02 a 06) contra o banco real.
-const { app, auth } = buildDbApp()
+const { app, auth, gateway } = buildDbApp()
 
 let seller: Awaited<ReturnType<typeof createUser>>
 let buyer: Awaited<ReturnType<typeof createUser>>
@@ -245,5 +246,64 @@ describe('cancelar (POST /orders/:id/cancel)', () => {
     const order = (await newOrder(1)).body.data
     await post(`/${order.id}/cancel`, buyer)
     expect((await post(`/${order.id}/cancel`, buyer)).status).toBe(409)
+  })
+})
+
+describe('pedido vencido ainda não varrido pelo job (RN-PAG-12)', () => {
+  const age = (id: number) =>
+    testDb.order.update({
+      where: { id },
+      data: { createdAt: new Date(Date.now() - 31 * 60_000) },
+    })
+
+  it('RN-PAG-12: novo clique com o Pendente vencido cancela o antigo e cria um pedido novo', async () => {
+    const first = await newOrder(1)
+    await age(first.body.data.id)
+    const second = await newOrder(1)
+    expect(second.status).toBe(201)
+    expect(second.body.data.id).not.toBe(first.body.data.id)
+    expect(second.body.data.status).toBe('pending')
+    expect(
+      await testDb.order.findUniqueOrThrow({ where: { id: first.body.data.id } }),
+    ).toMatchObject({
+      status: 'cancelado',
+      cancelReason: 'vencido',
+    })
+  })
+
+  it('RN-PAG-12: o vencido com Pix pendente também dá lugar a um pedido novo (sem 409)', async () => {
+    const first = await newOrder(1)
+    const pix = await request(app)
+      .post('/api/v1/payments/pix')
+      .set(auth(buyer))
+      .send({ orderId: first.body.data.id })
+    expect(pix.status).toBe(201)
+    await age(first.body.data.id)
+    const second = await newOrder(2)
+    expect(second.status).toBe(201)
+    expect(second.body.data.quantity).toBe(2)
+    await flushBackground()
+    expect(gateway.calls.cancels).toHaveLength(1) // a cobrança do pedido vencido foi cancelada
+  })
+
+  it('GET /orders/mine não espera o cancelamento no gateway (vai para segundo plano)', async () => {
+    const first = await newOrder(1)
+    await request(app)
+      .post('/api/v1/payments/pix')
+      .set(auth(buyer))
+      .send({ orderId: first.body.data.id })
+    await age(first.body.data.id)
+    let release!: () => void
+    const original = gateway.cancelPayment.bind(gateway)
+    gateway.cancelPayment = (id) =>
+      new Promise<void>((resolve) => {
+        release = () => void original(id).then(resolve)
+      })
+    const res = await request(app).get('/api/v1/orders/mine').set(auth(buyer)) // não pode travar
+    gateway.cancelPayment = original
+    expect(res.status).toBe(200)
+    expect(res.body.data[0].status).toBe('cancelled')
+    release()
+    await flushBackground()
   })
 })
