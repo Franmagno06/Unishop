@@ -1,6 +1,6 @@
 import { ApiError } from '../../../../shared/lib/api'
 
-export type AuthContext = 'login' | 'register' | 'forgot' | 'reset'
+export type AuthContext = 'login' | 'register' | 'forgot' | 'reset' | 'google'
 export type ErrorContent = { title: string; message: string }
 
 // "Tente de novo em 15 minutos" a partir dos segundos que a API manda em `retryAfter`.
@@ -17,11 +17,34 @@ export function authErrorContent(error: unknown, context: AuthContext = 'login')
     register: 'Não foi possível criar a conta',
     forgot: 'Não foi possível enviar o link',
     reset: 'Não foi possível redefinir a senha',
+    google: 'Não foi possível entrar com o Google',
   }
   const title = titles[context]
 
   if (!(error instanceof ApiError)) {
     return { title, message: 'Algo deu errado. Tente de novo.' }
+  }
+
+  if (context === 'google') {
+    // RN-ACE-14: o servidor confere o domínio e o e-mail verificado do Google.
+    if (error.code === 'EMAIL_DOMAIN_NOT_ALLOWED') {
+      return { title, message: 'Use uma conta Google com e-mail @edu.unifor.br.' }
+    }
+    if (error.code === 'EMAIL_NOT_VERIFIED') {
+      return {
+        title,
+        message: 'O Google não confirmou este e-mail. Use outra conta ou entre com e-mail e senha.',
+      }
+    }
+    if (error.code === 'INVALID_CREDENTIALS' || error.code === 'TOKEN_INVALID') {
+      return { title, message: 'Não foi possível validar sua conta Google. Tente de novo.' }
+    }
+    if (error.status === 503) {
+      return {
+        title,
+        message: 'O login com Google está indisponível no momento. Entre com e-mail e senha.',
+      }
+    }
   }
 
   switch (error.code) {

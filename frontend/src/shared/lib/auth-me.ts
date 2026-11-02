@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
+import { useSyncExternalStore } from 'react'
 import { api } from './api'
 import type { ProfileApiUser } from './current-user'
 import { MOCK_MODE } from './mock-mode'
+import { getToken, subscribe } from './session'
 
 // GET /auth/me (RN-ACE-11): passa mesmo com o aceite dos Termos pendente, ao contrário de
 // GET /users/me. Em demonstração (MOCK_MODE) não há aceite pendente.
@@ -16,8 +18,12 @@ export async function getAuthMe(signal?: AbortSignal): Promise<AuthMe> {
   return response.data
 }
 
-export const authMeKey = ['auth', 'me'] as const
-
+// A chave leva o token: outro login (ou a troca de senha) nunca reaproveita o cache do anterior.
 export function useAuthMe(enabled: boolean) {
-  return useQuery({ queryKey: authMeKey, queryFn: ({ signal }) => getAuthMe(signal), enabled })
+  const token = useSyncExternalStore(subscribe, getToken)
+  return useQuery({
+    queryKey: ['auth', 'me', token],
+    queryFn: ({ signal }) => getAuthMe(signal),
+    enabled,
+  })
 }
