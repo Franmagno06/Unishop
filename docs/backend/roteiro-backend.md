@@ -212,7 +212,7 @@ Uma etapa só termina quando o fluxo dela funciona no navegador com a API real. 
 
 ### 4.3 Quais services trocam em cada etapa (`frontend/src/...`)
 
-**Estado em 01/11/2026:** as linhas das etapas 4 e 5 **foram feitas** (`auth.service`, `profile.service`, `categories.service`, `listings.service`, `my-listings.service`; o `api()` já envia `FormData`). Verificado no navegador, com o backend num PostgreSQL local: login, categorias com contagem real, publicar anúncio com foto, lista da categoria, página do produto, "Meus anúncios" e pausar. Os exemplos continuam disponíveis atrás de `VITE_USE_MOCKS=true` (módulos `*.mock.ts`), usados pelos testes e pelo Playwright. **A linha 6 + 7 foi feita só no checkout** (`orders.service`: `createOrder`, `getOrderById`, `payWithCard`, `createPixCharge`, `confirmPixPayment`; `tokenizeCard` em `checkout/services/mercadopago.ts`), com a API quando `VITE_USE_MOCKS` não está ligado. Seguem sobre exemplo: "meus pedidos", pedidos recebidos em Gerenciar anúncio e "concluir venda" (a API já existe). A 8 não pede troca de tela e a 9 segue pendente; avaliações (fora do MVP) vêm vazias.
+**Estado em 01/11/2026:** as linhas das etapas 4 e 5 **foram feitas** (`auth.service`, `profile.service`, `categories.service`, `listings.service`, `my-listings.service`; o `api()` já envia `FormData`). Verificado no navegador, com o backend num PostgreSQL local: login, categorias com contagem real, publicar anúncio com foto, lista da categoria, página do produto, "Meus anúncios" e pausar. Os exemplos continuam disponíveis atrás de `VITE_USE_MOCKS=true` (módulos `*.mock.ts`), usados pelos testes e pelo Playwright. **A linha 6 + 7 foi feita só no checkout** (`orders.service`: `createOrder`, `getOrderById`, `payWithCard`, `createPixCharge`, `confirmPixPayment`; `tokenizeCard` em `checkout/services/mercadopago.ts`), com a API quando `VITE_USE_MOCKS` não está ligado. Seguem sobre exemplo: "meus pedidos", pedidos recebidos em Gerenciar anúncio e "concluir venda" (a API já existe). A 8 não pede troca de tela e a 9 foi feita em 02/11/2026 para **usuários e produtos do admin** (lista, busca, filtros, detalhe, status, exclusão; verificado no navegador com a API local), restando a exclusão do perfil; avaliações (fora do MVP) vêm vazias.
 
 | Etapa | O que troca no frontend | Observação |
 |---|---|---|
@@ -370,7 +370,7 @@ Uma etapa só termina quando o fluxo dela funciona no navegador com a API real. 
 
 ## Etapa 9 — Admin, exclusão e anonimização
 
-**Status (01/11/2026): não iniciada** (a anonimização do `DELETE /users/me` já existe).
+**Status (02/11/2026): backend feito; frontend de usuários e produtos do admin integrado.** Suporte, avaliações e auditoria do admin não entram (fora do MVP ou sem tela). Achado da integração: a lista `GET /admin/listings` não devolve a descrição, e a tabela do Figma mostra duas linhas dela.
 
 **Rotas:** `GET /admin/users`, `/stats`, `/:id`, `PATCH /admin/users/:id`, `DELETE /admin/users/:id`; `GET /admin/listings`, `/stats`, `/:id`, `PATCH`, `DELETE`; `GET /admin/audit-logs`; `DELETE /users/me`; e o desvio de `POST /orders/:id/cancel` do vendedor já feito na 6.
 

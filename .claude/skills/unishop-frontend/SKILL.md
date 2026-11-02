@@ -3,7 +3,7 @@ name: unishop-frontend
 description: Regras e fluxo de trabalho do frontend do Unishop (React + TypeScript + Vite + Tailwind). Use SEMPRE que o usuário criar, editar ou revisar telas, rotas, guards, componentes, hooks, services, formulários Zod, áreas (public/user/admin), estados de tela (carregando, vazio, erro, 403, sessão expirada, Pix expirado), fluxos de login, cadastro, pagamento, pedidos e anúncios, upload de imagem ou PR do frontend do Unishop, mesmo que não diga "Unishop" ou "frontend" explicitamente.
 metadata:
   author: unishop-team
-  version: "0.8.1"
+  version: "0.8.2"
 ---
 
 # Frontend do Unishop
@@ -72,6 +72,7 @@ Código, pastas e arquivos em inglês. Interface e documentação em português 
 - **Variáveis públicas (`VITE_*`, lidas no build):** `VITE_API_URL` (em produção, o endereço completo da API, que fica em outro domínio da Vercel), `VITE_MP_PUBLIC_KEY`, `VITE_GOOGLE_CLIENT_ID` e `VITE_TURNSTILE_SITE_KEY` (depois do MVP). Nenhuma recebe segredo. Trocar uma exige novo deploy do site.
 - **Imagens:** o `ImageUploader` envia **uma imagem por requisição, até 4 MB**, de 1 a 5 por anúncio (limite da Vercel; desvio do PDF confirmado pelo grupo em 16/10/2026). Anúncio: a primeira em `POST /listings`, as demais em `POST /listings/:id/images` (remover: `DELETE /listings/:id/images/:imageId`, sempre sobrando 1), com progresso e nova tentativa se uma falhar. Confira o tamanho antes e trate o 413 como `FILE_TOO_LARGE`. Se o enunciado exigir 5 MB, o frontend comprime antes de enviar.
 - **Demonstração:** a tela de pagamento e o rodapé avisam que o ambiente é de demonstração e que nenhum valor é cobrado de verdade (RN-PAG-15).
+- **Admin (integrado em 02/11/2026):** `users.service` e `products.service` usam `/admin/users` e `/admin/listings`; a lista da API vem em `{ data, meta: { limit } }` e o `toPage` (`admin/shared/services/admin-api.ts`) converte para `Page` (`pageSize`). Curso e WhatsApp nulos viram texto vazio; `lastAccessAt` nulo mostra "Nunca acessou". Vendido sem unidades não volta a Ativo (409 `INVALID_STATE`, mensagem do servidor na tela), e Salvar fica bloqueado sem mudança de status. O exemplo fica em `*.mock.ts`; teste de tela que usa o exemplo faz `vi.mock` do `mock-mode`.
 - **Pedidos:** "Cancelar pedido" só em Pendente e Em negociação; "Confirmar recebimento" em Retirada combinada; vendedor tem "Combinar retirada", "Concluir venda" e "Encerrar negociação". Pix expirado não gera novo código: o pedido vira Cancelado e o aluno faz outro (RN-PAG-04).
 - `frontend/vercel.json` faz as rotas do React Router abrirem o `index.html` (F5 em `/categorias` não pode dar 404). Segredos e domínios: `unishop-deploy` e `unishop-api`.
 
