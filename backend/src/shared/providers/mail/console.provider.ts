@@ -24,3 +24,30 @@ export const consoleMailProvider: MailProvider = {
     )
   },
 }
+
+// Modo demonstração em produção: nunca registra link, token nem endereço completo no log da plataforma.
+export const maskedConsoleMailProvider: MailProvider = {
+  async sendPasswordReset({ to }) {
+    console.log(
+      `[e-mail:demo] redefinição de senha não enviada (modo demonstração) para ${mask(to)}`,
+    )
+  },
+  async sendListingRemoved({ to }) {
+    console.log(`[e-mail:demo] produto removido, e-mail não enviado para ${mask(to)}`)
+  },
+  async sendEmailChange({ to }) {
+    console.log(`[e-mail:demo] troca de e-mail não enviada (modo demonstração) para ${mask(to)}`)
+  },
+  async sendSaleConfirmed({ to, orderNumber }) {
+    console.log(`[e-mail:demo] venda ${orderNumber}, e-mail não enviado para ${mask(to)}`)
+  },
+  async sendOrderRefunded({ to, orderNumber }) {
+    console.log(
+      `[e-mail:demo] estorno do pedido ${orderNumber}, e-mail não enviado para ${mask(to)}`,
+    )
+  },
+}
+
+function mask(to: string) {
+  return `***@${to.split('@')[1] ?? '***'}`
+}
