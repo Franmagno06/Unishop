@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../../shared/lib/api'
@@ -55,6 +55,31 @@ describe('PrivateRoute', () => {
     renderAt('/categorias')
     expect(await screen.findByText('Categorias')).toBeInTheDocument()
     expect(api).toHaveBeenCalledWith('/auth/me', expect.anything())
+  })
+
+  it('voltar o foco da janela não consulta GET /auth/me de novo (o /auth tem limite por minuto)', async () => {
+    setToken('jwt', 'student')
+    api.mockResolvedValue(me(false))
+    renderAt('/categorias')
+    expect(await screen.findByText('Categorias')).toBeInTheDocument()
+    document.dispatchEvent(new Event('visibilitychange'))
+    window.dispatchEvent(new Event('focus'))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(api).toHaveBeenCalledTimes(1)
+  })
+
+  it('RN-ACE-15: a troca de senha (token novo) não derruba a página aberta enquanto o /auth/me se renova', async () => {
+    setToken('jwt-antigo', 'student')
+    api.mockResolvedValueOnce(me(false))
+    renderAt('/categorias')
+    expect(await screen.findByText('Categorias')).toBeInTheDocument()
+    let release: (value: unknown) => void = () => {}
+    api.mockReturnValueOnce(new Promise((resolve) => (release = resolve)))
+    act(() => setToken('jwt-novo', 'student'))
+    expect(screen.getByText('Categorias')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    release(me(false))
+    await waitFor(() => expect(api).toHaveBeenCalledTimes(2))
   })
 
   it('enquanto GET /auth/me carrega mostra o carregamento, não a página', async () => {

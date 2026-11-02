@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useSyncExternalStore } from 'react'
 import { api } from './api'
 import type { ProfileApiUser } from './current-user'
@@ -25,5 +25,13 @@ export function useAuthMe(enabled: boolean) {
     queryKey: ['auth', 'me', token],
     queryFn: ({ signal }) => getAuthMe(signal),
     enabled,
+    // O aceite dos Termos só muda ao completar o cadastro (que atualiza este cache): não há por que
+    // consultar de novo ao voltar o foco da janela. O servidor limita /auth a 10 requisições por
+    // minuto por IP, e esta consulta não pode gastar esse orçamento.
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    // A troca de senha (RN-ACE-15) muda o token e, com ele, a chave: a página aberta continua na tela
+    // com o resultado anterior até a consulta nova chegar, em vez de voltar ao "Carregando…".
+    placeholderData: keepPreviousData,
   })
 }
