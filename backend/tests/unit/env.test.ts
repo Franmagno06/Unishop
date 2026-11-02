@@ -47,6 +47,12 @@ describe('parseEnv', () => {
     ])
   })
 
+  it('modo demonstração: ALLOW_CONSOLE_MAIL=true libera o console em production', () => {
+    const demo = { ...published, MAIL_DRIVER: 'console', ALLOW_CONSOLE_MAIL: 'true' }
+    expect(parseEnv(demo).success).toBe(true)
+    expect(failedPaths({ ...demo, ALLOW_CONSOLE_MAIL: 'false' })).toEqual(['MAIL_DRIVER'])
+  })
+
   it('STORAGE_DRIVER=local é proibido em preview e production', () => {
     expect(failedPaths({ ...published, STORAGE_DRIVER: 'local' })).toEqual(['STORAGE_DRIVER'])
   })
