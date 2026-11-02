@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { clearToken, getRole, getToken, hasToken, setToken, subscribe } from './session'
+import { clearToken, getRole, getToken, hasToken, isLeaving, setToken, subscribe } from './session'
 
 afterEach(() => {
   clearToken()
@@ -31,6 +31,25 @@ describe('session', () => {
     expect([getToken(), getRole(), hasToken()]).toEqual([null, null, false])
     expect(sessionStorage.getItem('unishop.token')).toBeNull()
     expect(sessionStorage.getItem('unishop.role')).toBeNull()
+  })
+
+  it('"saindo" é transitório: vale durante a navegação do Sair e expira, para a próxima rota privada ir ao login', () => {
+    vi.useFakeTimers()
+    try {
+      setToken('jwt-1')
+      clearToken({ leaving: true })
+      expect(isLeaving()).toBe(true)
+      vi.advanceTimersByTime(1500)
+      expect(isLeaving()).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('um login durante a saída desliga o "saindo" na hora', () => {
+    clearToken({ leaving: true })
+    setToken('jwt-2')
+    expect(isLeaving()).toBe(false)
   })
 
   it('avisa quem está inscrito quando a sessão muda', () => {

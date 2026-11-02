@@ -3,6 +3,7 @@ import arrowLeft from '../../../../assets/arrow-left.svg'
 import arrowRight from '../../../../assets/arrow-right.svg'
 import { formatCurrency } from '../../../../shared/utils/format-currency'
 import type { RecentListing } from '../services/recent.service'
+import { pageFromScroll, scrollForPage } from './carousel-pages'
 
 const CARDS_PER_PAGE = 2
 // Arrasto com o mouse: só vira arrasto depois de 5 px (um clique parado continua clique) e, acima de
@@ -29,7 +30,9 @@ export function RecentListingsCarousel({ listings }: { listings: RecentListing[]
   const pageCount = Math.max(1, Math.ceil(listings.length / CARDS_PER_PAGE))
   const trackRef = useRef<HTMLUListElement>(null)
   const dragRef = useRef<DragState | null>(null)
-  const [page, setPage] = useState(0)
+  const [scrolledPage, setPage] = useState(0)
+  // A lista pode encolher (nova consulta): a página nunca passa do total.
+  const page = Math.min(scrolledPage, pageCount - 1)
 
   const pageWidth = useCallback(() => {
     const track = trackRef.current
@@ -49,7 +52,7 @@ export function RecentListingsCarousel({ listings }: { listings: RecentListing[]
       frame = requestAnimationFrame(() => {
         const width = pageWidth()
         if (!width) return
-        setPage(Math.min(pageCount - 1, Math.round(track.scrollLeft / width)))
+        setPage(pageFromScroll(track.scrollLeft, width, track.scrollWidth - track.clientWidth, pageCount))
       })
     }
 
@@ -62,8 +65,10 @@ export function RecentListingsCarousel({ listings }: { listings: RecentListing[]
 
   function goTo(target: number) {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    trackRef.current?.scrollTo({
-      left: target * pageWidth(),
+    const track = trackRef.current
+    if (!track) return
+    track.scrollTo({
+      left: scrollForPage(target, pageWidth(), track.scrollWidth - track.clientWidth),
       behavior: reduceMotion ? 'auto' : 'smooth',
     })
   }
@@ -197,7 +202,7 @@ export function RecentListingsCarousel({ listings }: { listings: RecentListing[]
         ))}
       </ul>
 
-      <div className="flex gap-1.5" aria-hidden="true">
+      <div className="flex gap-1.5" aria-hidden="true" data-testid="carousel-dots">
         {Array.from({ length: pageCount }, (_, index) => (
           <span
             key={index}

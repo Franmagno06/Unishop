@@ -9,7 +9,8 @@ const make = (count: number, extra: Partial<RecentListing> = {}): RecentListing[
   }))
 
 // Os indicadores de página são os <span> decorativos do rodapé do carrossel.
-const dots = (container: HTMLElement) => container.querySelectorAll('div[aria-hidden="true"].flex > span').length
+const dots = (container: HTMLElement) =>
+  container.querySelector('[data-testid="carousel-dots"]')?.children.length ?? 0
 
 describe('RecentListingsCarousel · RF001.4', () => {
   it('com 1 anúncio há uma página e as duas setas ficam desabilitadas', () => {

@@ -29,19 +29,20 @@ export function RecentListings() {
     )
   }
 
-  if (recent.isError) {
+  // Uma atualização que falha não tira da tela os anúncios que já estavam lá.
+  if (recent.isError && recent.data === undefined) {
     return (
       <section aria-labelledby="recentes-titulo" className="flex w-full flex-col items-start gap-4">
         <Heading />
         <p className="text-text-muted">Não foi possível carregar os anúncios.</p>
-        <Button variant="secondary" onClick={() => void recent.refetch()}>
-          Tentar de novo
+        <Button variant="secondary" disabled={recent.isFetching} onClick={() => void recent.refetch()}>
+          {recent.isFetching ? 'Carregando…' : 'Tentar de novo'}
         </Button>
       </section>
     )
   }
 
-  if (recent.data.length === 0) {
+  if (recent.data === undefined || recent.data.length === 0) {
     return (
       <section aria-labelledby="recentes-titulo" className="flex w-full flex-col gap-4">
         <Heading />

@@ -3,7 +3,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../../shared/lib/api'
-import { clearToken, getToken, setToken } from '../../../shared/lib/session'
+import { clearToken, getToken, isLeaving, setToken } from '../../../shared/lib/session'
 
 vi.mock('../../../shared/lib/mock-mode', () => ({ MOCK_MODE: false }))
 const api = vi.fn()
@@ -136,6 +136,20 @@ describe('PrivateRoute', () => {
     act(() => clearToken({ leaving: true }))
     expect(screen.queryByText('Tela de login')).not.toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/categorias')
+  })
+
+  it('a marca de "saindo" acaba quando o guard sai da tela: a próxima rota privada vai ao login', async () => {
+    setToken('jwt', 'student')
+    api.mockResolvedValue(me(false))
+    const router = renderAt('/categorias')
+    expect(await screen.findByText('Categorias')).toBeInTheDocument()
+    act(() => clearToken({ leaving: true }))
+    expect(isLeaving()).toBe(true)
+    await act(() => router.navigate('/'))
+    expect(await screen.findByText('Tela inicial')).toBeInTheDocument()
+    expect(isLeaving()).toBe(false)
+    await act(() => router.navigate('/categorias'))
+    expect(await screen.findByText('Tela de login')).toBeInTheDocument()
   })
 
   it('falha de rede no /auth/me mostra o erro com "Tentar de novo", sem liberar a página', async () => {

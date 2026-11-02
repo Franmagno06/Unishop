@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { ErrorAlert } from '../../../shared/components/ui/Alert'
 import { Button } from '../../../shared/components/ui/Button'
@@ -6,7 +7,7 @@ import { useLogout } from '../../../shared/hooks/use-logout'
 import { useSession } from '../../../shared/hooks/use-session'
 import { ApiError } from '../../../shared/lib/api'
 import { useAuthMe } from '../../../shared/lib/auth-me'
-import { isLeaving } from '../../../shared/lib/session'
+import { endLeaving, isLeaving } from '../../../shared/lib/session'
 
 // Só UX (RN-ACE-11, RN-CAT-04): sem sessão vai ao login guardando o destino; com o aceite dos
 // Termos pendente (primeiro acesso por Google, RN-ACE-14) vai a "Completar cadastro". A verificação
@@ -16,6 +17,8 @@ export function PrivateRoute() {
   const location = useLocation()
   const me = useAuthMe(isLoggedIn)
   const logout = useLogout()
+  // Ao sair da tela (a navegação do "Sair" terminou), a marca de "saindo" acaba.
+  useEffect(() => endLeaving, [])
   const from = `${location.pathname}${location.search}`
 
   if (!isLoggedIn) {

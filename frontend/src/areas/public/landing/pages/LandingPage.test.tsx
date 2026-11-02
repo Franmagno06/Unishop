@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,9 +13,12 @@ vi.mock('../services/recent.service', () => ({
 
 import { LandingPage } from './LandingPage'
 
-const renderPage = (ui = <LandingPage />) =>
+const renderPage = (
+  ui = <LandingPage />,
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) =>
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider client={client}>
       <MemoryRouter>{ui}</MemoryRouter>
     </QueryClientProvider>,
   )
@@ -45,6 +48,22 @@ describe('LandingPage · anúncios recentes (RF001.4)', () => {
   it('sem anúncios mostra "Ainda não há anúncios."', async () => {
     renderPage()
     expect(await screen.findByText('Ainda não há anúncios.')).toBeInTheDocument()
+  })
+
+  it('uma atualização que falha não tira da tela os anúncios que já estavam lá', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    getRecentListings.mockResolvedValueOnce([
+      { id: 1, title: 'Calculadora HP 12C', category: 'Eletrônicos', priceInCents: 12000, imageUrl: null },
+    ])
+    renderPage(<LandingPage />, client)
+    expect(await screen.findByText('Calculadora HP 12C')).toBeInTheDocument()
+
+    getRecentListings.mockRejectedValueOnce(new ApiError(500, 'INTERNAL_ERROR', 'x'))
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ['landing', 'recent'] })
+    })
+    expect(screen.getByText('Calculadora HP 12C')).toBeInTheDocument()
+    expect(screen.queryByText('Não foi possível carregar os anúncios.')).not.toBeInTheDocument()
   })
 
   it('erro da API mostra o aviso com "Tentar de novo" e o resto da página segue visível', async () => {
