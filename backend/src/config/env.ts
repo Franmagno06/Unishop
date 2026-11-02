@@ -11,6 +11,8 @@ export const envSchema = z
     APP_ENV: z.enum(['development', 'test', 'preview', 'production']).default('development'),
     DATABASE_URL: z.string().min(1),
     DATABASE_URL_UNPOOLED: z.string().optional(),
+    // Conexões por instância (o `connection_limit` da URL é ignorado pelo adapter do Prisma).
+    DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(20).default(3),
     FRONTEND_URL: z
       .string()
       .min(1)
