@@ -3,7 +3,7 @@ import { ROUTES } from '../../../../shared/constants/routes'
 import { useDocumentTitle } from '../../../../shared/hooks/use-document-title'
 import { useSession } from '../../../../shared/hooks/use-session'
 import { FaqAccordion } from '../components/FaqAccordion'
-import { RecentListingsCarousel } from '../components/RecentListingsCarousel'
+import { RecentListings } from '../components/RecentListings'
 
 const steps = [
   {
@@ -62,7 +62,7 @@ export function LandingPage() {
           </div>
 
           <div className="w-full min-w-0 max-w-[608px] rounded-2xl border border-border bg-surface p-5 sm:p-6 lg:w-[608px] lg:shrink-0">
-            <RecentListingsCarousel />
+            <RecentListings />
           </div>
         </div>
       </section>

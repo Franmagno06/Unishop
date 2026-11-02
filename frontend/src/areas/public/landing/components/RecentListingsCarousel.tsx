@@ -2,10 +2,9 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 import arrowLeft from '../../../../assets/arrow-left.svg'
 import arrowRight from '../../../../assets/arrow-right.svg'
 import { formatCurrency } from '../../../../shared/utils/format-currency'
-import { recentListings } from '../data/recent-listings'
+import type { RecentListing } from '../services/recent.service'
 
 const CARDS_PER_PAGE = 2
-const pageCount = Math.ceil(recentListings.length / CARDS_PER_PAGE)
 // Arrasto com o mouse: só vira arrasto depois de 5 px (um clique parado continua clique) e, acima de
 // 0,11 px/ms, conta como gesto rápido e avança uma página mesmo curto.
 const DRAG_THRESHOLD_PX = 5
@@ -24,8 +23,10 @@ const arrowButton =
 
 // Carrossel do protótipo: 2 anúncios por página com uma prévia do próximo. Usa rolagem nativa com
 // encaixe (scroll-snap), então o toque funciona sem biblioteca; o mouse arrasta pelos handlers de
-// ponteiro abaixo (estado em ref, sem renderizar a cada quadro). Visível ao visitante (RF001).
-export function RecentListingsCarousel() {
+// ponteiro abaixo (estado em ref, sem renderizar a cada quadro). Visível ao visitante (RF001). Os
+// anúncios vêm de GET /listings/recent (RF001.4); o número de páginas acompanha a lista.
+export function RecentListingsCarousel({ listings }: { listings: RecentListing[] }) {
+  const pageCount = Math.max(1, Math.ceil(listings.length / CARDS_PER_PAGE))
   const trackRef = useRef<HTMLUListElement>(null)
   const dragRef = useRef<DragState | null>(null)
   const [page, setPage] = useState(0)
@@ -57,7 +58,7 @@ export function RecentListingsCarousel() {
       cancelAnimationFrame(frame)
       track.removeEventListener('scroll', onScroll)
     }
-  }, [pageWidth])
+  }, [pageWidth, pageCount])
 
   function goTo(target: number) {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -177,12 +178,16 @@ export function RecentListingsCarousel() {
         onLostPointerCapture={handlePointerEnd}
         className="flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-1 scrollbar-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&::-webkit-scrollbar]:hidden [@media(hover:hover)_and_(pointer:fine)]:cursor-grab data-dragging:cursor-grabbing data-dragging:select-none"
       >
-        {recentListings.map((listing) => (
+        {listings.map((listing) => (
           <li
             key={listing.id}
             className="flex w-60 shrink-0 snap-start flex-col gap-2.5 rounded-[14px] border border-border bg-surface px-4 pb-5 pt-4"
           >
-            <div className="h-45 rounded-[10px] bg-primary-soft" aria-hidden="true" />
+            <div className="h-45 overflow-hidden rounded-[10px] bg-primary-soft" aria-hidden="true">
+              {listing.imageUrl ? (
+                <img src={listing.imageUrl} alt="" loading="lazy" className="size-full object-cover" />
+              ) : null}
+            </div>
             <h3 className="line-clamp-2 break-words text-base font-semibold text-navy">{listing.title}</h3>
             <p className="font-display text-[22px] font-bold text-navy">
               {formatCurrency(listing.priceInCents)}
