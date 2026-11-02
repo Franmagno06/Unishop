@@ -18,6 +18,24 @@
       "prompt": "aluno entrou pelo google pela primeira vez e ja caiu em /categorias. ta certo?",
       "expected_output": "Não: todas as rotas privadas levam a /completar-cadastro até o aceite dos Termos (TERMS_NOT_ACCEPTED, RN-ACE-14); depois cai em Categorias; Google define senha pela recuperação (RN-ACE-15).",
       "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "o admin abriu um produto Vendido e mandou voltar pra Ativo, mas deu erro generico. o que acontece?",
+      "expected_output": "Marcar como vendido zera as unidades; o servidor devolve 409 INVALID_STATE (RN-ADM-08) e a tela mostra a mensagem do servidor (o vendedor precisa informar a quantidade antes de reativar); o admin pode voltar a Pausado; Salvar fica bloqueado quando o status nao mudou.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "o aluno trocou o e-mail no editar perfil e o PATCH deu 400. como tratar?",
+      "expected_output": "O PATCH /users/me só aceita o e-mail igual ao atual (RN-PER-02): a tela manda o atual no PATCH e pede o link em POST /users/me/email-change com { email }; o e-mail novo só vale depois que o aluno abre o link em /confirmar-troca-email/:token (confirma uma única vez); se o pedido falhar depois do PATCH, o erro diz que os dados foram salvos.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "o aluno clica em Sair numa pagina do catalogo e cai no login em vez da tela inicial. por que?",
+      "expected_output": "O PrivateRoute via o token sumir antes da navegacao terminar e tratava como sessao ausente (RN-ACE-11); o useLogout marca a sessao como saindo (clearToken com leaving) e navega: aluno para a tela inicial, admin para o login; o guard so espera (render null) e nao guarda destino.",
+      "files": []
     }
   ]
 }

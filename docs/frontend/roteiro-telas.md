@@ -216,7 +216,7 @@ Status: **Feito**, **Em andamento**, **A fazer**.
 | 4 | 17 | Editar anúncio | `/anuncios/:id/editar` | usa o quadro 06 | A fazer |
 | 5 | 18 | Admin: usuários (lista, detalhes, editar) | `/admin/usuarios...` | A01 (`61:602`), A02 (`62:529`), A02b (`65:702`) | Feito (25/10), com dados de exemplo, ver §5.7 |
 | 5 | 19 | Admin: produtos (lista, ver, editar) | `/admin/produtos...` | A03 (`63:552`), A04 (`65:626`), A05 (`63:724`) | Feito (25/10), com dados de exemplo, ver §5.7 |
-| 6 | 20 | Completar cadastro, Trocar senha, Confirmar troca de e-mail, 403, 404 e sessão expirada | ver `frontend.md` §7 | **sem quadro no Figma** | A fazer (pedir o desenho) |
+| 6 | 20 | Completar cadastro, Trocar senha, Confirmar troca de e-mail, 403, 404 e sessão expirada | ver `frontend.md` §7 | **sem quadro no Figma** | Feitas como **provisórias** em 02/11/2026 (Completar cadastro e Confirmar troca de e-mail); **Trocar senha ficou fora** por decisão do gestor em 02/11/2026 (não era prioridade), com os componentes de `shared/components/ui`; falta o desenho do grupo para conferir. 403, 404 e sessão expirada seguem sem tela própria |
 | 6 | 21 | Termos de uso e Política de privacidade | `/termos`, `/privacidade` | sem quadro | Existem só como "em elaboração"; texto é do Francisco |
 
 **Por que esta ordem:** as telas de recuperação de senha completam o fluxo de entrada já feito; Categorias abre a área logada e cria a infraestrutura dela; o `ListingCard` nasce na tela 07 e é reaproveitado por Categorias, Perfil e Meus anúncios; Produto precisa da galeria e do pop-up de pedido antes do Pagamento; Anunciar vem depois do Perfil porque o `ImageUploader` é reaproveitado na foto de perfil; o painel admin vem por último por ter layout próprio.

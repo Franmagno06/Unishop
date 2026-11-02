@@ -247,9 +247,11 @@ export function createFakeProfiles(
 // Categorias em memória: cada linha já traz a contagem de anúncios visíveis (a regra de visibilidade
 // é testada no banco, em tests/db).
 export function createFakeCategories(
-  rows: { id: number; name: string; activeListingCount: number }[],
+  rows: { id: number; name: string; activeListingCount: number; imageUrl?: string | null }[],
 ) {
-  const repo: CategoryRepository = { listWithCounts: async () => rows.map((r) => ({ ...r })) }
+  const repo: CategoryRepository = {
+    listWithCounts: async () => rows.map((r) => ({ ...r, imageUrl: r.imageUrl ?? null })),
+  }
   return { repo }
 }
 

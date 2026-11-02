@@ -3,7 +3,7 @@ import { BoxIcon, LogoutIcon, UsersIcon } from '../../../shared/components/ui/ic
 import { LogoIcon } from '../../../shared/components/ui/Logo'
 import { ROUTES } from '../../../shared/constants/routes'
 import { useLogout } from '../../../shared/hooks/use-logout'
-import { ADMIN_PROFILE } from '../shared/services/admin-profile'
+import { useAdminProfile } from '../shared/services/admin-profile'
 
 const navLink =
   'flex items-center gap-3 whitespace-nowrap rounded-lg px-3.5 py-2.5 text-[15px] font-medium text-on-navy-muted transition-colors duration-150 hover:bg-white/10 hover:text-surface aria-[current=page]:bg-primary aria-[current=page]:font-semibold aria-[current=page]:text-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-surface'
@@ -15,6 +15,7 @@ const logoutButton =
 // e "Sair". Abaixo de lg vira uma barra no topo (o Figma só desenha a tela larga).
 export function AdminSidebar() {
   const logout = useLogout()
+  const profile = useAdminProfile()
 
   return (
     <aside className="bg-navy text-surface lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:px-5 lg:py-7">
@@ -59,12 +60,12 @@ export function AdminSidebar() {
             aria-hidden="true"
             className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-[13px] font-bold"
           >
-            {ADMIN_PROFILE.initials}
+            {profile.initials}
           </span>
           <div className="flex min-w-0 flex-col leading-tight">
-            <span className="truncate text-sm font-semibold">{ADMIN_PROFILE.name}</span>
-            {ADMIN_PROFILE.email ? (
-              <span className="truncate text-xs text-on-navy-muted">{ADMIN_PROFILE.email}</span>
+            <span className="truncate text-sm font-semibold">{profile.name}</span>
+            {profile.email ? (
+              <span className="truncate text-xs text-on-navy-muted">{profile.email}</span>
             ) : null}
           </div>
         </div>

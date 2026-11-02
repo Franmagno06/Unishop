@@ -22,7 +22,12 @@ function Info({ label, children }: { label: string; children: string }) {
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === 'NETWORK_ERROR') return 'Sem conexão com o servidor. Confira a internet e tente de novo.'
+    if (error.status === 403) return error.message // ACCOUNT_SUSPENDED: o admin foi suspenso durante a sessão
     if (error.status === 404) return 'Este usuário não existe mais. Volte à lista e atualize a página.'
+    // RN-ADM-05, 12: a mensagem da API explica (conta já nesse estado; própria conta; último admin).
+    if (error.status === 409 && (error.code === 'INVALID_STATE' || error.code === 'ADMIN_PROTECTED')) {
+      return error.message
+    }
   }
   return 'Não foi possível salvar agora. Tente de novo em instantes.'
 }
@@ -70,7 +75,7 @@ export function UserStatusForm({ user, onSaved }: { user: AdminUser; onSaved: ()
           <ButtonLink to={adminPaths.userDetail(user.id)} variant="secondary">
             Cancelar
           </ButtonLink>
-          <Button type="submit" disabled={save.isPending}>
+          <Button type="submit" disabled={save.isPending || status === user.status}>
             {save.isPending ? 'Salvando…' : 'Salvar'}
           </Button>
         </div>

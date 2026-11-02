@@ -29,12 +29,13 @@ const FILTER_BY_PARAM: Record<string, UserPresenceFilter> = { logados: 'online',
 const number = new Intl.NumberFormat('pt-BR')
 
 // RF019 · RN-ADM-02 e 03 (Figma A01). Busca, filtro e página ficam na URL: o "voltar" do navegador
-// e o link copiado reabrem a mesma lista. Dados de exemplo; sem API até o backend existir.
+// e o link copiado reabrem a mesma lista.
 export function AdminUsersPage() {
   useDocumentTitle('Usuários · Admin')
   const [params, setParams] = useSearchParams()
   const presence = FILTER_BY_PARAM[params.get('status') ?? ''] ?? 'all'
-  const page = Math.max(1, Number(params.get('pagina')) || 1)
+  const pageParam = Number(params.get('pagina'))
+  const page = Number.isSafeInteger(pageParam) && pageParam > 0 ? pageParam : 1 // a API recusa página fracionária
   const urlSearch = (params.get('busca') ?? '').slice(0, SEARCH_MAX_LENGTH)
 
   const [searchText, setSearchText] = useState(urlSearch)
@@ -76,6 +77,20 @@ export function AdminUsersPage() {
   const stats = useUserStats()
   const users = useUsers({ search: urlSearch, presence, page })
   const data = users.data
+
+  // Excluir o último item de uma página deixa a URL além do fim: volta para a última página que existe.
+  useEffect(() => {
+    if (!data || data.items.length > 0 || page <= data.totalPages) return
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (data.totalPages <= 1) next.delete('pagina')
+        else next.set('pagina', String(data.totalPages))
+        return next
+      },
+      { replace: true },
+    )
+  }, [data, page, setParams])
 
   return (
     <>

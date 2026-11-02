@@ -12,6 +12,8 @@ export const ROUTES = {
   categories: '/categorias',
   profile: '/perfil',
   editProfile: '/perfil/editar',
+  completeProfile: '/completar-cadastro',
+  confirmEmailChange: '/confirmar-troca-email',
   myOrders: '/meus-pedidos',
   createListing: '/anunciar',
   products: '/produtos',

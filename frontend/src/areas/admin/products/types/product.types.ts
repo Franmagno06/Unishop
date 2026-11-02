@@ -6,7 +6,7 @@ export type AdminProductSeller = { id: number; name: string; email: string; what
 
 export type AdminProductImage = { id: number; url: string | null }
 
-// Produto (anúncio) na visão do admin, formato assumido de GET /admin/listings/:id (backend.md §9).
+// Produto (anúncio) na visão do admin, GET /admin/listings/:id (backend.md §9; o service converte o formato da API).
 export type AdminProduct = {
   id: number
   title: string

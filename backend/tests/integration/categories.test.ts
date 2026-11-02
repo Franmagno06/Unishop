@@ -19,13 +19,14 @@ const ana = {
   acceptTerms: true,
 }
 
+// imageUrl é a capa da categoria (foto do primeiro anúncio visível); null quando não há anúncio.
 const SEIS = [
-  { id: 1, name: 'Livros e apostilas', activeListingCount: 4 },
-  { id: 2, name: 'Eletrônicos', activeListingCount: 0 },
-  { id: 3, name: 'Alimentos', activeListingCount: 2 },
-  { id: 4, name: 'Materiais de curso', activeListingCount: 1 },
-  { id: 5, name: 'Vestuário', activeListingCount: 0 },
-  { id: 6, name: 'Outros', activeListingCount: 7 },
+  { id: 1, name: 'Livros e apostilas', activeListingCount: 4, imageUrl: 'http://x/livro.jpg' },
+  { id: 2, name: 'Eletrônicos', activeListingCount: 0, imageUrl: null },
+  { id: 3, name: 'Alimentos', activeListingCount: 2, imageUrl: 'http://x/bolo.jpg' },
+  { id: 4, name: 'Materiais de curso', activeListingCount: 1, imageUrl: null },
+  { id: 5, name: 'Vestuário', activeListingCount: 0, imageUrl: null },
+  { id: 6, name: 'Outros', activeListingCount: 7, imageUrl: null },
 ]
 
 let app: ReturnType<typeof createApp>
@@ -67,6 +68,13 @@ describe('GET /categories', () => {
     const res = await list(await signIn())
     expect(res.status).toBe(200)
     expect(res.body.data).toEqual(SEIS)
+  })
+
+  it('cada categoria traz a capa (imageUrl) ou null, e a lista não vaza campo de anúncio nem de vendedor', async () => {
+    const auth = await signIn()
+    const res = await list(auth)
+    expect(res.body.data[0]).toEqual({ id: 1, name: 'Livros e apostilas', activeListingCount: 4, imageUrl: 'http://x/livro.jpg' })
+    expect(res.body.data[1].imageUrl).toBeNull()
   })
 
   it('RN-CAT-03: a busca ignora maiúsculas e acentos ("eletronicos" acha "Eletrônicos")', async () => {

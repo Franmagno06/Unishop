@@ -21,6 +21,7 @@ const listExampleCategories = (): Category[] =>
   categoryNames.map((category) => ({
     ...category,
     activeListingCount: listingCountByCategory(category.id),
+    imageUrl: null, // o exemplo não tem foto de anúncio: o card mostra o bloco azul-claro
   }))
 
 // Busca sem diferenciar maiúsculas nem acentos: "eletronicos" encontra "Eletrônicos".

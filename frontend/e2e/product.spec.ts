@@ -116,9 +116,8 @@ test.describe('Produto · fluxo', () => {
     await expect(page).toHaveURL('/categorias')
   })
 
-  test('visitante: Fazer pedido leva ao login e, depois de entrar, volta ao produto', async ({ page }) => {
+  test('visitante: o produto leva ao login (RN-CAT-04) e, depois de entrar, volta ao produto', async ({ page }) => {
   await page.goto('/produtos/1')
-  await page.getByRole('button', { name: /^Fazer pedido/ }).click()
   await expect(page).toHaveURL('/login')
 
   await page.getByLabel('E-mail institucional').fill('aluno.teste@edu.unifor.br')

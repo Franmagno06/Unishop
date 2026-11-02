@@ -2,12 +2,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetProductsData } from '../../products/services/products.data'
 import { resetUsersData } from '../services/users.data'
 import { AdminUserDetailPage } from './AdminUserDetailPage'
 import { AdminUserEditPage } from './AdminUserEditPage'
 import { AdminUsersPage } from './AdminUsersPage'
+
+vi.mock('../../../../shared/lib/mock-mode', () => ({ MOCK_MODE: true })) // estes testes usam os dados de exemplo (modo de demonstração)
 
 beforeEach(() => {
   resetUsersData()

@@ -1,7 +1,8 @@
+import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { ROUTES } from '../../../shared/constants/routes'
 import { useSession } from '../../../shared/hooks/use-session'
-import { isLeaving } from '../../../shared/lib/session'
+import { endLeaving, isLeaving } from '../../../shared/lib/session'
 import { AccessDeniedPage } from './AccessDeniedPage'
 
 // Só UX (RN-ADM-01, RF018.1): sem sessão vai ao login do admin guardando o destino; aluno vê
@@ -9,6 +10,8 @@ import { AccessDeniedPage } from './AccessDeniedPage'
 export function AdminRoute() {
   const { isLoggedIn, role } = useSession()
   const location = useLocation()
+  // Ao sair da tela (a navegação do "Sair" terminou), a marca de "saindo" acaba.
+  useEffect(() => endLeaving, [])
 
   if (!isLoggedIn) {
     // "Sair" do painel: login comum, sem destino guardado nem tipo de usuário.

@@ -8,6 +8,7 @@ export function deleteErrorMessage(error: unknown, what: 'usuário' | 'produto')
       return `Não dá para excluir agora: há pedido pago ou com retirada combinada em aberto. Cancele o pedido (com estorno) e tente de novo.`
     }
     if (error.code === 'ADMIN_PROTECTED') return error.message
+    if (error.status === 403) return error.message // ACCOUNT_SUSPENDED: o admin foi suspenso durante a sessão
     if (error.status === 404) return `Este ${what} não existe mais. Atualize a página.`
   }
   return `Não foi possível excluir o ${what} agora. Tente de novo em instantes.`

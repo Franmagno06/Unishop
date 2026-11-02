@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { PASSWORD_RULES, registerSchema } from '../schemas/auth.schemas'
+import { newPasswordSchema, PASSWORD_RULES } from '../../schemas/password'
 import { PasswordRequirements } from './PasswordRequirements'
 
 function statuses() {
@@ -46,11 +46,6 @@ describe('PasswordRequirements (RN-ACE-04)', () => {
   })
 
   it('a lista e o esquema Zod concordam sobre o que é uma senha válida', () => {
-    const base = {
-      name: 'Ana Souza',
-      email: 'ana@edu.unifor.br',
-      acceptTerms: true,
-    }
     const samples = [
       '',
       'Ab1',
@@ -65,11 +60,7 @@ describe('PasswordRequirements (RN-ACE-04)', () => {
 
     for (const password of samples) {
       const listAccepts = PASSWORD_RULES.every((rule) => rule.test(password))
-      const schemaAccepts = registerSchema.safeParse({
-        ...base,
-        password,
-        passwordConfirmation: password,
-      }).success
+      const schemaAccepts = newPasswordSchema.safeParse(password).success
       expect(schemaAccepts, `senha "${password.slice(0, 12)}…"`).toBe(listAccepts)
     }
   })

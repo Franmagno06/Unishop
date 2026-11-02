@@ -16,6 +16,7 @@ import { formatWhatsapp, onlyDigits } from '../../../../shared/utils/whatsapp'
 import { AvatarUploader } from '../components/AvatarUploader'
 import { DeleteAccountModal } from '../components/DeleteAccountModal'
 import { useUpdateProfile } from '../hooks/use-update-profile'
+import { SavedButFailedError } from '../services/profile.service'
 import { profileSchema, type ProfileValues } from '../schemas/profile.schemas'
 
 // RF013 · RN-PER-01 a 03, 05 e 07 (Figma 05b). Nome, curso, WhatsApp e foto valem ao salvar; o
@@ -54,6 +55,7 @@ export function EditProfilePage() {
 function EditProfileForm({ user }: { user: CurrentUser }) {
   const save = useUpdateProfile()
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoError, setPhotoError] = useState<string>()
   const [deleting, setDeleting] = useState(false)
 
@@ -78,7 +80,7 @@ function EditProfileForm({ user }: { user: CurrentUser }) {
       email: values.email,
       course: values.course,
       whatsapp: onlyDigits(values.whatsapp),
-      avatarUrl: photoUrl ?? user.avatarUrl,
+      avatarFile: photoFile,
     })
   }
 
@@ -86,6 +88,7 @@ function EditProfileForm({ user }: { user: CurrentUser }) {
     if (photoUrl) URL.revokeObjectURL(photoUrl)
     setPhotoError(undefined)
     setPhotoUrl(URL.createObjectURL(file))
+    setPhotoFile(file)
   }
 
   return (
@@ -97,7 +100,8 @@ function EditProfileForm({ user }: { user: CurrentUser }) {
         <form noValidate onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
           {save.isError ? (
             <ErrorAlert title="Não foi possível salvar">
-              {save.error instanceof ApiError && save.error.status < 500
+              {save.error instanceof SavedButFailedError ||
+              (save.error instanceof ApiError && save.error.status < 500)
                 ? save.error.message
                 : 'Confira sua conexão e tente de novo.'}
             </ErrorAlert>

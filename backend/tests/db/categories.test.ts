@@ -44,4 +44,48 @@ describe('categories.repository (banco real)', () => {
     expect(await countOf(3)).toBe(Number(n))
     expect(Number(n)).toBe(1)
   })
+
+  // Capa da categoria: a foto principal do primeiro anúncio visível que foi publicado nela.
+  const withImage = async (userId: number, categoryId: number, url: string, extra = {}) => {
+    const listing = await createListing(userId, { categoryId, ...extra })
+    await testDb.listingImage.create({ data: { listingId: listing.id, position: 1, url, publicId: url } })
+    return listing
+  }
+  const coverOf = async (id: number) =>
+    (await createPrismaCategoryRepository(testDb).listWithCounts()).find((c) => c.id === id)?.imageUrl
+
+  it('categoria sem anúncio visível não tem capa', async () => {
+    expect(await coverOf(1)).toBeNull()
+  })
+
+  it('a capa é a foto do anúncio visível mais antigo da categoria, mesmo que haja outros mais novos', async () => {
+    const owner = await createUser()
+    await withImage(owner.id, 1, 'http://x/novo.png', { publishedAt: new Date('2026-10-20T10:00:00Z') })
+    await withImage(owner.id, 1, 'http://x/antigo.png', { publishedAt: new Date('2026-10-01T10:00:00Z') })
+    await withImage(owner.id, 2, 'http://x/outra-categoria.png', { publishedAt: new Date('2026-09-01T10:00:00Z') })
+
+    expect(await coverOf(1)).toBe('http://x/antigo.png')
+    expect(await coverOf(2)).toBe('http://x/outra-categoria.png')
+    expect(await coverOf(3)).toBeNull()
+  })
+
+  it('RN-ANU-05: anúncio pausado, vendido, excluído ou de dono suspenso nunca vira capa (não vaza imagem oculta)', async () => {
+    const owner = await createUser()
+    const suspended = await createUser({ accountStatus: 'suspensa' })
+    const old = new Date('2026-01-01T10:00:00Z')
+    await withImage(owner.id, 4, 'http://x/pausado.png', { status: 'pausado', publishedAt: old })
+    await withImage(owner.id, 4, 'http://x/vendido.png', { status: 'vendido', quantity: 0, publishedAt: old })
+    await withImage(owner.id, 4, 'http://x/excluido.png', { deletedAt: new Date(), publishedAt: old })
+    await withImage(suspended.id, 4, 'http://x/suspenso.png', { publishedAt: old })
+    await withImage(owner.id, 4, 'http://x/visivel.png', { publishedAt: new Date('2026-10-10T10:00:00Z') })
+
+    expect(await coverOf(4)).toBe('http://x/visivel.png')
+  })
+
+  it('usa a foto principal (posição 1), não a segunda', async () => {
+    const owner = await createUser()
+    const listing = await withImage(owner.id, 5, 'http://x/principal.png')
+    await testDb.listingImage.create({ data: { listingId: listing.id, position: 2, url: 'http://x/segunda.png', publicId: 'b' } })
+    expect(await coverOf(5)).toBe('http://x/principal.png')
+  })
 })

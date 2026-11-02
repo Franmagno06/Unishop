@@ -11,8 +11,9 @@ import { ProfilePage } from './ProfilePage'
 // "Meus anúncios" usa os dados de exemplo; o perfil (GET, PATCH e DELETE de /users/me) usa a API simulada abaixo.
 vi.mock('../../listings/services/my-listings.service', () => import('../../listings/services/my-listings.mock'))
 
-// API simulada: GET, PATCH e DELETE de /users/me (backend.md §9), com o estado do aluno em memória.
-type Call = { method: string; body: Record<string, unknown> | undefined }
+// API simulada: GET, PATCH e DELETE de /users/me e o pedido de troca de e-mail (backend.md §9), com o
+// estado do aluno em memória. Como o servidor, o PATCH recusa um e-mail diferente do atual (RN-PER-02).
+type Call = { url: string; method: string; body: Record<string, unknown> | undefined }
 function stubApi() {
   let user = {
     id: 1,
@@ -32,14 +33,26 @@ function stubApi() {
 
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (_url: string, init?: RequestInit) => {
+    vi.fn(async (url: string, init?: RequestInit) => {
       const method = init?.method ?? 'GET'
       const body = init?.body ? (JSON.parse(String(init.body)) as Call['body']) : undefined
-      calls.push({ method, body })
+      calls.push({ url: String(url), method, body })
       if (method === 'GET') return reply(200, { data: { user } })
       if (method === 'PATCH') {
+        if (body?.email !== user.email) {
+          return reply(400, { error: { code: 'VALIDATION_ERROR', message: 'O e-mail só muda por link.' } })
+        }
         user = { ...user, ...body }
         return reply(200, { data: { user } })
+      }
+      if (method === 'POST' && String(url).endsWith('/users/me/email-change') && emailChangeStatus === 502) {
+        return reply(502, { error: { code: 'EXTERNAL_SERVICE_ERROR', message: 'Não foi possível enviar o e-mail agora.' } })
+      }
+      if (method === 'POST' && String(url).endsWith('/users/me/email-change')) {
+        return reply(202, { data: { pendingEmail: body?.email, expiresInMinutes: 30 } })
+      }
+      if (method === 'DELETE' && deleteStatus === 409) {
+        return reply(409, { error: { code: 'HAS_OPEN_PAID_ORDERS', message: 'Há pedido pago em aberto.' } })
       }
       return reply(204)
     }),
@@ -48,8 +61,12 @@ function stubApi() {
 }
 
 let calls: Call[]
+let deleteStatus = 204
+let emailChangeStatus = 202
 
 beforeEach(() => {
+  deleteStatus = 204
+  emailChangeStatus = 202
   setToken('token-de-teste')
   calls = stubApi()
 })
@@ -129,7 +146,7 @@ describe('Editar perfil (05b)', () => {
     expect(screen.getByText('Perfil atualizado')).toBeInTheDocument()
   })
 
-  it('o e-mail novo é salvo direto e já aparece no perfil', async () => {
+  it('RN-PER-02: o e-mail novo não troca na hora: o PATCH leva o atual, o link é pedido e o perfil avisa', async () => {
     renderApp('/perfil/editar')
     const user = userEvent.setup()
 
@@ -137,11 +154,25 @@ describe('Editar perfil (05b)', () => {
     await user.type(screen.getByLabelText('E-mail institucional'), 'novo.email@edu.unifor.br')
     await user.click(screen.getByRole('button', { name: 'Salvar' }))
 
-    expect(await screen.findByText('novo.email@edu.unifor.br')).toBeInTheDocument()
+    expect(await screen.findByText(/Enviamos um link de confirmação para novo.email@edu.unifor.br/)).toBeInTheDocument()
     expect(calls.find((call) => call.method === 'PATCH')?.body).toMatchObject({
+      email: 'aluno.teste@edu.unifor.br',
+    })
+    expect(calls.find((call) => call.url.endsWith('/users/me/email-change'))?.body).toEqual({
       email: 'novo.email@edu.unifor.br',
     })
-    expect(screen.queryByText('Confirme o novo e-mail')).not.toBeInTheDocument()
+  })
+
+  it('RN-PER-02: falha no envio do e-mail (502) depois do PATCH avisa que os dados foram salvos', async () => {
+    emailChangeStatus = 502
+    renderApp('/perfil/editar')
+    const user = userEvent.setup()
+
+    await user.clear(await screen.findByLabelText('E-mail institucional'))
+    await user.type(screen.getByLabelText('E-mail institucional'), 'novo.email@edu.unifor.br')
+    await user.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    expect(await screen.findByText(/Seus dados foram salvos, mas o e-mail não foi trocado/)).toBeInTheDocument()
   })
 
   it('recusa e-mail fora do domínio institucional', async () => {
@@ -188,6 +219,21 @@ describe('Editar perfil (05b)', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
     expect(getToken()).toBeNull()
     expect(calls.find((call) => call.method === 'DELETE')?.body).toEqual({ confirmation: 'EXCLUIR' })
+  })
+
+  it('RN-PER-06: 409 HAS_OPEN_PAID_ORDERS mostra o motivo no pop-up e mantém a sessão', async () => {
+    deleteStatus = 409
+    const router = renderApp('/perfil/editar')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Excluir perfil' }))
+    const dialog = screen.getByRole('dialog')
+    await user.type(within(dialog).getByLabelText('Digite EXCLUIR para confirmar'), 'EXCLUIR')
+    await user.click(within(dialog).getByRole('button', { name: 'Excluir perfil' }))
+
+    expect(await within(dialog).findByText(/pedidos pagos ou com retirada combinada em aberto/)).toBeInTheDocument()
+    expect(getToken()).toBe('token-de-teste')
+    expect(router.state.location.pathname).toBe('/perfil/editar')
   })
 
   it('cancelar o pop-up não exclui nada', async () => {

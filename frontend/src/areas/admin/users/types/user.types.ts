@@ -4,7 +4,7 @@ import type { ListingStatus } from '../../shared/types'
 // (anonimizada, some do painel). Na tela: "Ativa" é `active` e "Suspensa" é `suspended` (RN-ADM-05).
 export type AccountStatus = 'active' | 'suspended'
 
-// Aluno na visão do admin, formato assumido de GET /admin/users/:id (backend.md §9).
+// Aluno na visão do admin, GET /admin/users/:id (backend.md §9; o service converte o formato da API).
 export type AdminUser = {
   id: number
   name: string
@@ -14,7 +14,7 @@ export type AdminUser = {
   avatarUrl: string | null
   status: AccountStatus
   createdAt: string // ISO (UTC)
-  lastAccessAt: string // ISO (UTC)
+  lastAccessAt: string | null // ISO (UTC); null = nunca acessou
   // "Logado agora": atividade nos últimos 5 minutos (RN-ADM-03). Quem decide é o servidor.
   isOnline: boolean
 }

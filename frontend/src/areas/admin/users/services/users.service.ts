@@ -1,6 +1,6 @@
-import { ApiError } from '../../../../shared/lib/api'
-import { getAllProducts } from '../../products/services/products.data'
-import { DAY, DEMO_NOW, normalize, paginate, wait } from '../../shared/services/mock-utils'
+import { ApiError, api } from '../../../../shared/lib/api'
+import { MOCK_MODE } from '../../../../shared/lib/mock-mode'
+import { toPage, type ApiPage } from '../../shared/services/admin-api'
 import type { Page } from '../../shared/types'
 import type {
   AdminUser,
@@ -10,104 +10,88 @@ import type {
   UserListQuery,
   UserStats,
 } from '../types/user.types'
-import {
-  findUser,
-  getAllUsers,
-  markUserDeleted,
-  saveUser,
-  USERS_WITH_OPEN_PAID_ORDERS,
-} from './users.data'
 
-// Formato assumido das rotas do backend.md §9 (GET /admin/users, GET e PATCH /admin/users/:id,
-// DELETE /admin/users/:id); o openapi.yaml ainda não existe. Quando a API chegar, só este arquivo muda.
+// Rotas do backend.md §9: GET /admin/users (+ /stats), GET, PATCH e DELETE /admin/users/:id. Em modo
+// de demonstração (MOCK_MODE) as chamadas vão para `users.mock.ts`; o `import.meta.env.DEV` escrito
+// aqui é o que deixa o Vite apagar o código de exemplo do build.
 export const USERS_PAGE_SIZE = 7 // as 7 linhas do Figma (A01)
 
-const notFound = () => new ApiError(404, 'NOT_FOUND', 'Usuário não encontrado.')
-
-function listingsCountByUser(): Map<number, number> {
-  const counts = new Map<number, number>()
-  for (const product of getAllProducts()) {
-    counts.set(product.seller.id, (counts.get(product.seller.id) ?? 0) + 1)
-  }
-  return counts
+// Formato da API: curso, WhatsApp e último acesso podem vir nulos (conta nova, Google sem perfil).
+type ApiUser = Omit<AdminUser, 'course' | 'whatsapp'> & {
+  course: string | null
+  whatsapp: string | null
 }
+
+// Quem nunca acessou vem com lastAccessAt nulo (a tela mostra "Nunca acessou").
+const toUser = (item: ApiUser): AdminUser => ({
+  id: item.id,
+  name: item.name,
+  email: item.email,
+  course: item.course ?? '',
+  whatsapp: item.whatsapp ?? '',
+  avatarUrl: item.avatarUrl,
+  status: item.status,
+  createdAt: item.createdAt,
+  lastAccessAt: item.lastAccessAt,
+  isOnline: item.isOnline,
+})
+
+const toRow = (item: ApiUser & { listingsCount: number }): AdminUserRow => ({
+  ...toUser(item),
+  listingsCount: item.listingsCount,
+})
 
 // RN-ADM-02: os indicadores contam só alunos com conta ativa ou suspensa; "logado agora" só ativas.
 export async function getUserStats(signal?: AbortSignal): Promise<UserStats> {
-  await wait()
-  signal?.throwIfAborted()
-  const all = getAllUsers()
-  return {
-    total: all.length,
-    online: all.filter((user) => user.status === 'active' && user.isOnline).length,
-    newThisWeek: all.filter((user) => Date.parse(user.createdAt) >= DEMO_NOW - 7 * DAY).length,
-  }
+  if (import.meta.env.DEV && MOCK_MODE) return (await import('./users.mock')).getUserStats(signal)
+  return (await api<{ data: UserStats }>('/admin/users/stats', { signal })).data
 }
 
-// RF019: busca por nome ou e-mail, filtro "Todos / Logados agora / Offline" e paginação.
+// RF019 · RN-ADM-02, 03: busca por nome ou e-mail, filtro de presença e paginação.
 export async function listUsers(
-  { search, presence, page }: UserListQuery,
+  query: UserListQuery,
   signal?: AbortSignal,
 ): Promise<Page<AdminUserRow>> {
-  await wait()
-  signal?.throwIfAborted()
-  const term = normalize(search)
-  const counts = listingsCountByUser()
-  const rows = getAllUsers()
-    .filter((user) => !term || normalize(user.name).includes(term) || normalize(user.email).includes(term))
-    .filter((user) => presence === 'all' || (presence === 'online') === user.isOnline)
-    .map((user) => ({ ...user, listingsCount: counts.get(user.id) ?? 0 }))
-  return paginate(rows, page, USERS_PAGE_SIZE)
+  if (import.meta.env.DEV && MOCK_MODE) return (await import('./users.mock')).listUsers(query, signal)
+  const params = new URLSearchParams({ page: String(query.page), limit: String(USERS_PAGE_SIZE) })
+  const term = query.search.trim()
+  if (term) params.set('search', term)
+  params.set('presence', query.presence)
+  const response = await api<ApiPage<ApiUser & { listingsCount: number }>>(
+    `/admin/users?${params}`,
+    { signal },
+  )
+  return toPage(response, toRow)
 }
 
-// RF020: o aluno, os três indicadores e os anúncios dele. null = não existe ou foi excluído.
+// RF020 · RN-ADM-04: o aluno, os três indicadores e os anúncios dele. null = não existe ou foi excluído.
 export async function getUserDetail(id: number, signal?: AbortSignal): Promise<AdminUserDetail | null> {
-  await wait()
-  signal?.throwIfAborted()
-  const user = findUser(id)
-  if (!user) return null
-  const listings = getAllProducts().filter((product) => product.seller.id === id)
-  return {
-    user,
-    listings: listings.map((product) => ({
-      id: product.id,
-      title: product.title,
-      priceInCents: product.priceInCents,
-      categoryName: product.categoryName,
-      status: product.status,
-      imageUrl: product.images[0]?.url ?? null,
-    })),
-    stats: {
-      listings: listings.length,
-      sales: listings.filter((product) => product.status === 'sold').length,
-      // Não há pedidos de exemplo por aluno; o número vem do cadastro fictício.
-      purchases: id % 4,
-    },
+  if (import.meta.env.DEV && MOCK_MODE) return (await import('./users.mock')).getUserDetail(id, signal)
+  try {
+    const { data } = await api<{ data: Omit<AdminUserDetail, 'user'> & { user: ApiUser } }>(
+      `/admin/users/${id}`,
+      { signal },
+    )
+    return { ...data, user: toUser(data.user) }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null
+    throw error
   }
 }
 
-// RF021 · RN-ADM-05: o admin edita só o status da conta (Ativa ou Suspensa). Conta suspensa não
-// entra, tem os anúncios ocultos e não conta como logada.
-export async function updateUser(id: number, { status }: UpdateUserInput): Promise<AdminUser> {
-  await wait()
-  const user = findUser(id)
-  if (!user) throw notFound()
-  const changed: AdminUser = { ...user, status, isOnline: status === 'active' ? user.isOnline : false }
-  saveUser(changed)
-  return changed
+// RF021 · RN-ADM-05: o admin edita só o status da conta (Ativa ou Suspensa).
+export async function updateUser(id: number, input: UpdateUserInput): Promise<AdminUser> {
+  if (import.meta.env.DEV && MOCK_MODE) return (await import('./users.mock')).updateUser(id, input)
+  const { data } = await api<{ data: ApiUser }>(`/admin/users/${id}`, {
+    method: 'PATCH',
+    body: { status: input.status },
+  })
+  return toUser(data)
 }
 
-// RF020.6 e 20.7 · RN-ADM-06: excluir anonimiza a conta e tira os anúncios do ar. Bloqueada
+// RF020.6 e 20.7 · RN-ADM-06: excluir anonimiza a conta. Bloqueada (409 HAS_OPEN_PAID_ORDERS)
 // enquanto houver pedido Pago ou em Retirada combinada em aberto.
 export async function deleteUser(id: number): Promise<void> {
-  await wait()
-  if (!findUser(id)) throw notFound()
-  if (USERS_WITH_OPEN_PAID_ORDERS.has(id)) {
-    throw new ApiError(
-      409,
-      'HAS_OPEN_PAID_ORDERS',
-      'Há pedido pago ou com retirada combinada em aberto.',
-    )
-  }
-  markUserDeleted(id)
+  if (import.meta.env.DEV && MOCK_MODE) return (await import('./users.mock')).deleteUser(id)
+  await api<void>(`/admin/users/${id}`, { method: 'DELETE' })
 }

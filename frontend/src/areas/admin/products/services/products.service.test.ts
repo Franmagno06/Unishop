@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetUsersData } from '../../users/services/users.data'
 import { deleteUser } from '../../users/services/users.service'
 import { resetProductsData } from './products.data'
@@ -9,6 +9,8 @@ import {
   listProducts,
   updateProduct,
 } from './products.service'
+
+vi.mock('../../../../shared/lib/mock-mode', () => ({ MOCK_MODE: true })) // estes testes usam os dados de exemplo (modo de demonstração)
 
 beforeEach(() => {
   resetUsersData()

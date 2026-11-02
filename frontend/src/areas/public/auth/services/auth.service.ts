@@ -5,7 +5,7 @@ import type {
   RegisterValues,
   ResetPasswordValues,
 } from '../schemas/auth.schemas'
-import type { LoginResponse, RegisterResponse } from '../types/auth.types'
+import type { GoogleLoginResponse, LoginResponse, RegisterResponse } from '../types/auth.types'
 import { MOCK_MODE } from './mock-mode'
 
 // Os campos do login seguem o exemplo do backend.md §9. Os do cadastro e da recuperação de senha
@@ -16,6 +16,11 @@ import { MOCK_MODE } from './mock-mode'
 export async function login(values: LoginValues): Promise<LoginResponse> {
   if (import.meta.env.DEV && MOCK_MODE) return (await import('./auth.mock')).mockAuth.login(values)
   return api<LoginResponse>('/auth/login', { method: 'POST', body: values })
+}
+
+// POST /auth/google (RN-ACE-14): o servidor confere assinatura, domínio e e-mail verificado.
+export async function loginWithGoogle(idToken: string): Promise<GoogleLoginResponse> {
+  return api<GoogleLoginResponse>('/auth/google', { method: 'POST', body: { idToken } })
 }
 
 export async function register(values: RegisterValues): Promise<RegisterResponse> {
