@@ -27,6 +27,7 @@ function statusOf(raw: string) {
 const rowSelect = {
   id: true,
   name: true,
+  description: true,
   price: true,
   status: true,
   categoryId: true,
@@ -117,6 +118,7 @@ export function createPrismaAdminListingsRepository(
       const items: AdminListingRow[] = rows.map((r) => ({
         id: r.id,
         title: r.name,
+        description: r.description,
         priceInCents: decimalToCents(r.price),
         categoryId: r.categoryId,
         categoryName: r.category.name,

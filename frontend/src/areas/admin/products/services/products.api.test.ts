@@ -20,6 +20,7 @@ import {
 const row = {
   id: 3,
   title: 'Cálculo vol. 1',
+  description: 'Livro em bom estado',
   priceInCents: 4500,
   categoryId: 1,
   categoryName: 'Livros e apostilas',
@@ -59,10 +60,10 @@ describe('API real · produtos do admin', () => {
     expect(page).toMatchObject({ total: 1, pageSize: 6 })
   })
 
-  it('linha da lista sem imagem ou descrição vira produto sem imagem e descrição vazia', async () => {
+  it('linha da lista traz a descrição e, sem imagem, vira produto sem imagem', async () => {
     api.mockResolvedValue({ data: [row], meta: { page: 1, limit: 6, total: 1, totalPages: 1 } })
     const [product] = (await listProducts({ search: '', categoryId: null, page: 1 })).items
-    expect(product).toMatchObject({ id: 3, description: '', images: [], seller: { id: 9, name: 'Ana Lima' } })
+    expect(product).toMatchObject({ id: 3, description: 'Livro em bom estado', images: [], seller: { id: 9, name: 'Ana Lima' } })
     expect(api).toHaveBeenCalledWith('/admin/listings?page=1&limit=6', expect.anything())
   })
 

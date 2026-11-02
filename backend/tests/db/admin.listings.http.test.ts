@@ -102,6 +102,14 @@ describe('GET /admin/listings', () => {
   })
 })
 
+describe('GET /admin/listings (descrição)', () => {
+  it('RN-ADM-07 (Figma A03): a linha da lista traz a descrição, que a tabela mostra abaixo do título', async () => {
+    await createListing(seller.id)
+    const row = (await get('')).body.data[0]
+    expect(row.description).toBe('Descrição de teste do anúncio.')
+  })
+})
+
 describe('GET /admin/listings/:id', () => {
   it('id acima do limite do int4 dá 400 VALIDATION_ERROR (GET, PATCH e DELETE), não 500', async () => {
     const huge = '99999999999'

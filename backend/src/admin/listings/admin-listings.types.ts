@@ -5,6 +5,7 @@ import type { AuditEntry } from '../audit-logs/audit-logs.types'
 export type AdminListingRow = {
   id: number
   title: string
+  description: string // a tabela do admin mostra duas linhas abaixo do título (Figma A03)
   priceInCents: number
   categoryId: number
   categoryName: string

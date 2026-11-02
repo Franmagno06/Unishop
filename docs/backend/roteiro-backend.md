@@ -370,7 +370,7 @@ Uma etapa só termina quando o fluxo dela funciona no navegador com a API real. 
 
 ## Etapa 9 — Admin, exclusão e anonimização
 
-**Status (02/11/2026): backend feito; frontend de usuários e produtos do admin integrado.** Suporte, avaliações e auditoria do admin não entram (fora do MVP ou sem tela). Achado da integração: a lista `GET /admin/listings` não devolve a descrição, e a tabela do Figma mostra duas linhas dela.
+**Status (02/11/2026): backend feito; frontend de usuários e produtos do admin integrado.** Suporte, avaliações e auditoria do admin não entram (fora do MVP ou sem tela). Achado da integração: a lista `GET /admin/listings` não devolvia a descrição (a tabela do Figma mostra duas linhas dela); passou a devolver `description` em 02/11/2026.
 
 **Rotas:** `GET /admin/users`, `/stats`, `/:id`, `PATCH /admin/users/:id`, `DELETE /admin/users/:id`; `GET /admin/listings`, `/stats`, `/:id`, `PATCH`, `DELETE`; `GET /admin/audit-logs`; `DELETE /users/me`; e o desvio de `POST /orders/:id/cancel` do vendedor já feito na 6.
 

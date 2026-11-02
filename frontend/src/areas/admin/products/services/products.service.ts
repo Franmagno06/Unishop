@@ -18,6 +18,7 @@ export const PRODUCTS_PAGE_SIZE = 6 // as 6 linhas do Figma (A03)
 type ApiRow = {
   id: number
   title: string
+  description: string
   priceInCents: number
   categoryId: number
   categoryName: string
@@ -36,12 +37,12 @@ type ApiDetail = Omit<ApiRow, 'imageUrl' | 'seller'> & {
   whatsappContacts: number
 }
 
-// A lista da API não traz descrição, e-mail do vendedor nem contadores: a tabela mostra só o que vem
-// (título, categoria, preço, vendedor, status). O detalhe traz o resto.
+// A lista da API não traz e-mail do vendedor, WhatsApp nem contadores: a tabela mostra só o que vem
+// (título, descrição, categoria, preço, vendedor, status). O detalhe traz o resto.
 const fromRow = (item: ApiRow): AdminProduct => ({
   id: item.id,
   title: item.title,
-  description: '',
+  description: item.description,
   priceInCents: item.priceInCents,
   categoryId: item.categoryId,
   categoryName: item.categoryName,
