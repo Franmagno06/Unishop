@@ -9,6 +9,13 @@ export const userRoutes: RouteObject[] = [
     element: <PrivateRoute />,
     children: [
       {
+        // Sem o cabeçalho do aluno: com o aceite pendente, as outras páginas respondem 403 TERMS_NOT_ACCEPTED.
+        path: 'completar-cadastro',
+        lazy: async () => ({
+          Component: (await import('./profile/pages/CompleteProfilePage')).CompleteProfilePage,
+        }),
+      },
+      {
         element: <AppLayout />,
         children: [
           {

@@ -32,6 +32,15 @@ export const profileSchema = z.object({
 
 export type ProfileValues = z.infer<typeof profileSchema>
 
+// RN-ACE-06 e 14: o aceite é obrigatório; curso e WhatsApp são opcionais (mesmos limites do perfil).
+export const completeProfileSchema = z.object({
+  course: profileSchema.shape.course,
+  whatsapp: profileSchema.shape.whatsapp,
+  acceptTerms: z.literal(true, { error: 'Aceite os Termos e a Política para continuar.' }),
+})
+
+export type CompleteProfileValues = z.input<typeof completeProfileSchema>
+
 // Foto de perfil: JPG ou PNG de até 4 MB (RN-PER-05). Devolve a mensagem de erro ou null.
 export function validateAvatarFile(file: Pick<File, 'type' | 'size'>): string | null {
   if (!AVATAR_TYPES.includes(file.type)) return 'Use uma imagem JPG ou PNG.'
