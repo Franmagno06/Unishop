@@ -17,10 +17,8 @@ import {
   saveProduct,
 } from './products.data'
 
-// Formato assumido das rotas do backend.md §9 (GET /admin/listings, GET e PATCH /admin/listings/:id,
-// DELETE /admin/listings/:id); o openapi.yaml ainda não existe. Quando a API chegar, só este
-// arquivo muda.
-export const PRODUCTS_PAGE_SIZE = 6 // as 6 linhas do Figma (A03)
+// Dados de exemplo (modo de demonstração, VITE_USE_MOCKS=true). O caminho real fica em products.service.ts.
+import { PRODUCTS_PAGE_SIZE } from './products.service'
 
 const notFound = () => new ApiError(404, 'NOT_FOUND', 'Produto não encontrado.')
 
