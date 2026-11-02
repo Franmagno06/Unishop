@@ -53,6 +53,16 @@ describe('assinatura do webhook (api.md §5.6)', () => {
     )
     expect(verify(sign('ABC123', 'r', NOW.getTime() - 4 * 60_000), query).paymentId).toBe('ABC123')
   })
+
+  it('aceita `ts` em segundos, como o Mercado Pago manda, e mantém a janela de 5 minutos', () => {
+    const seconds = (ms: number) => Math.floor(ms / 1000)
+    expect(verify(sign('ABC123', 'r', seconds(NOW.getTime() - 60_000)), query).paymentId).toBe(
+      'ABC123',
+    )
+    expect(() =>
+      verify(sign('ABC123', 'r', seconds(NOW.getTime() - 6 * 60_000)), query),
+    ).toThrowError(expect.objectContaining({ status: 401 }))
+  })
 })
 
 describe('gateway falso', () => {
