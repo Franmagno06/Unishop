@@ -16,6 +16,8 @@ function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === 'NETWORK_ERROR') return 'Sem conexão com o servidor. Confira a internet e tente de novo.'
     if (error.status === 404) return 'Este produto não existe mais. Volte à lista e atualize a página.'
+    // RN-ADM-08: Vendido sem unidades não volta a Ativo; a mensagem da API diz o que fazer.
+    if (error.status === 409 && error.code === 'INVALID_STATE') return error.message
   }
   return 'Não foi possível salvar agora. Tente de novo em instantes.'
 }
@@ -77,7 +79,7 @@ export function ProductStatusForm({ product, onSaved }: ProductStatusFormProps) 
             <ButtonLink to={adminPaths.productDetail(product.id)} variant="secondary" className="flex-1">
               Cancelar
             </ButtonLink>
-            <Button type="submit" className="flex-1" disabled={save.isPending}>
+            <Button type="submit" className="flex-1" disabled={save.isPending || status === product.status}>
               {save.isPending ? 'Salvando…' : 'Salvar'}
             </Button>
           </div>
