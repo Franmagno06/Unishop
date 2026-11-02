@@ -25,6 +25,8 @@ const pixBodySchema = z.object({ orderId })
 type Options = {
   /** Limite próprio e folgado do webhook (300/min/IP, backend.md §6). */
   webhookLimiter: RequestHandler
+  /** Limite por usuário logado (30 por minuto, backend.md §6). Vai depois do `authenticate`. */
+  userLimiter?: RequestHandler
   /** Só com o gateway falso em desenvolvimento ou teste: simula o aviso de pagamento aprovado. */
   devSimulator?: MockPaymentGateway
 }
@@ -32,10 +34,10 @@ type Options = {
 export function createPaymentsRoutes(
   service: PaymentsService,
   authenticate: Authenticate,
-  { webhookLimiter, devSimulator }: Options,
+  { webhookLimiter, userLimiter, devSimulator }: Options,
 ) {
   const router = Router()
-  const student = [authenticate(), authorizeRole('student')]
+  const student = [authenticate(), authorizeRole('student'), ...(userLimiter ? [userLimiter] : [])]
 
   router.post('/card', ...student, validateBody(cardBodySchema), async (req, res) => {
     res.json({ data: await service.payWithCard(req.user!.id, req.body) }) // RN-PAG-02, 07
