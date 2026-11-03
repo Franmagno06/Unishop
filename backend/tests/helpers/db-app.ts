@@ -13,6 +13,7 @@ import { createPrismaCategoryRepository } from '../../src/modules/categories/cat
 import { createPrismaListingRepository } from '../../src/modules/listings/listings.repository'
 import type { ListingRepository } from '../../src/modules/listings/listings.types'
 import { createPrismaOrderRepository } from '../../src/modules/orders/orders.repository'
+import { createPrismaReviewRepository } from '../../src/modules/reviews'
 import { createPrismaPaymentRepository } from '../../src/modules/payments/payments.repository'
 import { createPrismaProfileRepository } from '../../src/modules/users/users.repository'
 import { createMockPaymentGateway } from '../../src/shared/providers/payment/mock.provider'
@@ -53,6 +54,7 @@ export function buildDbApp(
       }),
     },
     orders: createPrismaOrderRepository(testDb),
+    reviews: createPrismaReviewRepository(testDb),
     payments: createPrismaPaymentRepository(testDb),
     gateway,
     db: testDb,
