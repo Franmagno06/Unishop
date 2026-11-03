@@ -1,9 +1,9 @@
 ---
 title: Documentação Técnica — Banco de Dados
 project: Unishop
-version: 0.2.3
+version: 0.2.4
 date: 2026-11-02
-changelog: "0.2.3 — migração 3_motivo_cancelamento aplicada no unishop-prod (02/11/2026); pendência 11 (checksum das migrações × fim de linha). 0.2.2 — filtro de presença do admin (9.4) e guarda do endereço anonimizado (10). 0.2.1 — RLS e papéis testados no unishop-prod e no unishop-dev; SELECT nas sequências para o unishop_backup; migrações testadas em banco vazio; seção 15 revisada contra o código."
+changelog: "0.2.4 — tabela avaliacao (migração 4_avaliacao, 9 tabelas; RN-AVA-01 a 05, 02/11/2026). 0.2.3 — migração 3_motivo_cancelamento aplicada no unishop-prod (02/11/2026); pendência 11 (checksum das migrações × fim de linha). 0.2.2 — filtro de presença do admin (9.4) e guarda do endereço anonimizado (10). 0.2.1 — RLS e papéis testados no unishop-prod e no unishop-dev; SELECT nas sequências para o unishop_backup; migrações testadas em banco vazio; seção 15 revisada contra o código."
 status: vigente com pendências
 owners: Ana Clara (banco de dados)
 reviewers: Felipe Bessa (backend), Pedro Cândido (API), Francisco Magno (integração front-back)
@@ -38,7 +38,7 @@ Este documento descreve o banco de dados do Unishop: o que cada tabela guarda, c
 
 **O que este documento cobre**
 
-- Dicionário de dados das 8 tabelas (7 do dump mais `token_usuario`), no estado final.
+- Dicionário de dados das 9 tabelas (7 do dump, mais `token_usuario` e `avaliacao`), no estado final.
 - Relacionamentos, chaves, restrições e valores permitidos.
 - Como as regras de negócio (`RN-XXX-nn`) se apoiam no banco.
 - Divergências entre o MER e o banco, e o caminho de migração.
@@ -53,7 +53,7 @@ Este documento descreve o banco de dados do Unishop: o que cada tabela guarda, c
 
 ## 2. Visão geral do banco
 
-O banco tem **8 tabelas**, todas no schema `public`, com chave primária numérica gerada automaticamente (`GENERATED ALWAYS AS IDENTITY`).
+O banco tem **9 tabelas**, todas no schema `public`, com chave primária numérica gerada automaticamente (`GENERATED ALWAYS AS IDENTITY`).
 
 | Tabela | Papel em uma frase | Linhas crescem com... |
 |---|---|---|
@@ -65,6 +65,7 @@ O banco tem **8 tabelas**, todas no schema `public`, com chave primária numéri
 | `pagamento` | A cobrança (Pix ou cartão) de um pedido | Pedidos pagos no site |
 | `log_admin` | Registro das ações do administrador | Ações do admin |
 | `token_usuario` | Links de uso único (senha, e-mail) | Recuperações de senha |
+| `avaliacao` | A avaliação (nota e comentário) do item de um pedido concluído | Pedidos avaliados |
 
 ### Como as tabelas se agrupam
 
@@ -88,7 +89,7 @@ O banco tem **8 tabelas**, todas no schema `public`, com chave primária numéri
 
 ## 3. Diagrama entidade-relacionamento
 
-Estado final (v0.2), com as 8 tabelas e as colunas principais.
+Estado final (v0.2.4), com as 9 tabelas; a `avaliacao` (migração 4) liga `pedido`, `anuncio` e `usuario` e não aparece na figura.
 
 ```text
                                   ┌───────────────┐
@@ -138,7 +139,7 @@ Estado final (v0.2), com as 8 tabelas e as colunas principais.
 │ tipo, token_hash│                      * UK sobre lower(email)
 │ expira_em       │
 └─────────────────┘
-        Figura 1 · Diagrama entidade-relacionamento do banco (estado final, 8 tabelas)
+        Figura 1 · Diagrama entidade-relacionamento do banco (estado final, 8 tabelas; a 9ª, `avaliacao`, entrou na migração 4)
 ```
 
 ### Leitura das cardinalidades
@@ -387,6 +388,30 @@ Restrições: `log_admin_pkey`, `fk_log_admin_usuario`, `ck_log_entidade`.
 
 Restrições: `token_usuario_pkey`, `fk_token_usuario`, `uq_token_hash`, `ck_token_tipo`.
 
+### 4.9 avaliacao
+
+**O que faz.** Guarda a avaliação do item de um pedido concluído: nota e comentário do comprador (RN-AVA-01 a 05). Entrou na migração 4 (`4_avaliacao`), em 02/11/2026.
+
+**Como funciona.**
+
+- Uma avaliação por pedido: `id_pedido` é único (`uq_avaliacao_pedido`), o que também resolve duas avaliações chegando juntas (RN-AVA-02).
+- A nota vai de 0 a 5 em passos de 0,5, garantida pelo banco (`ck_avaliacao_nota`, RN-AVA-03). O comentário é opcional, com até 500 caracteres (RN-AVA-04).
+- Quem avalia (só o comprador de pedido `concluido`) é conferido no backend. O nome do autor vem do join com `usuario`: se a conta for anonimizada, aparece "Usuário removido" e a avaliação permanece (RN-AVA-05, RN-PER-06).
+- Nada se apaga em cascata e a avaliação não é editada nem excluída no MVP.
+- Tabela nova: nasce com RLS ligada e as políticas `app_all` e `backup_select` na própria migração.
+
+| Coluna | Tipo | Restrições | Descrição | Origem |
+|---|---|---|---|---|
+| `id_avaliacao` | integer | PK, NN, identity | Identificador da avaliação | — |
+| `id_pedido` | integer | FK → `pedido`, NN, UK | Pedido avaliado (uma avaliação por pedido) | RN-AVA-02 |
+| `id_anuncio` | integer | FK → `anuncio`, NN | Anúncio avaliado (copiado do pedido, para listar por anúncio) | RN-AVA-05 |
+| `id_avaliador` | integer | FK → `usuario`, NN | Comprador que avaliou | RN-AVA-01 |
+| `nota` | numeric(2,1) | NN, `CHECK` | De 0 a 5, em passos de 0,5 | RN-AVA-03 |
+| `comentario` | varchar(500) | NN, padrão `''` | Texto opcional | RN-AVA-04 |
+| `data_criacao` | timestamptz | NN, padrão `now()` | Quando foi avaliado | — |
+
+Restrições e índice: `avaliacao_pkey`, `uq_avaliacao_pedido`, `fk_avaliacao_pedido`, `fk_avaliacao_anuncio`, `fk_avaliacao_avaliador`, `ck_avaliacao_nota` e `ix_avaliacao_anuncio` (`id_anuncio`, `data_criacao` decrescente).
+
 ## 5. Relacionamentos e integridade
 
 ### Chaves estrangeiras
@@ -402,6 +427,9 @@ Restrições: `token_usuario_pkey`, `fk_token_usuario`, `uq_token_hash`, `ck_tok
 | `fk_pagamento_pedido` | `pagamento.id_pedido` | `pedido.id_pedido` | Bloqueia |
 | `fk_log_admin_usuario` | `log_admin.id_admin` | `usuario.id_usuario` | Bloqueia |
 | `fk_token_usuario` | `token_usuario.id_usuario` | `usuario.id_usuario` | Bloqueia |
+| `fk_avaliacao_pedido` | `avaliacao.id_pedido` | `pedido.id_pedido` | Bloqueia |
+| `fk_avaliacao_anuncio` | `avaliacao.id_anuncio` | `anuncio.id_anuncio` | Bloqueia |
+| `fk_avaliacao_avaliador` | `avaliacao.id_avaliador` | `usuario.id_usuario` | Bloqueia |
 
 Nenhuma FK declara `ON DELETE`, então o PostgreSQL usa `NO ACTION`: não se apaga um registro que ainda é referenciado. Isso combina com a estratégia do Unishop de não apagar fisicamente: anúncio é excluído de forma lógica e usuário é anonimizado (seções 4.3 e 10). `DELETE` físico em `usuario` ou `anuncio` é exceção de manutenção, não operação normal.
 
@@ -418,6 +446,7 @@ Nenhuma FK declara `ON DELETE`, então o PostgreSQL usa `NO ACTION`: não se apa
 | `uq_pagamento_transacao` | `pagamento(id_transacao_gateway)` onde não nulo | Webhook acha o pagamento sem ambiguidade |
 | `uq_pagamento_idempotencia` | `pagamento.chave_idempotencia` | Sem cobrança duplicada |
 | `uq_token_hash` | `token_usuario.token_hash` | Token único |
+| `uq_avaliacao_pedido` | `avaliacao.id_pedido` | Uma avaliação por pedido (RN-AVA-02) |
 
 ### Ordem de criação das tabelas
 
@@ -430,6 +459,7 @@ Nenhuma FK declara `ON DELETE`, então o PostgreSQL usa `NO ACTION`: não se apa
 6. pagamento      (pedido)
 7. log_admin      (usuario)
 8. token_usuario  (usuario)
+9. avaliacao       (pedido, anuncio, usuario)  -- migração 4
 ```
 
 Para apagar tudo (só em desenvolvimento), use a ordem inversa, ou `prisma migrate reset`.
@@ -565,6 +595,7 @@ O backend escreve o código em inglês e o banco está em português. O Prisma r
 | `imagem_anuncio` | `listingImage` | `pedido.valor_total` | `order.totalAmount` |
 | `log_admin` | `auditLog` | `pedido.preco_unitario` | `order.unitPrice` |
 | `token_usuario` | `userToken` | `usuario.tipo_usuario` | `user.role` (`aluno` → `student`) |
+| `avaliacao` | `review` | `avaliacao.nota` | `review.rating` |
 
 > Os **valores** dos estados são os mesmos nos dois lados (`pago`, `concluido`, `em_negociacao`...). Se o enum do Prisma usar nomes em inglês, o `@map` converte; o que importa é existir um único conjunto de valores.
 
@@ -828,7 +859,7 @@ O banco **não** é restaurado a partir do dump no Supabase. A estrutura é cria
 
 **Estado do `unishop-prod` em 30/10/2026:** o banco já existia com a estrutura (montada fora do Prisma). Depois de conferir que ele bate com o `schema.prisma` e com o SQL da migração manual, as migrações `0_init` e `1_regras_manuais` foram registradas com `prisma migrate resolve --applied`, e `prisma migrate status` passou a dizer que o schema está atualizado. Ainda **não existem** os papéis `unishop_migrator`, `unishop_app` e `unishop_backup` (a migração manual não os cria; ver "Papéis e permissões"), e a conexão atual usa o `postgres`. A migração `2_rls_politicas` (RLS com política por papel) ainda não foi aplicada nele.
 
-1. **Baseline (`0_init`).** Com o `schema.prisma` descrevendo as 8 tabelas (nomes pelo mapeamento da seção 7), gerar a migração inicial a partir do zero:
+1. **Baseline (`0_init`).** Com o `schema.prisma` descrevendo as 9 tabelas (nomes pelo mapeamento da seção 7), gerar a migração inicial a partir do zero:
 
    ```bash
    mkdir -p prisma/migrations/0_init
@@ -1140,6 +1171,12 @@ VALUES ('Dup', 'ANA@edu.unifor.br', 'x'), ('Dup', 'ana@edu.unifor.br', 'x'); -- 
 INSERT INTO public.pagamento (id_pedido, forma_pagamento, status_pagamento) VALUES (1, 'pix', 'pendente');
 INSERT INTO public.pagamento (id_pedido, forma_pagamento, status_pagamento) VALUES (1, 'cartao', 'pendente');
 ```
+
+### Migração 4: avaliação do pedido concluído
+
+Arquivo `backend/prisma/migrations/4_avaliacao/migration.sql`, aplicado depois da migração 3. Cria a tabela `avaliacao` (seção 4.9) com as chaves, o `CHECK` da nota, o índice por anúncio e, **na mesma migração**, `ENABLE ROW LEVEL SECURITY` mais as políticas `app_all` e `backup_select` (só para papéis que existem). Aditiva: não altera tabela existente.
+
+Testada no PostgreSQL 17 do Docker em 02/11/2026 (`backend/tests/db/reviews.http.test.ts`). **Falta aplicar no `unishop-prod` e no `unishop-dev`** (`prisma migrate deploy`, que roda no build da API na Vercel). O `unishop_app` e o `unishop_backup` já recebem os privilégios pelas permissões padrão do `unishop_migrator` (seção "Papéis e permissões").
 
 ### Migração 3: motivo do cancelamento
 

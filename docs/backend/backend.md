@@ -1,9 +1,9 @@
 ---
 title: Documentação Técnica — Backend
 project: Unishop
-version: 0.3.2
-date: 2026-11-01
-changelog: "0.3.2 — troca de e-mail confirmada (RN-PER-02), presença no admin, e-mail em segundo plano, modelos escapados, guarda de destinatário, buildProviders. 0.3.1 — seção 21 revisada contra o código (módulos auth, users, categories e listings implementados) e pendências novas."
+version: 0.3.3
+date: 2026-11-02
+changelog: "0.3.3 — avaliações no MVP: GET /listings/:id/reviews e POST /orders/:id/review (RN-AVA-01 a 05), reviewed no pedido. 0.3.2 — troca de e-mail confirmada (RN-PER-02), presença no admin, e-mail em segundo plano, modelos escapados, guarda de destinatário, buildProviders. 0.3.1 — seção 21 revisada contra o código (módulos auth, users, categories e listings implementados) e pendências novas."
 status: vigente com pendências
 owners: Felipe Bessa (backend)
 reviewers: Pedro Cândido (engenheiro de API), Ana Clara (banco de dados), Francisco Magno (integração front-back)
@@ -854,6 +854,7 @@ Anúncios: vitrine, página do produto e gerenciamento pelo dono.
 | `GET /listings/mine` | Dono | "Meus anúncios", em todos os status | RF012.5 |
 | `GET /listings/:id` | Aluno ou Admin | Página do produto (galeria, vendedor com selo de aluno verificado, WhatsApp do anúncio); conta a visualização | RF008, RN-ANU-08, 11 |
 | `GET /listings/:id/management` | Dono | Resumo, status e indicadores (visualizações, contatos, pedidos) | RN-ANU-08 |
+| `GET /listings/:id/reviews` | Aluno ou Admin | Avaliações do anúncio (`{ id, listingId, authorName, rating, comment, createdAt }`), da mais recente para a mais antiga; anúncio inexistente ou excluído dá 404. Autor anonimizado aparece como "Usuário removido" | RN-AVA-05 |
 | `POST /listings` | Aluno | Publica o anúncio (multipart: dados + a **primeira** imagem) | RN-ANU-01 a 03, RN-EST-01 |
 | `POST /listings/:id/images` | Dono | Acrescenta **uma** imagem ao anúncio (multipart); máximo de 5 por anúncio | RN-ANU-03, RN-ANU-04 |
 | `DELETE /listings/:id/images/:imageId` | Dono | Remove uma imagem; o anúncio precisa continuar com pelo menos 1 | RN-ANU-03, RN-ANU-04 |
@@ -889,6 +890,7 @@ Pedidos de compra e pedidos recebidos. **Nenhuma rota desta tabela reserva estoq
 
 | Método e rota | Acesso | O que faz | Origem |
 |---|---|---|---|
+| `POST /orders/:id/review` | Comprador | Avalia o item de um pedido **Concluído** (`rating` de 0 a 5 em passos de 0,5; `comment` opcional, até 500). 201 com a avaliação; 403 se o pedido não é seu ou o perfil é admin; 404 se não existe; 409 `INVALID_STATE` se não está Concluído; 409 `ALREADY_REVIEWED` na segunda tentativa. O JSON do pedido traz `reviewed` | RN-AVA-01 a 04 |
 | `POST /orders` | Aluno | Cria o pedido "Pendente" (pagamento no site) com preço unitário e total congelados. Valida a quantidade, sem reservar | RN-PED-01, 02, RN-EST-02 |
 | `POST /orders/contact` | Aluno | Registra o contato por WhatsApp: pedido "Em negociação", sem reservar nem descontar estoque | RN-PED-05 |
 | `GET /orders/mine` | Aluno | "Meus pedidos", do mais recente ao mais antigo | RN-PED-06 |
@@ -1886,5 +1888,5 @@ As propostas da v0.2 viraram regra. A tabela mostra onde cada uma foi resolvida.
 | 6 | **Etapa 3 do roteiro incompleta:** faltam `buildProviders`, `http-client`, `PaymentGateway` com `mock.provider` e `AntiBotProvider` (hoje só `MailProvider` de console, `StorageProvider` local e o Google real) | Fechar antes das etapas 6 e 7 |
 | 7 | **`DELETE /users/me`** anonimiza sem conferir pedido Pago ou em Retirada combinada em aberto (409 `HAS_OPEN_PAID_ORDERS`, RN-PER-06) | Completar quando os pedidos existirem (Etapas 6 e 9) |
 | 8 | ~~**Migração `3_motivo_cancelamento`** (P9)~~ **Feita em 01/11/2026** (dev e Docker); falta o `unishop-prod` | Aplicar com `migrate deploy` (`bd.md`, seção 15) |
-| 9 | **Fora do MVP (01/11/2026):** reembolso, cancelamento de pedido Pago, avaliações e suporte (Etapa 12 do roteiro) | Não criar rotas nem tabelas para isso |
+| 9 | **Fora do MVP (01/11/2026):** reembolso, cancelamento de pedido Pago e suporte (Etapa 12 do roteiro). As **avaliações entraram no MVP em 02/11/2026** (RN-AVA, migração 4) | Não criar rotas nem tabelas de reembolso ou suporte |
 | 3 | Payments API ou Orders API do Mercado Pago (ADR-002 ainda em aberto neste ponto) | Decidir antes de implementar `createPixPayment`; o resto do backend só conhece a interface `PaymentGateway` |
