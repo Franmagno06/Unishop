@@ -5,6 +5,7 @@ import { createSmtpMailProvider } from '../../src/shared/providers/mail/smtp.pro
 import {
   createCloudinaryStorageProvider,
   parseCloudinaryUrl,
+  toError,
 } from '../../src/shared/providers/storage/cloudinary.provider'
 
 const PNG = Buffer.from(
@@ -46,6 +47,13 @@ describe('smtp.provider', () => {
 })
 
 describe('cloudinary.provider', () => {
+  it('erro do SDK (objeto simples) vira Error com a mensagem e o código HTTP', () => {
+    const err = toError({ message: 'Request forbidden', http_code: 403 })
+    expect(err).toBeInstanceOf(Error)
+    expect(err.message).toBe('Cloudinary: Request forbidden (HTTP 403)')
+    expect(toError(undefined).message).toBe('Cloudinary: resposta inesperada')
+  })
+
   it('lê o CLOUDINARY_URL', () => {
     expect(parseCloudinaryUrl('cloudinary://key:segredo@minha-nuvem')).toEqual({
       cloud_name: 'minha-nuvem',
