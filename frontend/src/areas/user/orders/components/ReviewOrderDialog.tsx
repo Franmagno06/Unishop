@@ -13,11 +13,19 @@ type ReviewOrderDialogProps = {
   onCancel: () => void
   pending: boolean
   failed: boolean
+  failedMessage?: string
 }
 
 // Avaliação do item de um pedido Concluído (provisório: avaliações não estão nas Regras). A nota é
 // obrigatória; o comentário é opcional.
-export function ReviewOrderDialog({ order, onConfirm, onCancel, pending, failed }: ReviewOrderDialogProps) {
+export function ReviewOrderDialog({
+  order,
+  onConfirm,
+  onCancel,
+  pending,
+  failed,
+  failedMessage,
+}: ReviewOrderDialogProps) {
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState('')
 
@@ -32,7 +40,7 @@ export function ReviewOrderDialog({ order, onConfirm, onCancel, pending, failed 
       onCancel={onCancel}
       pending={pending}
       confirmDisabled={rating === 0}
-      errorMessage={failed ? 'Não foi possível enviar a avaliação. Tente de novo.' : undefined}
+      errorMessage={failed ? (failedMessage ?? 'Não foi possível enviar a avaliação. Tente de novo.') : undefined}
     >
       <StarRatingInput value={rating} onChange={setRating} disabled={pending} />
       <TextAreaField

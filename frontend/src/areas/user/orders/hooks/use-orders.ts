@@ -49,11 +49,9 @@ export function useReviewOrder(listingId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, review }: { id: number; review: NewReview }) => reviewOrder(id, review),
-    onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: myOrdersKey }),
-        queryClient.invalidateQueries({ queryKey: reviewsKey(listingId) }),
-      ]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: reviewsKey(listingId) }),
+    // Mesmo se falhar (ex.: já avaliado), o pedido é buscado de novo para refletir o estado real.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: myOrdersKey }),
   })
 }
 export const useReportRefundNotReceived = () => useOrderAction(reportRefundNotReceived)

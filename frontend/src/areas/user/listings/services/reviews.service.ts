@@ -1,12 +1,10 @@
-import { ApiError } from '../../../../shared/lib/api'
+import { ApiError, api } from '../../../../shared/lib/api'
 import { getCurrentUser } from '../../../../shared/lib/current-user'
 import { MOCK_MODE } from '../../../../shared/lib/mock-mode'
 import type { NewReview, Review } from '../types/review.types'
 
-// Avaliações de exemplo no formato assumido de GET/POST /listings/:id/reviews (a rota ainda não está
-// no backend.md §9). Em memória: o que se publica some ao recarregar. Avaliações estão **fora do MVP**
-// (decidido em 01/11/2026): na API real não há rota, então a lista vem vazia e criar é recusado.
-// Só em modo de demonstração (MOCK_MODE) valem os exemplos.
+// Leitura: GET /listings/:id/reviews. Quem cria é o comprador, em POST /orders/:id/review (orders.service,
+// reviewOrder). Os exemplos abaixo, em memória, só valem em modo de demonstração (MOCK_MODE).
 const DELAY_MS = 250
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -40,7 +38,9 @@ function exampleReviews(listingId: number): Review[] {
 }
 
 export async function getReviews(listingId: number): Promise<Review[]> {
-  if (!(import.meta.env.DEV && MOCK_MODE)) return []
+  if (!(import.meta.env.DEV && MOCK_MODE)) {
+    return (await api<{ data: Review[] }>(`/listings/${listingId}/reviews`)).data
+  }
   await wait(DELAY_MS)
   return [...(created.get(listingId) ?? []), ...exampleReviews(listingId)]
 }

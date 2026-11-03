@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router'
 import { ArrowLink } from '../../../../shared/components/ui/ArrowLink'
+import { ApiError } from '../../../../shared/lib/api'
 import { Button, ButtonLink } from '../../../../shared/components/ui/Button'
 import { EmptyState } from '../../../../shared/components/ui/EmptyState'
 import { Skeleton } from '../../../../shared/components/ui/Skeleton'
@@ -74,10 +75,7 @@ export function OrderDetailsPage() {
       <ArrowLink to={ROUTES.myOrders}>Voltar aos pedidos</ArrowLink>
 
       {notFound ? (
-        <EmptyState
-          title="Pedido não encontrado"
-          action={<ButtonLink to={ROUTES.myOrders}>Meus pedidos</ButtonLink>}
-        >
+        <EmptyState title="Pedido não encontrado" action={<ButtonLink to={ROUTES.myOrders}>Meus pedidos</ButtonLink>}>
           Esse pedido não existe ou não é seu.
         </EmptyState>
       ) : query.isError ? (
@@ -185,6 +183,9 @@ export function OrderDetailsPage() {
               onCancel={close}
               pending={review.isPending}
               failed={review.isError}
+              failedMessage={
+                review.error instanceof ApiError && review.error.status === 409 ? review.error.message : undefined
+              }
             />
           ) : null}
           {dialog === 'review-sent' ? (
@@ -201,7 +202,9 @@ export function OrderDetailsPage() {
               onConfirm={(reason, details) =>
                 cancel.mutate(
                   { id: order.id, reason, details },
-                  { onSuccess: () => setDialog(refundable ? 'cancel-done' : null) },
+                  {
+                    onSuccess: () => setDialog(refundable ? 'cancel-done' : null),
+                  },
                 )
               }
               onCancel={close}
