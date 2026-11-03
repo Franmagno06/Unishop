@@ -193,7 +193,7 @@ Os documentos técnicos foram alinhados em conjunto pelo grupo em 16/10/2026. As
 | Hospedagem e banco | Vercel (frontend e API) e Supabase (PostgreSQL, usado só como banco; plano gratuito de 500 MB, sem backup automático) |
 | Pagamento | Mercado Pago (cartão por token e Pix com webhook), em modo de teste |
 | E-mail | Resend (com domínio próprio, pendente). Drivers prontos: `console` (desenvolvimento e modo de demonstração em produção) e `smtp` (Gmail com senha de app) |
-| Imagens | Cloudinary (driver `cloudinary` pronto; disco local só em desenvolvimento) |
+| Imagens | Cloudinary (em uso em produção, com envio de fotos testado; disco local só em desenvolvimento) |
 | Ambiente local | O desenvolvimento usa o banco no Supabase (`backend/.env`); o Docker Compose ficou só para os testes de banco (`npm run test:db`) |
 | Login social | Google, no MVP; Apple fora |
 | Monitoramento | UptimeRobot no `/health` |
@@ -384,7 +384,6 @@ Confirmação de e-mail por link (atrás da chave `EMAIL_VERIFICATION_REQUIRED`)
 - Domínio próprio, necessário para o Resend entregar e-mail de recuperação de senha e de troca de e-mail (hoje em modo de demonstração).
 - Testar se o e-mail `@edu.unifor.br` entrega `email_verified` no login com Google.
 - Mercado Pago: provar um Pix e um cartão de teste de ponta a ponta (o `mercadopago.provider` nunca foi exercitado contra a API real) e cadastrar o webhook no painel.
-- Imagens: validar o envio de fotos em produção (a chave do Cloudinary precisa de permissão de envio).
 - Banco de produção: trocar o usuário `postgres` pelos papéis `unishop_app` e `unishop_migrator` na Vercel e redefinir a senha do `postgres`.
 - Jobs de 30 minutos (cron-job.org), workflow de backup diário (o plano gratuito do Supabase não tem backup automático) e monitor no `/health`; ainda não existem workflows no `.github/`.
 - Integração: faltam editar anúncio e remover foto ligados à API; reembolso, avaliações e suporte do admin seguem de exemplo (fora do MVP).
