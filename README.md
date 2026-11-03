@@ -4,8 +4,34 @@ Sistema Web de e-commerce voltado para os alunos da Universidade de Fortaleza (U
 
 Trabalho da disciplina **Desenvolvimento de Plataformas Web** — Curso de Ciência da Computação, Turma T242-12, 4º Semestre, Unifor.
 
+## Projeto no ar
+
+O Unishop está publicado na Vercel, com o banco PostgreSQL no Supabase. É um **ambiente de demonstração**: o Mercado Pago roda com credenciais de teste e nenhum valor é cobrado de verdade.
+
+| O quê | Endereço |
+|---|---|
+| Site (frontend) | https://unishop-web-one.vercel.app |
+| API (base `/api/v1`) | https://unishop-api.vercel.app/api/v1 |
+| Saúde da API | [`/api/v1/health`](https://unishop-api.vercel.app/api/v1/health) e [`/api/v1/health/db`](https://unishop-api.vercel.app/api/v1/health/db) (consulta o banco) |
+
+Como testar:
+
+- **Login com Google:** o app OAuth está em modo de teste, então só entram os e-mails cadastrados como usuários de teste no Google Cloud. O cadastro com e-mail e senha aceita apenas `@edu.unifor.br`.
+- **Administrador:** a conta admin nasce só pelo seed e entra pelo login em rota separada (`/admin/login`). As credenciais ficam com o gestor e não são publicadas.
+- **Pagamento:** use os cartões de teste do Mercado Pago. O Pix só é aprovado automaticamente quando o webhook (`/api/v1/payments/webhook`) está cadastrado no painel do Mercado Pago.
+- **E-mails:** em produção o envio roda em **modo de demonstração** (`ALLOW_CONSOLE_MAIL`): nenhum e-mail sai, e o log registra só o tipo da mensagem e o destinatário mascarado, sem links. Por isso, recuperar senha e trocar e-mail por link não chegam ao usuário nesse ambiente.
+
+### Como foi publicado
+
+- **Dois projetos na Vercel**, ligados a este repositório (`main` publica em produção): `unishop-web` (pasta `frontend`) e `unishop-api` (pasta `backend`).
+- **API:** função serverless. O build roda `scripts/vercel-build.sh` (`prisma generate` e `prisma migrate deploy`). O `backend/vercel.json` agenda o job diário de limpeza de tokens.
+- **Site:** o `frontend/vercel.json` devolve o `index.html` para as rotas do React Router e envia cabeçalhos de segurança.
+- **Variáveis:** ficam só no painel da Vercel (segredos marcados como *Sensitive*); nada vai para o Git. Os arquivos `.env.example` listam os nomes.
+- **Travas de produção:** com `APP_ENV=production` a API recusa subir com gateway de pagamento falso, disco local para imagens ou e-mail por console (exceto no modo de demonstração acima).
+
 ## Sumário
 
+0. [Projeto no ar](#projeto-no-ar)
 1. [Equipe](#equipe)
 2. [Objetivo e público-alvo](#objetivo-e-público-alvo)
 3. [Atores e funcionalidades](#atores-e-funcionalidades)
@@ -128,7 +154,7 @@ SPA em React que consome uma API REST em Node.js/Express (`/api/v1`), sem sessã
  Agendadores (Vercel Cron e cron-job.org) ──▶ GET /api/v1/internal/jobs/:name  (com CRON_SECRET)
 ```
 
-> Decididos pelo grupo: **Mercado Pago** (pagamento), **Vercel + Supabase** (hospedagem e banco), **Resend** (e-mail; Mailtrap em desenvolvimento), **Cloudinary** (imagens) e **Google** (login social). Os segredos ficam só no backend ("backend-cofre"). O código acessa todos os serviços por interfaces (providers), o que permite trocá-los sem mexer nas regras de negócio.
+> Decididos pelo grupo: **Mercado Pago** (pagamento), **Vercel + Supabase** (hospedagem e banco), **Cloudinary** (imagens), **Google** (login social) e, para o e-mail, **Resend** com domínio próprio (ainda pendente; hoje a produção usa o modo de demonstração, e o código também tem um driver SMTP para Gmail). Os segredos ficam só no backend ("backend-cofre"). O código acessa todos os serviços por interfaces (providers), o que permite trocá-los sem mexer nas regras de negócio.
 
 ### Camadas do backend
 
@@ -166,16 +192,16 @@ Os documentos técnicos foram alinhados em conjunto pelo grupo em 16/10/2026. As
 | Backend | Estrutura route/controller/service/repository, Prisma (ORM), Zod, bcrypt, jsonwebtoken, node-cron (só em desenvolvimento), pino, helmet, Vitest + Supertest |
 | Hospedagem e banco | Vercel (frontend e API) e Supabase (PostgreSQL, usado só como banco; plano gratuito de 500 MB, sem backup automático) |
 | Pagamento | Mercado Pago (cartão por token e Pix com webhook), em modo de teste |
-| E-mail | Resend (produção, com domínio próprio) e Mailtrap (desenvolvimento) |
-| Imagens | Cloudinary (Cloudflare R2 fica como alternativa) |
-| Ambiente local | Docker Compose para o PostgreSQL de desenvolvimento e o de testes |
+| E-mail | Resend (com domínio próprio, pendente). Drivers prontos: `console` (desenvolvimento e modo de demonstração em produção) e `smtp` (Gmail com senha de app) |
+| Imagens | Cloudinary (driver `cloudinary` pronto; disco local só em desenvolvimento) |
+| Ambiente local | O desenvolvimento usa o banco no Supabase (`backend/.env`); o Docker Compose ficou só para os testes de banco (`npm run test:db`) |
 | Login social | Google, no MVP; Apple fora |
 | Monitoramento | UptimeRobot no `/health` |
 | Depois do MVP | Cloudflare Turnstile (anti-bot), Sentry e confirmação de e-mail por link |
 
 ## Estrutura do repositório
 
-Estado atual (01/11/2026): o repositório contém a documentação, as skills do Claude Code, o `backend/` (autenticação, usuários, categorias e anúncios; sem pedidos, pagamentos, jobs nem admin) e o `frontend/` (todas as telas, a maioria sobre dados de exemplo). As estruturas abaixo seguem a documentação técnica.
+Estado atual (02/11/2026): o repositório contém a documentação, as skills do Claude Code, o `backend/` (autenticação, usuários, categorias, anúncios, pedidos, pagamentos com Mercado Pago, jobs e administração) e o `frontend/` (todas as telas do Figma). Já chamam a API de verdade: sessão e perfil, categorias, anúncios, pedidos do comprador e do vendedor, checkout (cartão e Pix) e as telas de usuários e produtos do administrador. Seguem com dados de exemplo apenas o reembolso, as avaliações e o suporte do admin, que estão fora do MVP. As estruturas abaixo seguem a documentação técnica.
 
 ```text
 Unishop/
@@ -195,8 +221,8 @@ Unishop/
 │  ├─ BancoDeDados/bd.md
 │  ├─ regras-de-negócio/regras-de-negócio.md
 │  └─ skills/skills.md
-├─ frontend/                 # SPA React, organizada por área (telas prontas, API em integração)
-└─ backend/                  # API Express, em camadas (etapas 2, 4 e 5 do roteiro prontas)
+├─ frontend/                 # SPA React, organizada por área (telas prontas e ligadas à API); vercel.json
+└─ backend/                  # API Express, em camadas (etapas 1 a 9 do roteiro prontas); vercel.json e scripts/vercel-build.sh
 ```
 
 ## Backend em resumo
@@ -252,7 +278,7 @@ Em desenvolvimento rodam com `node-cron`; em produção cada job é um endpoint 
 | `reconcile-pending-payments` | A cada 30 minutos | cron-job.org | Corrige pagamentos que perderam o webhook e refaz estornos que falharam |
 | `cleanup-expired-tokens` | Diário | Vercel Cron | Apaga tokens de confirmação e de senha vencidos ou usados |
 
-O pedido vencido também é cancelado sob demanda, quando alguém o lê ou paga.
+O pedido vencido também é cancelado sob demanda, quando alguém o lê ou paga. No deploy atual só o job diário (Vercel Cron) está agendado; os dois de 30 minutos ainda dependem de cadastro no cron-job.org.
 
 ### Padrões de resposta
 
@@ -318,12 +344,12 @@ Detalhes completos em [Documentação do Banco de Dados](docs/BancoDeDados/bd.md
 | [docs/frontend/frontend.md](docs/frontend/frontend.md) | Estrutura, rotas, componentes, estado, sessão e padrões de qualidade do frontend (v0.4.1) |
 | [docs/backend/backend.md](docs/backend/backend.md) | Arquitetura, camadas, autenticação, módulos e rotas, pagamentos, estados, jobs, erros, segurança e mapa das regras de negócio no backend (v0.3.1) |
 | [docs/regras-de-negócio/regras-de-negócio.md](docs/regras-de-negócio/regras-de-negócio.md) | Regras de negócio (RN-XXX-nn), estados, permissões, escopo do MVP, limites de campos, desvios do PDF e cenários de teste (v0.4.2) |
-| [docs/BancoDeDados/bd.md](docs/BancoDeDados/bd.md) | Dicionário das 8 tabelas, valores dos estados, mapeamento banco × backend, consultas críticas, anonimização, migração pelo Prisma, papéis e SQL da migração manual (v0.2.1) |
+| [docs/BancoDeDados/bd.md](docs/BancoDeDados/bd.md) | Dicionário das 8 tabelas, valores dos estados, mapeamento banco × backend, consultas críticas, anonimização, migração pelo Prisma, papéis e SQL da migração manual (v0.2.3) |
 | [docs/skills/skills.md](docs/skills/skills.md) | O que são as skills do Claude Code, as instaladas no projeto e como usá-las |
 | [CLAUDE.md](CLAUDE.md) | Contexto, regras de idioma e prioridades de fontes para o Claude Code |
 | [docs/api/api.md](docs/api/api.md) | APIs externas (Google, Mercado Pago, Resend, Cloudinary, Turnstile e outras), arquitetura de segurança "backend-cofre", providers, variáveis e ADRs 001 a 009 (v0.3.1). O contrato `openapi.yaml` ainda não existe |
-| [docs/deploy/deploy.md](docs/deploy/deploy.md) | Deploy na Vercel + Supabase: ambientes, segredos, CORS, jobs, backup, atualização e reversão (v0.3.1) |
-| [docs/backend/roteiro-backend.md](docs/backend/roteiro-backend.md) | As 12 etapas do backend, o estado de execução (01/11/2026) e a integração com o frontend, etapa por etapa (v0.6, aprovado) |
+| [docs/deploy/deploy.md](docs/deploy/deploy.md) | Deploy na Vercel + Supabase: ambientes, segredos, CORS, jobs, backup, atualização e reversão (v0.3.2) |
+| [docs/backend/roteiro-backend.md](docs/backend/roteiro-backend.md) | As 12 etapas do backend, o estado de execução e a integração com o frontend, etapa por etapa (v0.7.1, aprovado) |
 | [docs/frontend/roteiro-telas.md](docs/frontend/roteiro-telas.md) | Ordem das telas, ciclo de cada tela e fichas (v0.2) |
 
 Precedência entre os documentos técnicos (quando dois discordam, corrige-se o de menor precedência): Regras de Negócio, Banco de Dados, Backend e Frontend, API e Deploy. Em caso de conflito entre fontes em geral, vale esta ordem: (1) PDF do trabalho, (2) decisões do grupo, (3) documentos técnicos em `docs/`, (4) protótipos no Figma.
@@ -340,8 +366,9 @@ Precedência entre os documentos técnicos (quando dois discordam, corrige-se o 
 - Login do admin: mesma tela do aluno, rota separada, redirecionamento ao painel admin.
 - Login social: Google entra no MVP; Apple fica de fora (custo anual e possível e-mail de retransmissão fora do domínio institucional).
 - Gateway de pagamento: Mercado Pago, com credenciais de teste também em produção.
-- Hospedagem: Vercel (frontend e API) com banco PostgreSQL no Supabase; guia em [Deploy](docs/deploy/deploy.md).
-- ORM: Prisma. Imagens: Cloudinary. E-mail: Resend (Mailtrap em desenvolvimento), que também é o canal de notificação.
+- Hospedagem: Vercel (frontend e API) com banco PostgreSQL no Supabase; guia em [Deploy](docs/deploy/deploy.md). Publicado em 02/11/2026 nos endereços `vercel.app`, sem domínio próprio.
+- ORM: Prisma. Imagens: Cloudinary. E-mail: Resend com domínio próprio (pendente), que também é o canal de notificação.
+- Primeiro deploy (02/11/2026): e-mail em modo de demonstração (`ALLOW_CONSOLE_MAIL`, sem links no log) e o desenvolvimento local passa a usar o banco no Supabase, não mais o Docker.
 - JWT de 2 horas, sem refresh token.
 - Imagem de até 4 MB, uma por requisição (desvio do PDF confirmado em 16/10/2026).
 - Jobs a cada 30 minutos (agendador externo) e um diário (Vercel Cron).
@@ -353,15 +380,16 @@ Confirmação de e-mail por link (atrás da chave `EMAIL_VERIFICATION_REQUIRED`)
 
 ### Pendências relevantes
 
-- `openapi.yaml`: não existe, embora o backend já tenha quatro módulos; Pedro escreve por fatia, junto de cada etapa do roteiro (a partir da seção 9 do Backend).
-- Domínio próprio, necessário para o Resend verificar o envio de e-mail (e, se preciso, para o login do Google).
+- `openapi.yaml`: não existe, embora o backend já tenha seis módulos; Pedro escreve por fatia (a partir da seção 9 do Backend).
+- Domínio próprio, necessário para o Resend entregar e-mail de recuperação de senha e de troca de e-mail (hoje em modo de demonstração).
 - Testar se o e-mail `@edu.unifor.br` entrega `email_verified` no login com Google.
-- Prova de conceito do Pix de teste do Mercado Pago e escolha entre Payments API e Orders API.
-- Conferir no PDF os RNF012 a RNF016 e se commits de outros autores são bloqueados no plano Hobby da Vercel.
-- Banco: aplicar no `unishop-prod` a migração `3_motivo_cancelamento` (já está no dev e nos testes) e a Ana Clara confirmar os valores.
-- Integração: categorias, anúncios e "meus anúncios" já chamam a API; faltam editar anúncio e remover foto, e pedidos, pagamento e admin (etapas 6 a 9).
-- Backend: fechar as lacunas das etapas 1 e 3 (`GET /health/db`, providers falsos de pagamento) e fazer pedidos, pagamentos, jobs, admin, integrações reais e deploy (etapas 6 a 11 do roteiro).
-- Deploy: ainda não existem `vercel.json` nem workflows (testes e backup diário); o seed do admin rodou só no banco de desenvolvimento.
+- Mercado Pago: provar um Pix e um cartão de teste de ponta a ponta (o `mercadopago.provider` nunca foi exercitado contra a API real) e cadastrar o webhook no painel.
+- Imagens: validar o envio de fotos em produção (a chave do Cloudinary precisa de permissão de envio).
+- Banco de produção: trocar o usuário `postgres` pelos papéis `unishop_app` e `unishop_migrator` na Vercel e redefinir a senha do `postgres`.
+- Jobs de 30 minutos (cron-job.org), workflow de backup diário (o plano gratuito do Supabase não tem backup automático) e monitor no `/health`; ainda não existem workflows no `.github/`.
+- Integração: faltam editar anúncio e remover foto ligados à API; reembolso, avaliações e suporte do admin seguem de exemplo (fora do MVP).
+- Achados da revisão de 02/11/2026 ainda em aberto: cancelamento da cobrança no gateway ao excluir anúncio ou conta (o pagamento fica `expirado` e a liquidação estorna se o Pix for pago depois) e log estruturado com `pino`.
+- Conferir no PDF os RNF012 a RNF016 e o limite de imagem (4 MB × 5 MB).
 - Escrever os Termos de uso e a Política de privacidade; o grupo confirmar os limites de campos e a lista de itens proibidos (Regras de Negócio, seção 9).
 
 A lista completa está em [Regras de Negócio](docs/regras-de-negócio/regras-de-negócio.md) (seção 11), [Banco de Dados](docs/BancoDeDados/bd.md) (seção 15), [API](docs/api/api.md) (seção 12), [Backend](docs/backend/backend.md) (seção 21) e [Deploy](docs/deploy/deploy.md) (seção 17.3); o andamento por etapa está em [Roteiro do backend](docs/backend/roteiro-backend.md) (seção 1.1).
