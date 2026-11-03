@@ -39,13 +39,24 @@ export function createCloudinaryClient(url: string): CloudinaryClient {
     upload: (buffer, options) =>
       new Promise((resolve, reject) => {
         const stream = v2.uploader.upload_stream({ ...options, timeout: 20_000 }, (err, result) =>
-          err || !result ? reject(err ?? new Error('Upload sem resposta.')) : resolve(result),
+          err || !result ? reject(toError(err)) : resolve(result),
         )
         stream.end(buffer)
       }),
     destroy: (publicId) =>
-      v2.uploader.destroy(publicId, { resource_type: 'image', invalidate: true }),
+      v2.uploader
+        .destroy(publicId, { resource_type: 'image', invalidate: true })
+        .catch((err: unknown) => Promise.reject(toError(err))),
   }
+}
+
+// O SDK rejeita com objeto simples { message, http_code }; vira Error para o log mostrar a causa.
+export function toError(err: unknown): Error {
+  if (err instanceof Error) return err
+  const e = err as { message?: unknown; http_code?: unknown } | undefined
+  const message = typeof e?.message === 'string' ? e.message : 'resposta inesperada'
+  const code = typeof e?.http_code === 'number' ? ` (HTTP ${e.http_code})` : ''
+  return new Error(`Cloudinary: ${message}${code}`)
 }
 
 // Imagens no Cloudinary, em pasta por ambiente (CLOUDINARY_UPLOAD_FOLDER). Só JPG e PNG, conferidos pelo conteúdo.
