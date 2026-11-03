@@ -301,8 +301,50 @@ let buyerOrders: BuyerOrder[] = [
   },
 ]
 
+// Pedido como a API devolve em GET /orders/mine e GET /orders/:id (backend, orders.serializer.ts).
+type ApiOrder = {
+  id: number
+  number: string
+  status: BuyerOrder['status']
+  negotiation: BuyerOrder['negotiation']
+  listingId: number
+  title: string
+  description: string | null
+  imageUrl: string | null
+  seller: { name: string; whatsapp: string | null }
+  totalInCents: number
+  createdAt: string
+  paymentMethod: BuyerOrder['paymentMethod'] | null
+}
+
+// O motivo do sistema (vencido, sem estoque, anúncio indisponível) não é um motivo do comprador.
+function toBuyerOrder(o: ApiOrder): BuyerOrder {
+  return {
+    id: o.id,
+    listingId: o.listingId,
+    code: o.number,
+    listingTitle: o.title,
+    listingDescription: o.description ?? '',
+    imageUrl: o.imageUrl,
+    priceInCents: o.totalInCents,
+    status: o.status,
+    negotiation: o.negotiation,
+    createdAt: o.createdAt,
+    seller: { name: o.seller.name, whatsapp: o.seller.whatsapp ?? '' },
+    paymentMethod: o.paymentMethod ?? (o.negotiation === 'whatsapp' ? 'on_delivery' : 'pix'),
+    deliveryDeadline: null,
+    cancelReason: null,
+  }
+}
+
+const isApiMode = () => !(import.meta.env.DEV && MOCK_MODE)
+
 // RN-PED-06: do mais recente ao mais antigo.
 export async function getMyOrders(signal?: AbortSignal): Promise<BuyerOrder[]> {
+  if (isApiMode()) {
+    const { data } = await api<{ data: ApiOrder[] }>('/orders/mine', { signal })
+    return data.map(toBuyerOrder).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  }
   await wait(BUYER_DELAY_MS)
   signal?.throwIfAborted()
   return [...buyerOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -310,6 +352,14 @@ export async function getMyOrders(signal?: AbortSignal): Promise<BuyerOrder[]> {
 
 // GET /orders/:id (visão do comprador). `null` quando o pedido não existe.
 export async function getMyOrderById(id: number, signal?: AbortSignal): Promise<BuyerOrder | null> {
+  if (isApiMode()) {
+    try {
+      return toBuyerOrder((await api<{ data: ApiOrder }>(`/orders/${id}`, { signal })).data)
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 404 || err.status === 403)) return null
+      throw err
+    }
+  }
   await wait(BUYER_DELAY_MS)
   signal?.throwIfAborted()
   const order = buyerOrders.find((item) => item.id === id)
@@ -333,10 +383,15 @@ function update(
 // pedido Pago (ou com retirada combinada) foi pedido para a tela de detalhes e gera reembolso: é
 // provisório, as Regras ainda não preveem isso.
 export async function cancelOrder(id: number, reason: BuyerCancelReason, details?: string): Promise<void> {
-  await wait(BUYER_DELAY_MS)
   if (reason === 'other' && !details?.trim()) {
     throw new ApiError(422, 'VALIDATION_ERROR', 'Descreva o motivo do cancelamento.')
   }
+  // A API não guarda o motivo do comprador; ela cancela só Pendente e Em negociação (RN-PED-12).
+  if (isApiMode()) {
+    await api(`/orders/${id}/cancel`, { method: 'POST' })
+    return
+  }
+  await wait(BUYER_DELAY_MS)
   update(id, ['pending', 'negotiating', 'paid', 'pickup_arranged'], {
     status: 'cancelled',
     cancelReason: reason,
@@ -346,6 +401,10 @@ export async function cancelOrder(id: number, reason: BuyerCancelReason, details
 
 // RN-PED-08: com a retirada combinada, o comprador confirma o recebimento e o pedido conclui.
 export async function confirmReceipt(id: number): Promise<void> {
+  if (isApiMode()) {
+    await api(`/orders/${id}/confirm-receipt`, { method: 'POST' })
+    return
+  }
   await wait(BUYER_DELAY_MS)
   update(id, ['pickup_arranged'], { status: 'completed' })
 }
