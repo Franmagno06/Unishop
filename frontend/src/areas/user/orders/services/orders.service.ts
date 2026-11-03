@@ -315,6 +315,7 @@ type ApiOrder = {
   totalInCents: number
   createdAt: string
   paymentMethod: BuyerOrder['paymentMethod'] | null
+  reviewed?: boolean
 }
 
 // O motivo do sistema (vencido, sem estoque, anúncio indisponível) não é um motivo do comprador.
@@ -334,6 +335,7 @@ function toBuyerOrder(o: ApiOrder): BuyerOrder {
     paymentMethod: o.paymentMethod ?? (o.negotiation === 'whatsapp' ? 'on_delivery' : 'pix'),
     deliveryDeadline: null,
     cancelReason: null,
+    reviewed: o.reviewed ?? false,
   }
 }
 
@@ -428,6 +430,23 @@ export async function reportRefundNotReceived(id: number): Promise<void> {
 // "Fazer avaliação": só o comprador de um pedido Concluído avalia o item, uma vez por pedido. A
 // avaliação saiu da tela do produto e fica aqui (provisório: as Regras ainda não definem avaliações).
 export async function reviewOrder(id: number, review: NewReview): Promise<void> {
+  if (isApiMode()) {
+    try {
+      await api(`/orders/${id}/review`, {
+        method: 'POST',
+        body: { rating: review.rating, comment: review.comment.trim() },
+      })
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'ALREADY_REVIEWED') {
+        throw new ApiError(409, err.code, 'Você já avaliou este produto.')
+      }
+      if (err instanceof ApiError && err.code === 'INVALID_STATE') {
+        throw new ApiError(409, err.code, 'Só é possível avaliar um pedido concluído.')
+      }
+      throw err
+    }
+    return
+  }
   const order = buyerOrders.find((item) => item.id === id)
   if (!order) throw new ApiError(404, 'ORDER_NOT_FOUND', 'Pedido não encontrado.')
   if (order.status !== 'completed' || order.reviewed) {

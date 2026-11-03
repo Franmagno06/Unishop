@@ -1,9 +1,9 @@
 ---
 title: Documentação Técnica — Regras de Negócio
 project: Unishop
-version: 0.4.3
-date: 2026-11-01
-changelog: "0.4.3 — troca de e-mail (D3, D5, D6) e filtro de contato sem regra (D9). 0.4.2 — escopo do MVP: reembolso, cancelamento de pedido Pago, avaliações e suporte ficam fora (decidido em 01/11/2026); pendência 6 nova."
+version: 0.4.4
+date: 2026-11-02
+changelog: "0.4.4 — avaliações entram no MVP (RN-AVA-01 a 05; decidido por Francisco em 02/11/2026). 0.4.3 — troca de e-mail (D3, D5, D6) e filtro de contato sem regra (D9). 0.4.2 — escopo do MVP: reembolso, cancelamento de pedido Pago, avaliações e suporte ficam fora (decidido em 01/11/2026); pendência 6 nova."
 status: vigente com pendências
 owners: Francisco Magno (consolidação)
 based_on: requisitos RF001–RF024 e RNF001–RNF016 (PDF do trabalho), protótipos do Figma, decisões do grupo
@@ -25,6 +25,7 @@ language: pt-BR
 |---|---|---|
 | 0.3 | 13/10/2026 | Regras por domínio, ciclo de vida, decisões de 10/10 e 13/10 e mapa de testes. |
 | 0.4 | 16/10/2026 | Promove às regras as decisões que estavam só no Backend (JWT de 2 h, máximo de 5 imagens, cartão abandonado, e-mail ao comprador, 409 sem estoque, anonimização pelo admin, proteção do admin, canal por e-mail, "completar cadastro" do Google). Acrescenta os casos de borda de dinheiro e estoque (pagamento tardio, liquidação com anúncio inativo, exclusão com pedido em aberto, pedido reaproveitado, cancelamento pelo comprador), o vendedor e o produto congelados no pedido, o WhatsApp no anúncio, a troca de senha, o formato do WhatsApp e a definição de "aluno verificado". Limite de imagem de 4 MB. Login com Google entra no MVP. Une as duas tabelas de decisões em uma. Novas seções: escopo do MVP (8), limites de campos e itens proibidos (9), desvios do PDF (10) e pendências (11). Os nomes de tabela e coluna das regras passam a ser os do Banco de Dados. |
+| 0.4.4 | 02/11/2026 | Avaliações do item de um pedido concluído entram no MVP: bloco AVA (RN-AVA-01 a 05), permissões da seção 3, linha no mapa de testes e saída da lista de adiados (seção 8 e pendências 2 e 6). Reembolso e suporte seguem fora. |
 | 0.4.3 | 01/11/2026 | Decisões da troca de e-mail na seção 6 (validade do link, efeito nas sessões, quem pode trocar) e pendência 7 (filtro de forma de contato sem regra). |
 | 0.4.1 | 27/10/2026 | O admin edita só o status: da conta (Ativa ou Suspensa) e do anúncio (Ativo ou Pausado, revertendo Vendido). RN-ADM-04 e RN-ADM-08 reescritas, sem edição de dados nem troca de vendedor; decisão de 26/10 na seção 6, desvio do PDF na seção 10 e pendência 6. |
 
@@ -72,6 +73,8 @@ Aqui estão as regras que o sistema precisa respeitar, não importa a tela nem a
 | Cancelar o próprio pedido pendente ou em negociação | Não | Sim | Não |
 | Criar, editar, pausar, vender e excluir o próprio anúncio | Não | Sim | Não |
 | Ver o próprio histórico de pedidos e os pedidos recebidos | Não | Sim | Não |
+| Avaliar o item de um pedido concluído (só o comprador do pedido) | Não | Sim | Não |
+| Ver as avaliações de um anúncio | Não | Sim | Sim |
 | Editar e excluir o próprio perfil | Não | Sim | Sim |
 | Gerenciar qualquer usuário (ver, suspender ou reativar, excluir) | Não | Não | Sim |
 | Gerenciar qualquer produto (ver, mudar status, excluir) | Não | Não | Sim |
@@ -250,6 +253,18 @@ Ativa ou Suspensa ──usuário ou admin exclui──▶ Excluída (anonimizada
 | RN-NOT-03 | O comprador é notificado por e-mail quando o pedido pago é cancelado por falta de estoque ou anúncio inativo, com o estorno (RN-PAG-13, RN-PAG-14). | Equipe | Backend |
 | RN-NOT-04 | O canal de notificação é o **e-mail**. Não há tela de notificações no MVP. | Grupo | Backend |
 
+### Avaliações (AVA)
+
+Decidido por Francisco em 02/11/2026 (substitui o adiamento de 01/11/2026). Reembolso e suporte seguem fora do MVP.
+
+| Código | Regra | Origem | Onde se aplica |
+|---|---|---|---|
+| RN-AVA-01 | Só o **comprador** de um pedido **Concluído** avalia o item. O vendedor do pedido, outro aluno e o administrador não avaliam. Pedido de outra pessoa dá 403; pedido que não está Concluído dá 409 (`INVALID_STATE`). | Grupo | Backend, Frontend |
+| RN-AVA-02 | Cada pedido recebe **uma** avaliação (409 `ALREADY_REVIEWED` na segunda tentativa, inclusive se duas chegarem juntas). No MVP a avaliação não é editada nem apagada. | Grupo | Backend, Banco |
+| RN-AVA-03 | A nota vai de **0 a 5, em passos de 0,5**. O banco também recusa outro valor (`ck_avaliacao_nota`). | Grupo | Backend, Banco, Frontend |
+| RN-AVA-04 | O comentário é opcional, com até **500 caracteres** e sem espaços nas pontas. | Grupo | Backend, Frontend |
+| RN-AVA-05 | Qualquer usuário logado (aluno ou administrador) vê as avaliações do anúncio, da mais recente para a mais antiga, na página do produto e em Gerenciar anúncio. O nome do autor vem do cadastro: se a conta for excluída, a avaliação fica e o autor aparece como "Usuário removido" (RN-PER-06). Anúncio inexistente ou excluído dá 404. | Grupo | Backend, Frontend |
+
 ### Administração (ADM)
 
 | Código | Regra | Origem | Onde se aplica |
@@ -307,6 +322,7 @@ O RNF016 exige testes de autenticação, pagamento e status de anúncio. Mínimo
 | Estoque | EST-03 a 06 | Duas compras simultâneas da última unidade; quantidade nunca negativa; WhatsApp não desconta até concluir; concluir sem estoque devolve 409 (PED-13). |
 | Anúncio e permissões | ANU-03, 04, 05, 09; EST-06; ADM-01, 06, 08, 09, 12 | Máximo de 5 imagens; pausar e reativar; excluído some e o pedido permanece; exclusão bloqueada com pedido pago em aberto; aluno em rota admin ou em anúncio alheio recebe 403; edição do admin aceita só o status (outros campos são recusados); admin não suspende a si mesmo. |
 | Pedido | PED-04, 05, 08, 10, 11, 12 | Os dois caminhos do pop-up; ordem do histórico; transições de status; novo clique reaproveita o pedido aberto; comprador cancela o pendente; vendedor encerra a negociação. |
+| Avaliações | AVA-01 a 05 | Só o comprador de pedido concluído avalia; vendedor, outro aluno e admin não; pedido não concluído dá 409; segunda avaliação dá 409 (inclusive em corrida); nota fora de 0 a 5 em passos de 0,5 e comentário acima de 500 dão 400; lista da mais recente para a mais antiga; a avaliação sobrevive à anonimização da conta. |
 | Perfil | PER-05, 06, 07 | Foto acima de 4 MB; exclusão bloqueada com pedido pago em aberto; WhatsApp com formato inválido. |
 | Acesso ao catálogo | CAT-04 | Visitante não acessa categorias, listagem nem produto. |
 
@@ -328,7 +344,7 @@ Tudo que está nas seções 5 e 6 entra no MVP, exceto o que a tabela abaixo man
 | Estorno automático | MVP | RN-PAG-08, 13 e 14 |
 | Cancelamento de pedido Pago ou Retirada combinada pelo sistema | Fora do MVP (adiado) | Combinar por WhatsApp; ver pendências 2 e 6 |
 | Reembolso a pedido concluído ("Pedir reembolso") | Fora do MVP (adiado, 01/11/2026) | Existe só como tela de protótipo no frontend; sem regra, sem tabela e sem API |
-| Avaliações de pedido concluído | Fora do MVP (adiado, 01/11/2026) | Tela de protótipo; sem regra, sem tabela e sem API |
+| Avaliações de pedido concluído | MVP (decidido em 02/11/2026) | RN-AVA-01 a 05; tabela `avaliacao` (migração 4) |
 | Solicitações de suporte no painel do admin | Fora do MVP (adiado, 01/11/2026) | Tela de protótipo; sem regra, sem tabela e sem API |
 | Notificação por e-mail | MVP | RN-NOT-01 a 04 |
 | Tela de notificações | Depois | RN-NOT-04 |
@@ -382,10 +398,10 @@ O texto do RNF005 cita "NoSQL Injection", mas o banco é PostgreSQL: o risco rea
 | # | Pendência | Proposta |
 |---|---|---|
 | 1 | O admin que precisa remover um anúncio ou usuário com pedido Pago em aberto fica bloqueado (RN-ADM-06, RN-ADM-09) | Aceitar no MVP; se for problema, o admin cancela o pedido com estorno antes de excluir |
-| 2 | Pedido Pago ou em Retirada combinada não tem cancelamento pelo sistema (RN-PED-12) | Combinar por WhatsApp no MVP; cancelamento com estorno entra depois. **Decidido em 01/11/2026: fora do MVP**, junto de reembolso, avaliações e suporte |
+| 2 | Pedido Pago ou em Retirada combinada não tem cancelamento pelo sistema (RN-PED-12) | Combinar por WhatsApp no MVP; cancelamento com estorno entra depois. **Decidido em 01/11/2026: fora do MVP**, junto de reembolso e suporte (as avaliações entraram no MVP em 02/11/2026, RN-AVA) |
 | 3 | Os textos dos Termos de uso e da Política de privacidade ainda não existem | Francisco escreve a versão mínima, com a versão do aceite e a limitação dos backups (Deploy, seção 11) |
 | 4 | Os valores da seção 9 e a lista de itens proibidos são propostas da equipe | O grupo confirma ou ajusta antes de o Frontend e o Backend implementarem |
 | 5 | Se o projeto seguir como produto depois da avaliação, a meta de 500 usuários e o plano de hospedagem voltam à mesa | Revisar o Deploy (limites do plano gratuito) |
-| 6 | **Telas de protótipo sem regra:** o frontend tem cancelar pedido Pago com motivo, "Pedir reembolso", "Não recebi reembolso", avaliação do pedido e suporte no admin (`roteiro-telas.md` §5 e `roteiro-backend.md` §2.2), todos fora do MVP | Se o grupo as quiser no MVP, escrever as regras `RN-XXX-nn` aqui primeiro (Regras → Banco → Backend, nessa ordem); até lá, não ligar essas telas à API |
+| 6 | **Telas de protótipo sem regra:** o frontend tem cancelar pedido Pago com motivo, "Pedir reembolso", "Não recebi reembolso" e suporte no admin (`roteiro-telas.md` §5 e `roteiro-backend.md` §2.2), todos fora do MVP | Se o grupo as quiser no MVP, escrever as regras `RN-XXX-nn` aqui primeiro (Regras → Banco → Backend, nessa ordem); até lá, não ligar essas telas à API |
 | 7 | O filtro por forma de contato e o "local no campus" da listagem (frontend) não têm regra, coluna nem campo na API (D9, seção 6) | Retirar os chips na integração; se o grupo os quiser, escrever a regra aqui primeiro (Regras → Banco → Backend) |
 | 6 | A edição só de status (26/10) foge de RF021.1–RF021.3 e RF024.2–RF024.5; o texto exato desses itens não foi conferido no PDF | Conferir no PDF quais subitens deixam de ser atendidos e confirmar o desvio com o grupo antes da entrega |

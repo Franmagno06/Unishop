@@ -14,6 +14,12 @@ import { createJobRegistry } from './jobs/registry'
 import { createJobsRoutes } from './jobs/jobs.routes'
 import { createPrismaOrderRepository } from './modules/orders/orders.repository'
 import { createOrdersRoutes } from './modules/orders/orders.routes'
+import {
+  createPrismaReviewRepository,
+  createReviewsRoutes,
+  createReviewsService,
+  type ReviewRepository,
+} from './modules/reviews'
 import { createOrdersService } from './modules/orders/orders.service'
 import type { OrderRepository } from './modules/orders/orders.types'
 import { createPrismaPaymentRepository } from './modules/payments/payments.repository'
@@ -84,6 +90,8 @@ export type AppDeps = {
   admin?: AdminDeps
   /** Pedidos e pagamentos (Etapas 6 e 7). Os três juntos: sem o gateway não há cobrança. */
   orders?: OrderRepository
+  /** Avaliações de pedido concluído (RN-AVA-01 a 05). */
+  reviews?: ReviewRepository
   payments?: PaymentRepository
   gateway?: PaymentGateway
   /** Banco, para o /health/db e o job de limpeza de tokens. */
@@ -215,6 +223,15 @@ export function createApp(deps?: AppDeps) {
         }),
       }),
     )
+    // Avaliações: a fatia de /orders vem ANTES do roteador de pedidos (que exige aluno em tudo).
+    if (deps.reviews) {
+      const reviewRoutes = createReviewsRoutes(
+        createReviewsService({ reviews: deps.reviews }),
+        authenticate,
+      )
+      app.use('/api/v1/orders', reviewRoutes.forOrders)
+      app.use('/api/v1/listings', reviewRoutes.forListings)
+    }
     if (deps.orders && deps.payments && deps.gateway) {
       const ordersService = createOrdersService({
         orders: deps.orders,
@@ -303,6 +320,7 @@ export const app = createApp({
   },
   ...(env.STORAGE_DRIVER === 'local' ? { uploadsDir: UPLOADS_DIR } : {}),
   orders: createPrismaOrderRepository(prisma),
+  reviews: createPrismaReviewRepository(prisma),
   payments: createPrismaPaymentRepository(prisma),
   gateway: providers.gateway,
   db: prisma,

@@ -29,6 +29,7 @@ export function toOrderJson(order: OrderRecord, expiresAt: Date) {
     completedAt: order.completedAt?.toISOString() ?? null,
     cancelReason: order.cancelReason,
     refunded: order.refunded,
+    reviewed: order.reviewed, // RN-AVA-02
     paymentMethod,
   }
 }

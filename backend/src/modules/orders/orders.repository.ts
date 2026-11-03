@@ -16,6 +16,7 @@ const include = {
   seller: { select: { name: true } },
   listing: { select: { description: true, whatsapp: true } },
   payments: { orderBy: { id: 'desc' }, select: { method: true, status: true } },
+  review: { select: { id: true } },
 } satisfies Prisma.OrderInclude
 
 type OrderRow = Prisma.OrderGetPayload<{ include: typeof include }>
@@ -44,6 +45,7 @@ function toRecord(row: OrderRow): OrderRecord {
     listingDescription: row.listing.description,
     payment: last ? { method: last.method === 'pix' ? 'pix' : 'card', status: last.status } : null,
     refunded: row.payments.some((p) => p.status === 'estornado'),
+    reviewed: row.review !== null,
   }
 }
 

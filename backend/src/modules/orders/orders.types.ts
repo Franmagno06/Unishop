@@ -30,6 +30,8 @@ export type OrderRecord = {
   payment: { method: 'pix' | 'card'; status: string } | null
   /** Pagamento aprovado e depois estornado (RN-PAG-13). */
   refunded: boolean
+  /** Já existe avaliação do pedido (RN-AVA-02). */
+  reviewed: boolean
 }
 
 export type ListingForOrder = {

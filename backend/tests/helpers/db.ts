@@ -18,7 +18,7 @@ export const CATEGORY_NAMES = [
 // Esvazia tudo, zera os identity e recria as 6 categorias fixas (RN-CAT-01), com ids 1 a 6.
 export async function resetDb() {
   await testDb.$executeRawUnsafe(
-    'TRUNCATE TABLE log_admin, token_usuario, pagamento, pedido, imagem_anuncio, anuncio, categoria, usuario RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE avaliacao, log_admin, token_usuario, pagamento, pedido, imagem_anuncio, anuncio, categoria, usuario RESTART IDENTITY CASCADE',
   )
   await testDb.category.createMany({ data: CATEGORY_NAMES.map((name) => ({ name })) })
 }
