@@ -3,6 +3,9 @@ import { clearToken, setToken } from '../../../../shared/lib/session'
 import { getCategories, getCategoryById } from '../../categories/services/categories.service'
 import { createListing, getListingById, getListings } from './listings.service'
 import {
+  arrangePickup,
+  closeNegotiation,
+  completeSale,
   deleteListing,
   getManagedListing,
   getMyListings,
@@ -242,12 +245,36 @@ describe('meus anúncios na API real', () => {
     })
   })
 
-  it('GET /listings/:id/management devolve o anúncio e, por enquanto, nenhum pedido recebido', async () => {
-    fetchMock.mockResolvedValue(json(200, { data: { listing: owned, indicators: { views: 12, contacts: 2, orders: 0 } } }))
-    await expect(getManagedListing(3)).resolves.toMatchObject({ listing: { id: 3 }, orders: [] })
+  it('GET /listings/:id/management junta o anúncio aos pedidos recebidos (GET /orders/received)', async () => {
+    const received = {
+      id: 9,
+      status: 'paid',
+      negotiation: 'site_payment',
+      buyer: { name: 'Ana' },
+      createdAt: '2026-11-02T12:00:00Z',
+      paymentMethod: 'card',
+    }
+    fetchMock
+      .mockResolvedValueOnce(json(200, { data: { listing: owned, indicators: { views: 12, contacts: 2, orders: 1 } } }))
+      .mockResolvedValueOnce(json(200, { data: [received] }))
+    await expect(getManagedListing(3)).resolves.toMatchObject({
+      listing: { id: 3 },
+      orders: [{ id: 9, buyerName: 'Ana', paymentMethod: 'Cartão', status: 'paid', buyerWhatsapp: '' }],
+    })
+    expect(lastCall()[0]).toMatch(/\/orders\/received\?listingId=3$/)
 
     fetchMock.mockResolvedValue(json(404, { error: { code: 'LISTING_NOT_FOUND', message: 'x' } }))
     await expect(getManagedListing(3)).resolves.toBeNull()
+  })
+
+  it('retirada, concluir venda e encerrar negociação chamam a rota do pedido', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(json(200, { data: {} })))
+    await arrangePickup(3, 9)
+    expect(lastCall()[0]).toMatch(/\/orders\/9\/arrange-pickup$/)
+    await completeSale(3, 9)
+    expect(lastCall()[0]).toMatch(/\/orders\/9\/complete$/)
+    await closeNegotiation(3, 9)
+    expect(lastCall()[0]).toMatch(/\/orders\/9\/cancel$/)
   })
 
   it('pausar, reativar, vender e excluir chamam a rota certa', async () => {
