@@ -81,7 +81,7 @@ export function ReceivedOrdersList({
                     </Button>
                   </>
                 ) : null}
-                {order.status !== 'cancelled' ? (
+                {order.status !== 'cancelled' && order.buyerWhatsapp ? (
                   <a
                     href={whatsappLink(order.buyerWhatsapp)}
                     target="_blank"
