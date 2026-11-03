@@ -47,6 +47,7 @@ model User {
   sales     Order[]     @relation("OrderSeller")
   auditLogs AuditLog[]
   tokens    UserToken[]
+  reviews   Review[]
 
   @@map("usuario")
 }
@@ -82,6 +83,7 @@ model Listing {
   category Category       @relation(fields: [categoryId], references: [id], map: "fk_anuncio_categoria", onDelete: NoAction, onUpdate: NoAction)
   images   ListingImage[]
   orders   Order[]
+  reviews  Review[]
 
   @@map("anuncio")
 }
@@ -127,6 +129,7 @@ model Order {
   buyer    User      @relation("OrderBuyer", fields: [buyerId], references: [id], map: "fk_pedido_comprador", onDelete: NoAction, onUpdate: NoAction)
   seller   User      @relation("OrderSeller", fields: [sellerId], references: [id], map: "fk_pedido_vendedor", onDelete: NoAction, onUpdate: NoAction)
   payments Payment[]
+  review   Review?
 
   @@map("pedido")
 }
@@ -184,4 +187,23 @@ model UserToken {
   user User @relation(fields: [userId], references: [id], map: "fk_token_usuario", onDelete: NoAction, onUpdate: NoAction)
 
   @@map("token_usuario")
+}
+
+/// Avaliação do item de um pedido concluído (RN-AVA-01 a 05): uma por pedido, feita pelo comprador.
+/// nota: 0 a 5 em passos de 0,5 (CHECK ck_avaliacao_nota na migração 4_avaliacao).
+model Review {
+  id         Int      @id(map: "avaliacao_pkey") @default(autoincrement()) @map("id_avaliacao")
+  orderId    Int      @unique(map: "uq_avaliacao_pedido") @map("id_pedido")
+  listingId  Int      @map("id_anuncio")
+  authorId   Int      @map("id_avaliador")
+  rating     Decimal  @map("nota") @db.Decimal(2, 1)
+  comment    String   @default("") @map("comentario") @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("data_criacao") @db.Timestamptz(6)
+
+  order   Order   @relation(fields: [orderId], references: [id], map: "fk_avaliacao_pedido", onDelete: NoAction, onUpdate: NoAction)
+  listing Listing @relation(fields: [listingId], references: [id], map: "fk_avaliacao_anuncio", onDelete: NoAction, onUpdate: NoAction)
+  author  User    @relation(fields: [authorId], references: [id], map: "fk_avaliacao_avaliador", onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([listingId, createdAt(sort: Desc)], map: "ix_avaliacao_anuncio")
+  @@map("avaliacao")
 }
