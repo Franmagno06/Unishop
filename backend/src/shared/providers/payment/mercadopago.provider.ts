@@ -49,8 +49,21 @@ function toBrasiliaIso(date: Date): string {
 
 // Erro do provedor nunca vai cru ao cliente (api.md §6): vira 502 e só o status vai ao log.
 function externalError(err: unknown): AppError {
-  const status = (err as { status?: number } | null)?.status
-  console.error(`[mercadopago] chamada falhou${status ? ` (HTTP ${status})` : ''}`)
+  const e = err as {
+    status?: number
+    error?: string
+    message?: string
+    cause?: { code?: string | number; description?: string }[] | undefined
+  } | null
+  const status = e?.status
+  // Só código e descrição do erro do Mercado Pago: nunca o corpo da requisição (token, e-mail).
+  const causes = Array.isArray(e?.cause)
+    ? e.cause.map((c) => `${c.code ?? '?'}: ${c.description ?? ''}`).join(' | ')
+    : ''
+  const detail = [e?.error, e?.message, causes].filter(Boolean).join(' - ').slice(0, 300)
+  console.error(
+    `[mercadopago] chamada falhou${status ? ` (HTTP ${status})` : ''}${detail ? `: ${detail}` : ''}`,
+  )
   return new AppError(502, 'EXTERNAL_SERVICE_ERROR', 'Serviço de pagamento indisponível.')
 }
 
